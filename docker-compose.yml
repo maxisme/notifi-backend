@@ -1,0 +1,31 @@
+version: '3.1'
+services:
+  db:
+    image: mysql:5.6
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: notifi
+      MYSQL_USER: notifi
+      MYSQL_PASSWORD: notifi
+    container_name: notifi-backend-db
+    ports:
+      - "3306:3306"
+    tty: true
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d/:ro
+    restart: always
+
+  app:
+    build:
+      context: .
+    container_name: notifi-backend
+    restart: always
+    environment:
+      db: notifi:notifi@tcp(db:3306)/notifi
+      sentry_dsn: ${sentry_dsn}
+      server_key: ${server_key}
+    tty: true
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
