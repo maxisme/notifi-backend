@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `users`;
+
 CREATE TABLE `users`
 (
     `id`               int(11)      NOT NULL AUTO_INCREMENT,
@@ -15,6 +17,8 @@ CREATE TABLE `users`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = latin1;
 
+DROP TABLE IF EXISTS `crash`;
+
 CREATE TABLE `crash`
 (
     `id`          int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -26,6 +30,8 @@ CREATE TABLE `crash`
     PRIMARY KEY (`id`)
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8;
+
+DROP TABLE IF EXISTS `notifications`;
 
 CREATE TABLE `notifications`
 (
