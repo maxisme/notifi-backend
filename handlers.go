@@ -71,9 +71,9 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid key", 400)
 	}
 
+	// CONNECT TO SOCKET
 	wsconn, _ := upgrader.Upgrade(w, r, nil)
 	clients[u.Credentials.Value] = wsconn // add conn to clients
-
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
 	notifications, _ := FetchAllNotifications(s.db, u.Credentials.Value)
@@ -84,6 +84,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// INCOMING SOCKET MESSAGES
 	for {
 		_, message, err := wsconn.ReadMessage()
 		if err != nil {
@@ -91,9 +92,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		if err = DeleteNotifications(s.db, u.Credentials.Value, string(message)); err != nil {
-			log.Println(err.Error())
-		}
+		go DeleteNotifications(s.db, u.Credentials.Value, string(message))
 	}
 
 	delete(clients, u.Credentials.Value)

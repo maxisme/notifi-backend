@@ -36,23 +36,26 @@ func StoreNotification(db *sql.DB, n Notification) error {
 	return err
 }
 
-func DeleteNotifications(db *sql.DB, credentials string, ids string) error {
+func DeleteNotifications(db *sql.DB, credentials string, ids string) {
 	idarr := []interface{}{Hash(credentials)}
 
 	for _, element := range strings.Split(ids, ",") {
 		if val, err := strconv.Atoi(element); err != nil {
-			return errors.New(element + " is not a number!")
+			log.Println(element + " is not a number!")
+			return
 		} else {
 			idarr = append(idarr, val)
 		}
 	}
 
 	query := `
-	DELETE FROM notifications
-	WHERE credentials = ?
-	AND id IN (?` + strings.Repeat(",?", len(idarr)-2) + `)`
+		DELETE FROM notifications
+		WHERE credentials = ?
+		AND id IN (?` + strings.Repeat(",?", len(idarr)-2) + `)`
 	_, err := db.Exec(query, idarr...)
-	return err
+	if err != nil {
+		log.Println(err.Error())
+	}
 }
 
 func FetchAllNotifications(db *sql.DB, credentials string) ([]Notification, error) {
