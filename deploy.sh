@@ -1,4 +1,6 @@
 #!/bin/bash
+# $ visudo
+# jenk ALL = NOPASSWD: /bin/bash /root/notifi-backend/deploy.sh
 
 cd /root/notifi-backend/
 
@@ -7,7 +9,6 @@ diffs=$(git diff master origin/master)
 
 if [ ! -z "$diffs" ]
 then
-
     echo "Pulling code from GitHub..."
     git checkout master
     git pull origin master

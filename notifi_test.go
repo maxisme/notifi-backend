@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
@@ -15,6 +16,8 @@ import (
 	"testing"
 	"time"
 )
+
+var s server
 
 /////////////
 // helpers //
@@ -34,7 +37,7 @@ func GenUser() (Credentials, url.Values) {
 	UUID, _ := uuid.NewRandom()
 	form.Add("UUID", UUID.String())
 
-	rr := PostRequest("", form, http.HandlerFunc(CredentialHandler))
+	rr := PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
 	var creds Credentials
 	_ = json.Unmarshal(rr.Body.Bytes(), &creds)
 	return creds, form
@@ -52,7 +55,7 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 }
 
 func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
-	s := httptest.NewServer(http.HandlerFunc(WSHandler))
+	s := httptest.NewServer(http.HandlerFunc(s.WSHandler))
 	ws, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
 	return s, res, ws, err
 }
@@ -63,13 +66,15 @@ func SendNotification(credentials string, title string) {
 	nform.Add("title", title)
 	req, _ := http.NewRequest("GET", "/api?"+nform.Encode(), nil)
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(APIHandler).ServeHTTP(rr, req)
+	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
 }
 
 ////////////////////
 // TEST FUNCTIONS //
 ////////////////////
-func init() {
+
+// applied to every test
+func TestMain(m *testing.M) {
 	// initialise db
 	db, err := DBConn(os.Getenv("test_db_host") + "/?multiStatements=True")
 	if err != nil {
@@ -79,11 +84,19 @@ func init() {
 
 	schema, _ := ioutil.ReadFile("sql/schema.sql")
 	_, err = db.Exec(`DROP DATABASE IF EXISTS notifi_test; 
-	CREATE DATABASE notifi_test; 
-	USE notifi_test;` + string(schema))
+	CREATE DATABASE notifi_test;
+	USE notifi_test; ` + string(schema))
+	fmt.Println(string(schema))
 	if err != nil {
 		panic(err.Error())
 	}
+
+	db, err = DBConn(os.Getenv("db"))
+	s = server{db: db}
+
+	code := m.Run() // RUN THE TEST
+
+	os.Exit(code)
 }
 
 func TestCredentials(t *testing.T) {
@@ -96,7 +109,7 @@ func TestCredentials(t *testing.T) {
 	}
 
 	// try create a new user without specifying current credentials
-	r := PostRequest("", form, http.HandlerFunc(CredentialHandler))
+	r := PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
 	var nocreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
 	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
@@ -106,7 +119,7 @@ func TestCredentials(t *testing.T) {
 	// ask for new credentials for user
 	form.Add("current_credentials", creds.Value)
 	form.Add("current_key", creds.Key)
-	r = PostRequest("", form, http.HandlerFunc(CredentialHandler))
+	r = PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Value) == 0 || creds.Value == newcreds.Value {
@@ -122,7 +135,7 @@ func TestAddNotification(t *testing.T) {
 	form.Add("title", RandomString(10))
 
 	// POST test
-	r := PostRequest("", form, http.HandlerFunc(APIHandler))
+	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	if status := r.Code; status != 200 {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, 200)
 	}
@@ -133,7 +146,7 @@ func TestAddNotification(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	rr := httptest.NewRecorder()
-	http.HandlerFunc(APIHandler).ServeHTTP(rr, req)
+	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
 	if status := rr.Code; status != 200 {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, 200)
 	}
@@ -145,7 +158,7 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 	form := url.Values{}
 	form.Add("credentials", creds.Value)
 
-	r := PostRequest("", form, http.HandlerFunc(APIHandler))
+	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expected_status := "You must enter a title!\n"
 	if status := r.Body.String(); status != expected_status {
 		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
@@ -157,7 +170,7 @@ func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form.Add("title", RandomString(25))
 	form.Add("credentials", RandomString(25))
 
-	r := PostRequest("", form, http.HandlerFunc(APIHandler))
+	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expected_status := ""
 	if status := r.Body.String(); status != expected_status {
 		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
@@ -283,8 +296,8 @@ func TestWSSResponseCodes(t *testing.T) {
 	db, _ := DBConn(os.Getenv("db"))
 	removeCredKey(db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
-	if res.StatusCode != VALID_CODES["RESET_KEY"] {
-		t.Errorf("expected %v got %v", VALID_CODES["RESET_KEY"], res.StatusCode)
+	if res.StatusCode != VALIDCODES["RESET_KEY"] {
+		t.Errorf("expected %v got %v", VALIDCODES["RESET_KEY"], res.StatusCode)
 	}
 }
 
@@ -296,7 +309,7 @@ func TestNewCredentialKey(t *testing.T) {
 	db, _ := DBConn(os.Getenv("db"))
 	removeCredKey(db, f.Get("UUID"))
 
-	r := PostRequest("", f, http.HandlerFunc(CredentialHandler))
+	r := PostRequest("", f, http.HandlerFunc(s.CredentialHandler))
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Key) == 0 || len(newcreds.Value) != 0 {

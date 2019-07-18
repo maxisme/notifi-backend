@@ -5,6 +5,10 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type server struct {
+	db *sql.DB
+}
+
 func DBConn(dataSourceName string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
