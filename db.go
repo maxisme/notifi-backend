@@ -9,15 +9,13 @@ type server struct {
 	db *sql.DB
 }
 
-func DBConn(dataSourceName string) (*sql.DB, error) {
-	db, err := sql.Open("mysql", dataSourceName)
+func DBConn(dataSourceName string) (db *sql.DB, err error) {
+	db, err = sql.Open("mysql", dataSourceName)
 	if err != nil {
-		return nil, err
+		return
 	}
-	if err = db.Ping(); err != nil {
-		return nil, err
-	}
-	return db, nil
+	err = db.Ping()
+	return
 }
 
 /////////////

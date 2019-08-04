@@ -19,13 +19,13 @@ func Encrypt(str string, key []byte) string {
 
 	c, err := aes.NewCipher(key)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return ""
 	}
 
 	gcm, err := cipher.NewGCM(c)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 		return ""
 	}
 
@@ -86,7 +86,7 @@ func Hash(str string) string {
 func PassHash(str string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(str), bcrypt.MinCost)
 	if err != nil {
-		log.Fatal(err.Error())
+		log.Println(err.Error())
 	}
 	return string(hash)
 }

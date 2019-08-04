@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"io/ioutil"
@@ -69,16 +68,12 @@ func SendNotification(credentials string, title string) {
 	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
 }
 
-////////////////////
-// TEST FUNCTIONS //
-////////////////////
-
 // applied to every test
 func TestMain(m *testing.M) {
 	// initialise db
 	db, err := DBConn(os.Getenv("test_db_host") + "/?multiStatements=True")
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	defer db.Close()
 
@@ -86,9 +81,8 @@ func TestMain(m *testing.M) {
 	_, err = db.Exec(`DROP DATABASE IF EXISTS notifi_test; 
 	CREATE DATABASE notifi_test;
 	USE notifi_test; ` + string(schema))
-	fmt.Println(string(schema))
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 
 	db, err = DBConn(os.Getenv("db"))
@@ -98,6 +92,10 @@ func TestMain(m *testing.M) {
 
 	os.Exit(code)
 }
+
+////////////////////
+// TEST FUNCTIONS //
+////////////////////
 
 func TestCredentials(t *testing.T) {
 	rand.Seed(time.Now().UTC().UnixNano())
@@ -196,10 +194,14 @@ func TestWSHandler(t *testing.T) {
 
 	for _, tt := range headers {
 		wsheader.Add(tt.key, tt.value)
-		_, _, _, err := ConnectWSSHeader(wsheader)
+		server, _, ws, err := ConnectWSSHeader(wsheader)
 		if err == nil != tt.out {
 			println(tt.key + " " + tt.value)
 			t.Errorf("got %v, wanted %v", err == nil, tt.out)
+		}
+		if ws != nil {
+			ws.Close()
+			server.Close()
 		}
 	}
 }
@@ -218,7 +220,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	defer ws.Close()
 
 	// fetch stored notifications on server that were sent when not connected
-	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond)) // add timeout
 	_, mess, err := ws.ReadMessage()
 	if err != nil {
 		t.Fatalf(err.Error())

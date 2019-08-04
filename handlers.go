@@ -146,7 +146,7 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	c, err := json.Marshal(creds)
 	_, err = w.Write(c)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Println(err)
 	}
 }
 
@@ -177,14 +177,14 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	n.ID = FetchTotalNumNotifications(s.db)
 
 	// send notification to client
-	if val, ok := clients[n.Credentials]; ok {
+	if socket, ok := clients[n.Credentials]; ok {
 		// set time
 		t := time.Now()
 		ts := t.Format("2006-01-02 15:04:05") // arbitrary values
 		n.Time = ts
 
 		bytes, _ := json.Marshal([]Notification{n}) // pass as array
-		if err := val.WriteMessage(websocket.TextMessage, bytes); err != nil {
+		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
 			log.Println(err.Error())
 		} else {
 			return // skip storing the notification as already sent to client

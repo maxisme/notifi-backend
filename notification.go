@@ -71,7 +71,7 @@ func FetchAllNotifications(db *sql.DB, credentials string) ([]Notification, erro
 	WHERE credentials = ?`
 	rows, err := db.Query(query, Hash(credentials))
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 	defer rows.Close()
 
