@@ -22,7 +22,7 @@ RUN go get -u github.com/satori/go.uuid
 RUN go get -u golang.org/x/crypto/bcrypt
 RUN go get -u github.com/google/uuid
 RUN go get -u github.com/getsentry/sentry-go
-RUN go get -u gopkg.in/tylerb/graceful.v1
+RUN go get -u github.com/TV4/graceful
 
 RUN mkdir /app
 ADD . /app/

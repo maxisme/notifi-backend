@@ -73,7 +73,12 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// CONNECT TO SOCKET
 	wsconn, _ := upgrader.Upgrade(w, r, nil)
-	clients[u.Credentials.Value] = wsconn // add conn to clients
+
+	// add conn to clients
+	clientsMutex.Lock()
+	clients[u.Credentials.Value] = wsconn
+	clientsMutex.Unlock()
+
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
 	notifications, _ := FetchAllNotifications(s.db, u.Credentials.Value)
@@ -95,7 +100,10 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		go DeleteNotifications(s.db, u.Credentials.Value, string(message))
 	}
 
+	clientsMutex.Lock()
 	delete(clients, u.Credentials.Value)
+	clientsMutex.Unlock()
+
 	log.Println("Disconnected:", Hash(u.Credentials.Value))
 
 	// close connection
@@ -176,11 +184,16 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	// set ID
 	n.ID = FetchTotalNumNotifications(s.db)
 
+	// fetch client socket
+	clientsMutex.RLock()
+	socket, ok := clients[n.Credentials]
+	clientsMutex.RUnlock()
+
 	// send notification to client
-	if socket, ok := clients[n.Credentials]; ok {
-		// set time
+	if ok {
+		// set notification time
 		t := time.Now()
-		ts := t.Format("2006-01-02 15:04:05") // arbitrary values
+		ts := t.Format("2006-01-02 15:04:05") // arbitrary values to set format
 		n.Time = ts
 
 		bytes, _ := json.Marshal([]Notification{n}) // pass as array
@@ -193,7 +206,7 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := StoreNotification(s.db, n); err != nil {
 		if err.(*mysql.MySQLError).Number != 1452 {
-			// error other than the one implying that there are no such user credentials.
+			// error other than the one saying that there are no such user credentials.
 			log.Println(err.Error())
 		}
 	}

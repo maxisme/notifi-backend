@@ -39,6 +39,7 @@ func StoreNotification(db *sql.DB, n Notification) error {
 func DeleteNotifications(db *sql.DB, credentials string, ids string) {
 	idarr := []interface{}{Hash(credentials)}
 
+	// validate all comma separated values are integers
 	for _, element := range strings.Split(ids, ",") {
 		if val, err := strconv.Atoi(element); err != nil {
 			log.Println(element + " is not a number!")

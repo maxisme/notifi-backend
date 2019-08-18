@@ -1,16 +1,17 @@
 package main
 
 import (
+	"github.com/TV4/graceful"
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/schema"
 	"github.com/gorilla/websocket"
-	"gopkg.in/tylerb/graceful.v1"
 	"log"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -20,7 +21,10 @@ var upgrader = websocket.Upgrader{
 }
 var decoder = schema.NewDecoder()
 var SERVERKEY = os.Getenv("server_key")
-var clients = make(map[string]*websocket.Conn)
+var (
+	clients      = make(map[string]*websocket.Conn)
+	clientsMutex = sync.RWMutex{}
+)
 
 var sentryHandler *sentryhttp.Handler = nil
 var lmt = tollbooth.NewLimiter(1, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
@@ -57,5 +61,5 @@ func main() {
 	mux.Handle("/ws", customCallback(s.WSHandler))
 	mux.Handle("/code", customCallback(s.CredentialHandler))
 	mux.Handle("/api", customCallback(s.APIHandler))
-	graceful.Run(":8080", 60*time.Second, mux)
+	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: mux})
 }

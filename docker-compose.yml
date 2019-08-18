@@ -22,8 +22,9 @@ services:
     restart: always
     environment:
       db: notifi:notifi@tcp(db:3306)/notifi
-      sentry_dsn: ${sentry_dsn}
-      server_key: ${server_key}
+      sentry_dsn: ${sentry_dsn:?err}
+      server_key: ${server_key:?err}
+      encryption_key: ${encryption_key:?err}
     tty: true
     ports:
       - "8080:8080"
