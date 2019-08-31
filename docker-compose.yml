@@ -9,7 +9,7 @@ services:
       MYSQL_PASSWORD: notifi
     container_name: notifi-backend-db
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     tty: true
     volumes:
       - ./sql:/docker-entrypoint-initdb.d/:ro
@@ -27,6 +27,6 @@ services:
       encryption_key: ${encryption_key:?err}
     tty: true
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       - db
