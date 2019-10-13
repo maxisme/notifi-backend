@@ -22,8 +22,9 @@ node() {
             sh 'ssh -o StrictHostKeyChecking=no jenk@notifi.it "sudo /bin/bash /root/notifi-backend/deploy.sh"'
         }
         setBuildStatus("Build succeeded", "SUCCESS");
-    } catch (err) {
-        currentBuild.result = "UNSTABLE"
+    } catch (e) {
+        echo 'Err: ' + e.toString()
+        currentBuild.result = "BROKEN"
         setBuildStatus("Build failed", "FAILURE");
     }
 
