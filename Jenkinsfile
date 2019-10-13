@@ -12,8 +12,7 @@ node() {
     try{
         checkout scm
         docker.image('mysql:5').withRun('-e "MYSQL_ROOT_PASSWORD=root"') { c ->
-            def goImage = docker.build("notifi:latest", ".")
-            docker.image('mysql:5').inside("--link ${c.id}:db -u root") {
+            docker.image('golang:1.12-alpine').withRun("--link ${c.id}:db -u root") {
                 stage('Test'){
                     sh 'cd $WORKSPACE && encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@tcp(db:3306)" db="root:root@tcp(db:3306)/notifi_test" go test'
                 }
@@ -24,6 +23,7 @@ node() {
         }
         setBuildStatus("Build succeeded", "SUCCESS");
     } catch (err) {
+        currentBuild.result = "UNSTABLE"
         setBuildStatus("Build failed", "FAILURE");
     }
 
