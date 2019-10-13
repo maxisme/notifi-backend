@@ -1,10 +1,8 @@
 FROM golang:1.12-alpine
 
+RUN set -ex
 RUN apk update
-RUN apk upgrade
-RUN apk add git
-RUN apk add gcc
-RUN apk add libc-dev
+RUN apk add --no-cache git
 
 ADD . /app/
 WORKDIR /app
