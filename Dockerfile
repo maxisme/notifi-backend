@@ -8,5 +8,5 @@ RUN apk add libc-dev
 
 ADD . /app/
 WORKDIR /app
-RUN go build -o notifi-backend .
-CMD ["/app/notifi-backend"]
+RUN go build -o notifi .
+CMD ["/app/notifi"]
