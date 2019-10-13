@@ -10,8 +10,6 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/schema v1.1.0
 	github.com/gorilla/websocket v1.4.1
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/crypto v0.0.0-20191011161858-a950601f39e6
-	golang.org/x/time v0.0.0-20190921001708-c4c64cad1fd0 // indirect
 )

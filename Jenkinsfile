@@ -17,7 +17,6 @@ node() {
                 stage('Test'){
                     sh 'cd $WORKSPACE && encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@tcp(db:3306)" db="root:root@tcp(db:3306)/notifi_test" go test'
                 }
-
             }
         }
         stage('Deploy'){
