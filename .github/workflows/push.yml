@@ -1,0 +1,10 @@
+name: notifi
+on: [push]
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Test
+        run: encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@" db="root:root@root:root@/notifi_test" go test

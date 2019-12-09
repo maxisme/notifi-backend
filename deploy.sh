@@ -1,4 +1,5 @@
 #!/bin/bash
+# for jenkins ssh:
 # $ visudo
 # jenk ALL = NOPASSWD: /bin/bash /root/notifi-backend/deploy.sh
 
