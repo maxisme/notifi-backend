@@ -1,4 +1,4 @@
-[![Build Status](https://jenk.ml/job/notifi-backend/badge/icon)](https://jenk.ml/job/notifi-backend/)
+[![Build Status](https://github.com/maxisme/notifi-backend/workflows/notifi/badge.svg)](https://github.com/maxisme/notifi-backend/actions)
 
 Add `.env` to project:
 ```
