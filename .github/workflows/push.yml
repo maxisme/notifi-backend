@@ -6,5 +6,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+      - name: Fetch cached dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
       - name: Test
         run: encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@" db="root:root@/notifi_test" go test
