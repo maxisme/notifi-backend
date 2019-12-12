@@ -7,8 +7,15 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ['1.12', '1.13']
     steps:
       - uses: actions/checkout@v1
+      - name: Setup Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go }}
       - name: Fetch cached dependencies
         uses: actions/cache@v1
         with:
@@ -17,4 +24,4 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Test
-        run: encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@" db="root:root@/notifi_test" go test
+        run: encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@" db="root:root@/notifi_test" go test -v
