@@ -47,22 +47,23 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if !IsValidCredentials(r.Header.Get("Credentials")) {
 		http.Error(w, "Invalid Credentials", 400)
+		return
 	}
 
-	var code = 0
+	var errorCode = 0
 	UUIDUser := FetchCredentialsOfUUID(s.db, u.UUID)
 	if len(UUIDUser.Credentials.Key) == 0 {
 		if len(UUIDUser.Credentials.Value) == 0 {
-			code = VALIDCODES["NO_UUID"]
+			errorCode = VALIDCODES["NO_UUID"]
 		} else {
 			log.Println("No key for", u.UUID)
-			code = VALIDCODES["RESET_KEY"]
+			errorCode = VALIDCODES["RESET_KEY"]
 		}
 	} else if !VerifyUser(s.db, u) {
-		code = VALIDCODES["INVALID_LOGIN"]
+		errorCode = VALIDCODES["INVALID_LOGIN"]
 	}
-	if code != 0 {
-		w.WriteHeader(code)
+	if errorCode != 0 {
+		w.WriteHeader(errorCode)
 		return
 	}
 
@@ -75,9 +76,9 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	wsconn, _ := upgrader.Upgrade(w, r, nil)
 
 	// add conn to clients
-	clientsMutex.Lock()
-	clients[u.Credentials.Value] = wsconn
-	clientsMutex.Unlock()
+	wsClientsMutex.Lock()
+	wsClients[u.Credentials.Value] = wsconn
+	wsClientsMutex.Unlock()
 
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
@@ -100,9 +101,9 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		go DeleteNotifications(s.db, u.Credentials.Value, string(message))
 	}
 
-	clientsMutex.Lock()
-	delete(clients, u.Credentials.Value)
-	clientsMutex.Unlock()
+	wsClientsMutex.Lock()
+	delete(wsClients, u.Credentials.Value)
+	wsClientsMutex.Unlock()
 
 	log.Println("Disconnected:", Hash(u.Credentials.Value))
 
@@ -185,9 +186,9 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	n.ID = FetchTotalNumNotifications(s.db)
 
 	// fetch client socket
-	clientsMutex.RLock()
-	socket, ok := clients[n.Credentials]
-	clientsMutex.RUnlock()
+	wsClientsMutex.RLock()
+	socket, ok := wsClients[n.Credentials]
+	wsClientsMutex.RUnlock()
 
 	// send notification to client
 	if ok {

@@ -5,20 +5,20 @@ import (
 	"testing"
 )
 
-var test_key = []byte(os.Getenv("encryption_key"))
-var teststr = RandomString(10)
+var testKey = []byte(os.Getenv("encryption_key"))
+var testStr = RandomString(10)
 
 func TestEncrypt(t *testing.T) {
-	encryptedstr := Encrypt(teststr, test_key)
-	decryptedstr, _ := Decrypt(encryptedstr, test_key)
-	if decryptedstr != teststr {
+	encryptedstr := Encrypt(testStr, testKey)
+	decryptedstr, _ := Decrypt(encryptedstr, testKey)
+	if decryptedstr != testStr {
 		t.Errorf("Encryption did not work!")
 	}
 }
 
 func TestInvalidtest_key(t *testing.T) {
 	test_key2 := []byte(RandomString(10))
-	encryptedstr := Encrypt(teststr, test_key)
+	encryptedstr := Encrypt(testStr, testKey)
 	_, err := Decrypt(encryptedstr, test_key2)
 	if err == nil {
 		t.Errorf("Invalid test_key did not break!")
@@ -27,7 +27,7 @@ func TestInvalidtest_key(t *testing.T) {
 
 func TestInvalidString(t *testing.T) {
 	testenryptedstr := RandomString(10)
-	str, _ := Decrypt(testenryptedstr, test_key)
+	str, _ := Decrypt(testenryptedstr, testKey)
 	if str != "" {
 		t.Errorf("Invalid string did not break!")
 	}
