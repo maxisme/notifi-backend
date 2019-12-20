@@ -12,6 +12,7 @@ type server struct {
 func DBConn(dataSourceName string) (db *sql.DB, err error) {
 	db, err = sql.Open("mysql", dataSourceName)
 	if err != nil {
+		Handle(err)
 		return
 	}
 	err = db.Ping()

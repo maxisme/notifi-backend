@@ -51,7 +51,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var errorCode = 0
-	UUIDUser := FetchCredentialsOfUUID(s.db, u.UUID)
+	UUIDUser := FetchUserCredentialsFromUUID(s.db, u.UUID)
 	if len(UUIDUser.Credentials.Key) == 0 {
 		if len(UUIDUser.Credentials.Value) == 0 {
 			errorCode = VALIDCODES["NO_UUID"]
@@ -68,7 +68,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := SetLastLogin(s.db, u); err != nil {
-		log.Println("Could not set last login")
+		Handle(err)
 		http.Error(w, "Invalid key", 400)
 	}
 
@@ -82,7 +82,8 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
-	notifications, _ := FetchAllNotifications(s.db, u.Credentials.Value)
+	notifications, err := FetchAllNotifications(s.db, u.Credentials.Value)
+	Handle(err)
 	if len(notifications) > 0 {
 		bytes, _ := json.Marshal(notifications)
 		if err := wsconn.WriteMessage(websocket.TextMessage, bytes); err != nil {
@@ -94,7 +95,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := wsconn.ReadMessage()
 		if err != nil {
-			log.Println(err.Error())
+			Handle(err)
 			break
 		}
 
@@ -108,9 +109,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Disconnected:", Hash(u.Credentials.Value))
 
 	// close connection
-	if err := Logout(s.db, u); err != nil {
-		log.Println(err.Error())
-	}
+	Handle(CloseConnection(s.db, u))
 }
 
 func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,11 +126,12 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
+		Handle(err)
 		http.Error(w, "Invalid form data", 400)
 		return
 	}
 
-	// store form data in struct
+	// convert form data to struct
 	PostUser := User{
 		UUID: r.Form.Get("UUID"),
 
@@ -149,14 +149,15 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	creds, err := CreateUser(s.db, PostUser)
 	if err != nil {
-		println(err.Error())
+		WriteError(w, 401, err.Error())
+		http.Error(w, "Problem creating user", 401)
+		return
 	}
 
 	c, err := json.Marshal(creds)
+	Handle(err)
 	_, err = w.Write(c)
-	if err != nil {
-		log.Println(err)
-	}
+	Handle(err)
 }
 
 func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
@@ -178,11 +179,9 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	if err := IncreaseNotificationCnt(s.db, n.Credentials); err != nil {
-		log.Println(err.Error())
-	}
+	Handle(IncreaseNotificationCnt(s.db, n.Credentials))
 
-	// set ID
+	// set notification ID
 	n.ID = FetchTotalNumNotifications(s.db)
 
 	// fetch client socket
@@ -194,12 +193,12 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	if ok {
 		// set notification time
 		t := time.Now()
-		ts := t.Format("2006-01-02 15:04:05") // arbitrary values to set format
+		ts := t.Format("2006-01-02 15:04:05") // arbitrary values to set time format
 		n.Time = ts
 
 		bytes, _ := json.Marshal([]Notification{n}) // pass as array
 		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			log.Println(err.Error())
+			Handle(err)
 		} else {
 			return // skip storing the notification as already sent to client
 		}
@@ -208,7 +207,7 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	if err := StoreNotification(s.db, n); err != nil {
 		if err.(*mysql.MySQLError).Number != 1452 {
 			// error other than the one saying that there are no such user credentials.
-			log.Println(err.Error())
+			Handle(err)
 		}
 	}
 }

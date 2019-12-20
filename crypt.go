@@ -19,19 +19,19 @@ func Encrypt(str string, key []byte) string {
 
 	c, err := aes.NewCipher(key)
 	if err != nil {
-		log.Println(err)
+		Handle(err)
 		return ""
 	}
 
 	gcm, err := cipher.NewGCM(c)
 	if err != nil {
-		log.Println(err)
+		Handle(err)
 		return ""
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err = io.ReadFull(r.Reader, nonce); err != nil {
-		log.Println(err)
+		Handle(err)
 		return ""
 	}
 

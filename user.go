@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"github.com/go-errors/errors"
+	"log"
 )
 
 type User struct {
@@ -29,11 +31,10 @@ func CreateUser(db *sql.DB, u User) (Credentials, error) {
 		RandomString(100),
 	}
 
-	dbu := FetchCredentialsOfUUID(db, u.UUID)
+	dbu := FetchUserCredentialsFromUUID(db, u.UUID)
 	if len(dbu.Credentials.Key) == 0 && len(dbu.Credentials.Value) > 0 {
 		// update users credential key if not set in db
-		query := `
-		UPDATE users SET credential_key = ?
+		query := `UPDATE users SET credential_key = ?
 		WHERE UUID = ?`
 		_, err := db.Exec(query, PassHash(creds.Key), Hash(u.UUID))
 		if err != nil {
@@ -52,23 +53,29 @@ func CreateUser(db *sql.DB, u User) (Credentials, error) {
 			// verify the credentials passed are valid
 			if VerifyUser(db, u) {
 				isnewuser = false
+			} else {
+				log.Print("Lied about credentials ")
+				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
 	}
 
 	// update users credentials
-	query := `
-	UPDATE users SET credentials = ?, credential_key = ?
-	WHERE UUID = ?`
+	query := ""
 	if isnewuser {
 		// create new user
 		query = `
 		INSERT INTO users (credentials, credential_key, UUID) 
 		VALUES (?, ?, ?)`
+	} else {
+		query = `
+		UPDATE users SET credentials = ?, credential_key = ?
+		WHERE UUID = ?`
 	}
 
 	_, err := db.Exec(query, Hash(creds.Value), PassHash(creds.Key), Hash(u.UUID))
 	if err != nil {
+		Handle(err)
 		return Credentials{}, err
 	}
 	return creds, nil
@@ -83,7 +90,7 @@ func FetchUser(db *sql.DB, credentials string) User {
 	return u
 }
 
-func FetchCredentialsOfUUID(db *sql.DB, UUID string) User {
+func FetchUserCredentialsFromUUID(db *sql.DB, UUID string) User {
 	var u User
 	_ = db.QueryRow(`
 	SELECT credential_key, credentials
@@ -112,7 +119,7 @@ func SetLastLogin(db *sql.DB, u User) error {
 	return err
 }
 
-func Logout(db *sql.DB, u User) error {
+func CloseConnection(db *sql.DB, u User) error {
 	_, err := db.Exec(`UPDATE users
 	SET is_connected = 0
 	WHERE credentials = ? AND UUID = ?`, Hash(u.Credentials.Value), Hash(u.UUID))
