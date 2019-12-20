@@ -14,8 +14,9 @@ then
     git checkout master
     git pull origin master
 
-    # update server
-    docker-compose up --build -d
+    # update app
+    docker-compose build app
+    docker-compose up --no-deps -d app
 
     # kill all unused dockers
     docker system prune -f
