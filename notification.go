@@ -86,6 +86,8 @@ func FetchAllNotifications(db *sql.DB, credentials string) ([]Notification, erro
 		err = DecryptNotification(&n)
 		if err == nil {
 			notifications = append(notifications, n)
+		} else {
+			return nil, err
 		}
 	}
 	return notifications, nil
@@ -153,16 +155,19 @@ func DecryptNotification(notification *Notification) error {
 	}
 
 	message, err := Decrypt(notification.Message, key)
+	Handle(err)
 	if err == nil {
 		notification.Message = message
 	}
 
 	image, err := Decrypt(notification.Image, key)
+	Handle(err)
 	if err == nil {
 		notification.Image = image
 	}
 
 	link, err := Decrypt(notification.Link, key)
+	Handle(err)
 	if err == nil {
 		notification.Link = link
 	}
