@@ -3,7 +3,7 @@
 # $ visudo
 # jenk ALL = NOPASSWD: /bin/bash /root/notifi-backend/deploy.sh
 
-cd /root/notifi-backend/
+cd $(dirname "$0")
 
 git fetch &> /dev/null
 diffs=$(git diff master origin/master)
