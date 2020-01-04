@@ -1,9 +1,11 @@
 package main
 
 import (
+	"github.com/getsentry/sentry-go"
 	"log"
 	"net/http"
 	"runtime"
+	"time"
 )
 
 func Handle(err error) {
@@ -11,6 +13,10 @@ func Handle(err error) {
 		pc, _, _, _ := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
 		log.Println("Fatal: " + err.Error() + " - " + details.Name())
+
+		// log to sentry
+		sentry.CaptureException(err)
+		sentry.Flush(time.Second * 5)
 	}
 }
 
