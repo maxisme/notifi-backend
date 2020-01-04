@@ -7,7 +7,6 @@ services:
       MYSQL_DATABASE: notifi
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
-    container_name: notifi-backend-db
     ports:
       - "127.0.0.1:3306:3306"
     tty: true
@@ -18,7 +17,6 @@ services:
   app:
     build:
       context: .
-    container_name: notifi-backend
     restart: always
     environment:
       db: notifi:notifi@tcp(db:3306)/notifi

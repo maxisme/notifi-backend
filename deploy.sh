@@ -1,7 +1,8 @@
 #!/bin/bash
-# for jenkins ssh:
+# for ssh access:
+# $ adduser github
 # $ visudo
-# jenk ALL = NOPASSWD: /bin/bash /root/notifi-backend/deploy.sh
+# github ALL = NOPASSWD: /path/to/deploy.sh
 
 if [[ -z "$1" ]]
 then
