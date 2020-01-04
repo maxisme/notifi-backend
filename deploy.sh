@@ -5,7 +5,7 @@
 
 if [[ -z "$1" ]]
 then
-    echo "Please add commit sha. $@"
+    echo "No commit sha $@"
     exit 1
 fi
 
