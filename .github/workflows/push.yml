@@ -37,4 +37,4 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            ${{ secrets.DEPLOY_CMD }} $GITHUB_SHA
+            ${{ secrets.DEPLOY_CMD }} $github.sha
