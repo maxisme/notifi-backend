@@ -6,11 +6,12 @@
 if [[ -z "$1" ]]
 then
     echo "Please add commit sha."
+    exit
 fi
 
 # insure only deploying one at a time
 DEPLOY_FILE="/tmp/deploying.txt"
-while [ ! -f $DEPLOY_FILE ]
+while [ -f $DEPLOY_FILE ]
 do
     echo "Waiting for another deploy to finish..."
     sleep 1
