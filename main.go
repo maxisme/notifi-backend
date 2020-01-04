@@ -15,25 +15,26 @@ import (
 	"time"
 )
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-}
-var decoder = schema.NewDecoder()
-var SERVERKEY = os.Getenv("server_key")
 var (
-	wsClients      = make(map[string]*websocket.Conn)
-	wsClientsMutex = sync.RWMutex{}
+	UPGRADER = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+	DECODER   = schema.NewDecoder()
+	SERVERKEY = os.Getenv("server_key") // has to be passed with every request
+
+	WSClients      = make(map[string]*websocket.Conn)
+	WSClientsMutex = sync.RWMutex{}
 )
 
-var sentryHandler *sentryhttp.Handler = nil
-
-// set http request limiter
+// set http request limiter to max 5 requests per second
 var lmt = tollbooth.NewLimiter(5, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
 	"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
 })
 
 // callback function
+var sentryHandler *sentryhttp.Handler = nil
+
 func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handler {
 	if sentryHandler != nil {
 		return sentryHandler.Handle(tollbooth.LimitFuncHandler(lmt, nextFunc))

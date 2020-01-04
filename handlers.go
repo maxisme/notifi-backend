@@ -9,22 +9,24 @@ import (
 	"time"
 )
 
-var VALIDCODES = map[string]int{
-	"VALID":         200,
-	"RESET_KEY":     401,
-	"NO_UUID":       402,
-	"INVALID_LOGIN": 403,
-}
+const (
+	ErrorCode        = 400
+	ResetKeyCode     = 401
+	NoUUIDCode       = 402
+	InvalidLoginCode = 403
+
+	TimeLayout = "2006-01-02 15:04:05"
+)
 
 func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", 400)
+		http.Error(w, "Method not allowed", ErrorCode)
 		return
 	}
 
 	if r.Header.Get("Sec-Key") != SERVERKEY {
 		log.Println("Invalid sec-Key")
-		http.Error(w, "Invalid key", 400)
+		http.Error(w, "Invalid key", ErrorCode)
 		return
 	}
 
@@ -40,13 +42,13 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// validate inputs
 	if !IsValidUUID(r.Header.Get("Uuid")) {
-		http.Error(w, "Invalid UUID", 400)
+		http.Error(w, "Invalid UUID", ErrorCode)
 		return
 	} else if !IsValidVersion(r.Header.Get("Version")) {
-		http.Error(w, "Invalid Version", 400)
+		http.Error(w, "Invalid Version", ErrorCode)
 		return
 	} else if !IsValidCredentials(r.Header.Get("Credentials")) {
-		http.Error(w, "Invalid Credentials", 400)
+		http.Error(w, "Invalid Credentials", ErrorCode)
 		return
 	}
 
@@ -54,13 +56,13 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	UUIDUser := FetchUserCredentialsFromUUID(s.db, u.UUID)
 	if len(UUIDUser.Credentials.Key) == 0 {
 		if len(UUIDUser.Credentials.Value) == 0 {
-			errorCode = VALIDCODES["NO_UUID"]
+			errorCode = NoUUIDCode
 		} else {
 			log.Println("No key for", u.UUID)
-			errorCode = VALIDCODES["RESET_KEY"]
+			errorCode = ResetKeyCode
 		}
 	} else if !VerifyUser(s.db, u) {
-		errorCode = VALIDCODES["INVALID_LOGIN"]
+		errorCode = InvalidLoginCode
 	}
 	if errorCode != 0 {
 		w.WriteHeader(errorCode)
@@ -69,16 +71,16 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := SetLastLogin(s.db, u); err != nil {
 		Handle(err)
-		http.Error(w, "Invalid key", 400)
+		http.Error(w, "Invalid key", ErrorCode)
 	}
 
 	// CONNECT TO SOCKET
-	wsconn, _ := upgrader.Upgrade(w, r, nil)
+	wsconn, _ := UPGRADER.Upgrade(w, r, nil)
 
 	// add conn to clients
-	wsClientsMutex.Lock()
-	wsClients[u.Credentials.Value] = wsconn
-	wsClientsMutex.Unlock()
+	WSClientsMutex.Lock()
+	WSClients[u.Credentials.Value] = wsconn
+	WSClientsMutex.Unlock()
 
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
@@ -102,9 +104,9 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		go DeleteNotifications(s.db, u.Credentials.Value, string(message))
 	}
 
-	wsClientsMutex.Lock()
-	delete(wsClients, u.Credentials.Value)
-	wsClientsMutex.Unlock()
+	WSClientsMutex.Lock()
+	delete(WSClients, u.Credentials.Value)
+	WSClientsMutex.Unlock()
 
 	log.Println("Disconnected:", Hash(u.Credentials.Value))
 
@@ -114,20 +116,20 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", 400)
+		http.Error(w, "Method not allowed", ErrorCode)
 		return
 	}
 
 	if r.Header.Get("Sec-Key") != SERVERKEY {
 		log.Println("Invalid key", r.Header.Get("Sec-Key"))
-		http.Error(w, "Invalid form data", 400)
+		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
 	err := r.ParseForm()
 	if err != nil {
 		Handle(err)
-		http.Error(w, "Invalid form data", 400)
+		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
@@ -143,7 +145,7 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		http.Error(w, "Invalid form data", 400)
+		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
@@ -164,17 +166,17 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	var n Notification
 
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "Invalid form data", 400)
+		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
-	if err := decoder.Decode(&n, r.Form); err != nil {
-		http.Error(w, "Invalid form data", 400)
+	if err := DECODER.Decode(&n, r.Form); err != nil {
+		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
 	if err := NotificationValidation(&n); err != nil {
-		http.Error(w, err.Error(), 400)
+		http.Error(w, err.Error(), ErrorCode)
 		return
 	}
 
@@ -185,16 +187,13 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	n.ID = FetchTotalNumNotifications(s.db)
 
 	// fetch client socket
-	wsClientsMutex.RLock()
-	socket, ok := wsClients[n.Credentials]
-	wsClientsMutex.RUnlock()
+	WSClientsMutex.RLock()
+	socket, ok := WSClients[n.Credentials]
+	WSClientsMutex.RUnlock()
 
-	// send notification to client
 	if ok {
 		// set notification time
-		t := time.Now()
-		ts := t.Format("2006-01-02 15:04:05") // arbitrary values to set time format
-		n.Time = ts
+		n.Time = time.Now().Format(TimeLayout)
 
 		bytes, _ := json.Marshal([]Notification{n}) // pass as array
 		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
@@ -206,7 +205,8 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := StoreNotification(s.db, n); err != nil {
 		if err.(*mysql.MySQLError).Number != 1452 {
-			// error other than the one saying that there are no such user credentials.
+			// return any error other than the one inferring that there are no such user credentials - we don't want
+			// to give that away
 			Handle(err)
 		}
 	}

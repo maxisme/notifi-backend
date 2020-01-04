@@ -298,8 +298,8 @@ func TestWSSResponseCodes(t *testing.T) {
 	db, _ := DBConn(os.Getenv("db"))
 	removeCredKey(db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
-	if res.StatusCode != VALIDCODES["RESET_KEY"] {
-		t.Errorf("expected %v got %v", VALIDCODES["RESET_KEY"], res.StatusCode)
+	if res.StatusCode != ResetKeyCode {
+		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
 	}
 }
 

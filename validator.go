@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-var validversion = regexp.MustCompile(`^[\d\.]*$`)
+var VALIDVERSIONREGEX = regexp.MustCompile(`^[\d\.]*$`)
 
 func IsValidVersion(version string) bool {
 	version = strings.TrimSpace(version)
 	if len(version) == 0 {
 		return false
 	}
-	return validversion.MatchString(version)
+	return VALIDVERSIONREGEX.MatchString(version)
 }
 
 func IsValidUUID(str string) bool {
