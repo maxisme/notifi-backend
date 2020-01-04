@@ -5,8 +5,8 @@
 
 if [[ -z "$1" ]]
 then
-    echo "Please add commit sha."
-    exit
+    echo "Please add commit sha. $@"
+    exit 1
 fi
 
 # insure only deploying one at a time
