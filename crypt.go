@@ -12,33 +12,30 @@ import (
 	"math/rand"
 )
 
-func Encrypt(str string, key []byte) string {
+func EncryptAES(str string, key []byte) (string, error) {
 	if len(str) == 0 {
-		return ""
+		return "", nil
 	}
 
 	c, err := aes.NewCipher(key)
 	if err != nil {
-		Handle(err)
-		return ""
+		return "", err
 	}
 
 	gcm, err := cipher.NewGCM(c)
 	if err != nil {
-		Handle(err)
-		return ""
+		return "", err
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
 	if _, err = io.ReadFull(r.Reader, nonce); err != nil {
-		Handle(err)
-		return ""
+		return "", err
 	}
 
-	return b64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(str), nil))
+	return b64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(str), nil)), nil
 }
 
-func Decrypt(encryptedstr string, key []byte) (string, error) {
+func DecryptAES(encryptedstr string, key []byte) (string, error) {
 	if len(encryptedstr) == 0 {
 		return "", nil
 	}
@@ -79,8 +76,12 @@ func RandomString(n int) string {
 }
 
 func Hash(str string) string {
-	v := sha256.Sum256([]byte(str))
-	return string(b64.StdEncoding.EncodeToString(v[:]))
+	return HashWithBytes([]byte(str))
+}
+
+func HashWithBytes(str []byte) string {
+	v := sha256.Sum256(str)
+	return b64.StdEncoding.EncodeToString(v[:])
 }
 
 func PassHash(str string) string {

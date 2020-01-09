@@ -26,74 +26,41 @@ var maxmessage = 10000
 var maximage = 100000
 var key = []byte(os.Getenv("encryption_key"))
 
-func StoreNotification(db *sql.DB, n Notification) error {
-	_, err := db.Exec(`
+func (n Notification) Store(db *sql.DB) error {
+	var DBUser User
+	err := DBUser.Get(db, n.Credentials)
+	if err != nil {
+		return err
+	}
+
+	n.Title, err = EncryptAES(n.Title, key)
+	if err != nil {
+		return err
+	}
+
+	n.Message, err = EncryptAES(n.Message, key)
+	if err != nil {
+		return err
+	}
+
+	n.Image, err = EncryptAES(n.Image, key)
+	if err != nil {
+		return err
+	}
+
+	n.Link, err = EncryptAES(n.Link, key)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, Encrypt(n.Title, key), Encrypt(n.Message, key),
-		Encrypt(n.Image, key), Encrypt(n.Link, key), Hash(n.Credentials),
-	)
+    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, Hash(n.Credentials))
 	return err
 }
 
-func DeleteNotifications(db *sql.DB, credentials string, ids string) {
-	idarr := []interface{}{Hash(credentials)}
-
-	// validate all comma separated values are integers
-	for _, element := range strings.Split(ids, ",") {
-		if val, err := strconv.Atoi(element); err != nil {
-			log.Println(element + " is not a number!")
-			return
-		} else {
-			idarr = append(idarr, val)
-		}
-	}
-
-	query := `
-		DELETE FROM notifications
-		WHERE credentials = ?
-		AND id IN (?` + strings.Repeat(",?", len(idarr)-2) + `)`
-	_, err := db.Exec(query, idarr...)
-	if err != nil {
-		log.Println(err.Error())
-	}
-}
-
-func FetchAllNotifications(db *sql.DB, credentials string) ([]Notification, error) {
-	query := `
-	SELECT
-		id,
-		DATE_FORMAT(time, '%Y-%m-%d %T') as time,
-		title, 
-		message,
-		image,
-		link
-	FROM notifications
-	WHERE credentials = ?`
-	rows, err := db.Query(query, Hash(credentials))
-	if err != nil {
-		log.Println(err)
-	}
-	defer rows.Close()
-
-	notifications := []Notification{}
-	for rows.Next() {
-		var n Notification
-		err := rows.Scan(&n.ID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
-		if err != nil {
-			return nil, err
-		}
-		err = DecryptNotification(&n)
-		if err == nil {
-			notifications = append(notifications, n)
-		} else {
-			return nil, err
-		}
-	}
-	return notifications, nil
-}
-
-func NotificationValidation(n *Notification) error {
+func (n Notification) Validate() error {
 	if len(n.Credentials) == 0 {
 		return errors.New("Invalid credentials!")
 	}
@@ -112,13 +79,17 @@ func NotificationValidation(n *Notification) error {
 		return errors.New("You must enter a shorter message!")
 	}
 
-	if IsValidURL(n.Link) != nil || IsValidURL(n.Image) != nil {
-		return errors.New("Invalid URL!")
+	if IsValidURL(n.Link) != nil {
+		return errors.New("Invalid URL for link!")
+	}
+
+	if IsValidURL(n.Image) != nil {
+		return errors.New("Invalid URL for image!")
 	}
 
 	if len(n.Image) > 0 {
 		if strings.Contains(n.Image, "http://") {
-			return errors.New("Image URL must be https!")
+			return errors.New("Image host must use https!")
 		}
 
 		timeout := time.Duration(300 * time.Millisecond)
@@ -127,18 +98,17 @@ func NotificationValidation(n *Notification) error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			log.Println(err.Error())
-			n.Image = ""
-			return errors.New("Invalid Image")
+			Handle(err)
+			n.Image = "" // remove image reference
 		} else {
 			contentlen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				log.Println(err.Error())
-				n.Image = ""
+				Handle(err)
+				n.Image = "" // remove image reference
 			}
 
 			if contentlen > maximage {
-				return errors.New("Image from URL too large!" + string(contentlen))
+				return errors.New("Image too large (" + string(contentlen) + ") should be less than " + string(maximage))
 			}
 		}
 	}
@@ -146,43 +116,113 @@ func NotificationValidation(n *Notification) error {
 	return nil
 }
 
-func DecryptNotification(notification *Notification) error {
-	title, err := Decrypt(notification.Title, key)
+// Public Key Encrypt
+func (n *Notification) Encrypt() {
+
+}
+
+// AES decrypt notification - only works when user has no public key and the encryption is done
+// on the server TODO only use public key encryption
+func (n *Notification) Decrypt() error {
+	title, err := DecryptAES(n.Title, key)
 	if err != nil {
 		return err
 	} else {
-		notification.Title = title
+		n.Title = title
 	}
 
-	message, err := Decrypt(notification.Message, key)
+	message, err := DecryptAES(n.Message, key)
 	Handle(err)
 	if err == nil {
-		notification.Message = message
+		n.Message = message
 	}
 
-	image, err := Decrypt(notification.Image, key)
+	image, err := DecryptAES(n.Image, key)
 	Handle(err)
 	if err == nil {
-		notification.Image = image
+		n.Image = image
 	}
 
-	link, err := Decrypt(notification.Link, key)
+	link, err := DecryptAES(n.Link, key)
 	Handle(err)
 	if err == nil {
-		notification.Link = link
+		n.Link = link
 	}
 	return err
 }
 
-func IncreaseNotificationCnt(db *sql.DB, credentials string) error {
-	_, err := db.Exec(`UPDATE users 
+// Fetch all notifications belonging to user. Will only decrypt if the user has no public key and thus
+// the messages were encrypted on the server with AES.
+func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
+	query := `
+	SELECT
+		id,
+		DATE_FORMAT(time, '%Y-%m-%d %T') as time,
+		title, 
+		message,
+		image,
+		link
+	FROM notifications
+	WHERE credentials = ?`
+	rows, err := db.Query(query, Hash(u.Credentials.Value))
+	if err != nil {
+		log.Println(err)
+	}
+	defer rows.Close()
+
+	var notifications []Notification
+	for rows.Next() {
+		var n Notification
+		err := rows.Scan(&n.ID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
+		if err != nil {
+			return nil, err
+		}
+
+		// if there is no public key decrypt using AES notification
+		err = n.Decrypt()
+
+		if err == nil {
+			notifications = append(notifications, n)
+		} else {
+			return nil, err
+		}
+	}
+	return notifications, nil
+}
+
+func (u User) DeleteNotifications(db *sql.DB, ids string) {
+	IDArr := []interface{}{Hash(u.Credentials.Value)}
+
+	// validate all comma separated values are integers
+	for _, element := range strings.Split(ids, ",") {
+		if val, err := strconv.Atoi(element); err != nil {
+			log.Println(element + " is not a number!")
+			return
+		} else {
+			IDArr = append(IDArr, val)
+		}
+	}
+
+	query := `
+	DELETE FROM notifications
+	WHERE credentials = ?
+	AND id IN (?` + strings.Repeat(",?", len(IDArr)-2) + `)`
+
+	_, err := db.Exec(query, IDArr...)
+	if err != nil {
+		log.Println(err.Error())
+	}
+}
+
+func IncreaseNotificationCnt(db *sql.DB, credentials string) {
+	_, _ = db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, Hash(credentials))
-	return err
+	// TODO handle err when not to do with not being able to increase because there are no matching credentials
 }
 
-func FetchTotalNumNotifications(db *sql.DB) int {
+func FetchNumNotifications(db *sql.DB) int {
 	id := 0
-	rows, _ := db.Query("SELECT SUM(notification_cnt) from users;")
+	rows, _ := db.Query("SELECT SUM(notification_cnt) from users")
 	if rows.Next() {
 		_ = rows.Scan(&id)
 	}

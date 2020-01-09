@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 	"log"
@@ -10,10 +11,11 @@ import (
 )
 
 const (
-	ErrorCode        = 400
-	ResetKeyCode     = 401
-	NoUUIDCode       = 402
-	InvalidLoginCode = 403
+	ErrorCode            = 400
+	ResetKeyCode         = 401
+	NoUUIDCode           = 402
+	InvalidLoginCode     = 403
+	InvalidPublicKeyCode = 405
 
 	TimeLayout = "2006-01-02 15:04:05"
 )
@@ -25,8 +27,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Sec-Key") != SERVERKEY {
-		log.Println("Invalid sec-Key")
-		http.Error(w, "Invalid key", ErrorCode)
+		WriteError(w, ErrorCode, "Invalid key")
 		return
 	}
 
@@ -41,27 +42,29 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validate inputs
-	if !IsValidUUID(r.Header.Get("Uuid")) {
-		http.Error(w, "Invalid UUID", ErrorCode)
+	if !IsValidUUID(u.UUID) {
+		WriteError(w, ErrorCode, "Invalid UUID")
 		return
-	} else if !IsValidVersion(r.Header.Get("Version")) {
-		http.Error(w, "Invalid Version", ErrorCode)
+	} else if !IsValidVersion(u.AppVersion) {
+		WriteError(w, ErrorCode, "Invalid Version")
 		return
-	} else if !IsValidCredentials(r.Header.Get("Credentials")) {
-		http.Error(w, "Invalid Credentials", ErrorCode)
+	} else if !IsValidCredentials(u.Credentials.Value) {
+		WriteError(w, ErrorCode, "Invalid Credentials")
 		return
 	}
 
 	var errorCode = 0
-	UUIDUser := FetchUserCredentialsFromUUID(s.db, u.UUID)
-	if len(UUIDUser.Credentials.Key) == 0 {
-		if len(UUIDUser.Credentials.Value) == 0 {
+	var DBUser User
+	err := DBUser.GetWithUUID(s.db, u.UUID)
+	Handle(err)
+	if len(DBUser.Credentials.Key) == 0 {
+		if len(DBUser.Credentials.Value) == 0 {
 			errorCode = NoUUIDCode
 		} else {
-			log.Println("No key for", u.UUID)
+			log.Println("No key for: " + u.UUID)
 			errorCode = ResetKeyCode
 		}
-	} else if !VerifyUser(s.db, u) {
+	} else if !u.Verify(s.db) {
 		errorCode = InvalidLoginCode
 	}
 	if errorCode != 0 {
@@ -69,39 +72,41 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := SetLastLogin(s.db, u); err != nil {
+	if err := u.StoreLogin(s.db); err != nil {
 		Handle(err)
-		http.Error(w, "Invalid key", ErrorCode)
+		WriteError(w, ErrorCode, err.Error())
+		return
 	}
 
 	// CONNECT TO SOCKET
-	wsconn, _ := UPGRADER.Upgrade(w, r, nil)
+	WSConn, err := UPGRADER.Upgrade(w, r, nil)
+	Handle(err)
 
 	// add conn to clients
 	WSClientsMutex.Lock()
-	WSClients[u.Credentials.Value] = wsconn
+	WSClients[u.Credentials.Value] = WSConn
 	WSClientsMutex.Unlock()
 
 	log.Println("Connected:", Hash(u.Credentials.Value))
 
-	notifications, err := FetchAllNotifications(s.db, u.Credentials.Value)
+	notifications, err := u.FetchNotifications(s.db)
 	Handle(err)
 	if len(notifications) > 0 {
 		bytes, _ := json.Marshal(notifications)
-		if err := wsconn.WriteMessage(websocket.TextMessage, bytes); err != nil {
+		if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
 			log.Println(err.Error())
 		}
 	}
 
 	// INCOMING SOCKET MESSAGES
 	for {
-		_, message, err := wsconn.ReadMessage()
+		_, message, err := WSConn.ReadMessage()
 		if err != nil {
 			Handle(err)
 			break
 		}
 
-		go DeleteNotifications(s.db, u.Credentials.Value, string(message))
+		go u.DeleteNotifications(s.db, string(message))
 	}
 
 	WSClientsMutex.Lock()
@@ -111,7 +116,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Disconnected:", Hash(u.Credentials.Value))
 
 	// close connection
-	Handle(CloseConnection(s.db, u))
+	Handle(u.CloseLogin(s.db))
 }
 
 func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +126,6 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Sec-Key") != SERVERKEY {
-		log.Println("Invalid key", r.Header.Get("Sec-Key"))
 		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
@@ -149,10 +153,15 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creds, err := CreateUser(s.db, PostUser)
+	creds, err := PostUser.Store(s.db)
 	if err != nil {
+		mysqlErr, ok := err.(*mysql.MySQLError)
+		if ok && mysqlErr.Number != 1062 {
+			// log to sentry as a very big issue
+			sentry.CaptureMessage(mysqlErr.Message)
+			sentry.Flush(time.Second * 5)
+		}
 		WriteError(w, 401, err.Error())
-		http.Error(w, "Problem creating user", 401)
 		return
 	}
 
@@ -170,21 +179,21 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := DECODER.Decode(&n, r.Form); err != nil {
+	if err := Decoder.Decode(&n, r.Form); err != nil {
 		http.Error(w, "Invalid form data", ErrorCode)
 		return
 	}
 
-	if err := NotificationValidation(&n); err != nil {
+	if err := n.Validate(); err != nil {
 		http.Error(w, err.Error(), ErrorCode)
 		return
 	}
 
 	// increase notification count
-	Handle(IncreaseNotificationCnt(s.db, n.Credentials))
+	IncreaseNotificationCnt(s.db, n.Credentials)
 
 	// set notification ID
-	n.ID = FetchTotalNumNotifications(s.db)
+	n.ID = FetchNumNotifications(s.db)
 
 	// fetch client socket
 	WSClientsMutex.RLock()
@@ -203,8 +212,10 @@ func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := StoreNotification(s.db, n); err != nil {
-		if err.(*mysql.MySQLError).Number != 1452 {
+	if err := n.Store(s.db); err != nil {
+		Handle(err)
+		mysqlErr, ok := err.(*mysql.MySQLError)
+		if !ok || mysqlErr.Number != 1452 {
 			// return any error other than the one inferring that there are no such user credentials - we don't want
 			// to give that away
 			Handle(err)

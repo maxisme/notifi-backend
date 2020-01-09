@@ -15,3 +15,4 @@ sentry_dsn=
 
 #TODO
  - [ ] add page to allow for custom credentials
+ - [ ] better hash algo

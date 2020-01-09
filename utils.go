@@ -22,7 +22,13 @@ func Handle(err error) {
 
 func WriteError(w http.ResponseWriter, code int, message string) {
 	w.WriteHeader(code)
-	log.Println("http error:" + message)
+
+	_, file, no, ok := runtime.Caller(1)
+	if ok {
+		log.Println("Called from: ", file, no)
+	}
+
+	log.Println("http error: " + message)
 	_, err := w.Write([]byte(message))
 	Handle(err)
 }

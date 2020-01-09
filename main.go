@@ -20,7 +20,7 @@ var (
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	DECODER   = schema.NewDecoder()
+	Decoder   = schema.NewDecoder()
 	SERVERKEY = os.Getenv("server_key") // has to be passed with every request
 
 	WSClients      = make(map[string]*websocket.Conn)

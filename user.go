@@ -24,16 +24,18 @@ type Credentials struct {
 
 // create user or update user with new credentials depending on whether the user passes current credentials
 // in the User struct.
-func CreateUser(db *sql.DB, u User) (Credentials, error) {
+func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
 		RandomString(25),
 		RandomString(100),
 	}
 
-	dbu := FetchUserCredentialsFromUUID(db, u.UUID)
-	if len(dbu.Credentials.Key) == 0 && len(dbu.Credentials.Value) > 0 {
-		// update users credential key if not set in db
+	var DBUser User
+	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
+	if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
+		// new credentials have been passed and there is no key in the database
+		// update users credential key if not set in db TODO functionify
 		query := `UPDATE users SET credential_key = ?
 		WHERE UUID = ?`
 		_, err := db.Exec(query, PassHash(creds.Key), Hash(u.UUID))
@@ -44,17 +46,17 @@ func CreateUser(db *sql.DB, u User) (Credentials, error) {
 		return creds, nil
 	}
 
-	isnewuser := true
-	if len(dbu.Credentials.Value) > 0 {
+	isNewUser := true
+	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
 		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
 			// if client passes current details they are asking for new credentials
 
 			// verify the credentials passed are valid
-			if VerifyUser(db, u) {
-				isnewuser = false
+			if u.Verify(db) {
+				isNewUser = false
 			} else {
-				log.Print("Lied about credentials ")
+				log.Println("Lied about credentials") // TODO better logging
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
@@ -62,7 +64,7 @@ func CreateUser(db *sql.DB, u User) (Credentials, error) {
 
 	// update users credentials
 	query := ""
-	if isnewuser {
+	if isNewUser {
 		// create new user
 		query = `
 		INSERT INTO users (credentials, credential_key, UUID) 
@@ -75,35 +77,39 @@ func CreateUser(db *sql.DB, u User) (Credentials, error) {
 
 	_, err := db.Exec(query, Hash(creds.Value), PassHash(creds.Key), Hash(u.UUID))
 	if err != nil {
-		Handle(err)
 		return Credentials{}, err
 	}
 	return creds, nil
 }
 
-func FetchUser(db *sql.DB, credentials string) User {
-	var u User
-	_ = db.QueryRow(`
-	SELECT credential_key, UUID
-	FROM users 
-	WHERE credentials = ?`, Hash(credentials)).Scan(&u.Credentials.Key, &u.UUID)
-	return u
+func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
+	rows := db.QueryRow(`
+	SELECT credentials, credential_key 
+	FROM users
+	WHERE UUID = ?
+	`, Hash(UUID))
+	return rows.Scan(&u.Credentials.Value, &u.Credentials.Key)
 }
 
-func FetchUserCredentialsFromUUID(db *sql.DB, UUID string) User {
-	var u User
-	_ = db.QueryRow(`
-	SELECT credential_key, credentials
-	FROM users 
-	WHERE UUID = ?`, Hash(UUID)).Scan(&u.Credentials.Key, &u.Credentials.Value)
-	return u
+func (u *User) Get(db *sql.DB, credentials string) error {
+	rows := db.QueryRow(`
+	SELECT credential_key, UUID 
+	FROM users
+	WHERE credentials = ?
+	`, Hash(credentials))
+	return rows.Scan(&u.Credentials.Key, &u.UUID)
 }
 
-func VerifyUser(db *sql.DB, u User) bool {
-	storeduser := FetchUser(db, u.Credentials.Value)
+func (u User) Verify(db *sql.DB) bool {
+	var DBUser User
+	err := DBUser.Get(db, u.Credentials.Value)
+	if err != nil {
+		Handle(err)
+		return false
+	}
 
-	valid_key := VerifyPassHash(storeduser.Credentials.Key, u.Credentials.Key)
-	valid_UUID := storeduser.UUID == Hash(u.UUID)
+	valid_key := VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
+	valid_UUID := DBUser.UUID == Hash(u.UUID)
 	if valid_key && valid_UUID {
 		return true
 	}
@@ -112,14 +118,15 @@ func VerifyUser(db *sql.DB, u User) bool {
 
 // stores the current timestamp that the user has connected to the wss
 // as well as the app version the client is using
-func SetLastLogin(db *sql.DB, u User) error {
+// and the public key to encrypt messages on the server with
+func (u User) StoreLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1
 	WHERE credentials = ? AND UUID = ?`, u.AppVersion, Hash(u.Credentials.Value), Hash(u.UUID))
 	return err
 }
 
-func CloseConnection(db *sql.DB, u User) error {
+func (u User) CloseLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET is_connected = 0
 	WHERE credentials = ? AND UUID = ?`, Hash(u.Credentials.Value), Hash(u.UUID))
