@@ -190,7 +190,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	return notifications, nil
 }
 
-func (u User) DeleteNotifications(db *sql.DB, ids string) {
+func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
 	IDArr := []interface{}{Hash(u.Credentials.Value)}
 
 	// validate all comma separated values are integers

@@ -104,7 +104,7 @@ func (u User) Verify(db *sql.DB) bool {
 	var DBUser User
 	err := DBUser.Get(db, u.Credentials.Value)
 	if err != nil {
-		Handle(err)
+		log.Println("No such credentials in db: " + u.Credentials.Value)
 		return false
 	}
 

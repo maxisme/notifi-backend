@@ -11,11 +11,10 @@ import (
 )
 
 const (
-	ErrorCode            = 400
-	ResetKeyCode         = 401
-	NoUUIDCode           = 402
-	InvalidLoginCode     = 403
-	InvalidPublicKeyCode = 405
+	ErrorCode        = 400
+	ResetKeyCode     = 401
+	NoUUIDCode       = 402
+	InvalidLoginCode = 403
 
 	TimeLayout = "2006-01-02 15:04:05"
 )
@@ -87,7 +86,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	WSClients[u.Credentials.Value] = WSConn
 	WSClientsMutex.Unlock()
 
-	log.Println("Connected:", Hash(u.Credentials.Value))
+	log.Println("Client Connected:", Hash(u.Credentials.Value))
 
 	notifications, err := u.FetchNotifications(s.db)
 	Handle(err)
@@ -106,14 +105,14 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		go u.DeleteNotifications(s.db, string(message))
+		go u.DeleteReceivedNotifications(s.db, string(message))
 	}
 
 	WSClientsMutex.Lock()
 	delete(WSClients, u.Credentials.Value)
 	WSClientsMutex.Unlock()
 
-	log.Println("Disconnected:", Hash(u.Credentials.Value))
+	log.Println("Client Disconnected:", Hash(u.Credentials.Value))
 
 	// close connection
 	Handle(u.CloseLogin(s.db))
