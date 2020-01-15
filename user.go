@@ -34,6 +34,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 	var DBUser User
 	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
 	if len(DBUser.UUID) > 0 {
+		log.Println(DBUser.UUID + " has an account already")
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
 			log.Println("Credential key reset for: " + Hash(u.UUID))
 
