@@ -315,6 +315,6 @@ func TestNewCredentialKey(t *testing.T) {
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Key) == 0 || len(newcreds.Value) != 0 {
-		t.Error("Error fetching new credentials for user")
+		t.Errorf("Error fetching new credentials for user %v", newcreds)
 	}
 }

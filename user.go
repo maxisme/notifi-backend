@@ -33,17 +33,29 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 
 	var DBUser User
 	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
-	if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-		// new credentials have been passed and there is no key in the database
-		// update users credential key if not set in db TODO functionify
-		query := `UPDATE users SET credential_key = ?
-		WHERE UUID = ?`
-		_, err := db.Exec(query, PassHash(creds.Key), Hash(u.UUID))
-		if err != nil {
-			return Credentials{}, err
+	if len(DBUser.UUID) > 0 {
+		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
+			log.Println("Credential key reset for: " + Hash(u.UUID))
+
+			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
+			_, err := db.Exec(query, PassHash(creds.Key), Hash(u.UUID))
+			if err != nil {
+				Handle(err)
+				return Credentials{}, err
+			}
+			creds.Value = ""
+			return creds, nil
+		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
+			log.Println("Account reset for: " + Hash(u.UUID))
+
+			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
+			_, err := db.Exec(query, PassHash(creds.Key), Hash(creds.Value), Hash(u.UUID))
+			if err != nil {
+				Handle(err)
+				return Credentials{}, err
+			}
+			return creds, nil
 		}
-		creds.Value = ""
-		return creds, nil
 	}
 
 	isNewUser := true
@@ -84,20 +96,20 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 
 func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	rows := db.QueryRow(`
-	SELECT credentials, credential_key 
+	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE UUID = ?
 	`, Hash(UUID))
-	return rows.Scan(&u.Credentials.Value, &u.Credentials.Key)
+	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 func (u *User) Get(db *sql.DB, credentials string) error {
 	rows := db.QueryRow(`
-	SELECT credential_key, UUID 
+	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
 	`, Hash(credentials))
-	return rows.Scan(&u.Credentials.Key, &u.UUID)
+	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 func (u User) Verify(db *sql.DB) bool {
