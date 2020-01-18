@@ -19,7 +19,7 @@ const (
 	TimeLayout = "2006-01-02 15:04:05"
 )
 
-func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		http.Error(w, "Method not allowed", ErrorCode)
 		return
@@ -118,7 +118,7 @@ func (s *server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	Handle(u.CloseLogin(s.db))
 }
 
-func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		http.Error(w, "Method not allowed", ErrorCode)
 		return
@@ -160,6 +160,7 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 			sentry.CaptureMessage(mysqlErr.Message)
 			sentry.Flush(time.Second * 5)
 		}
+		Handle(err)
 		WriteError(w, 401, err.Error())
 		return
 	}
@@ -170,7 +171,7 @@ func (s *server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	Handle(err)
 }
 
-func (s *server) APIHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	var n Notification
 
 	if err := r.ParseForm(); err != nil {

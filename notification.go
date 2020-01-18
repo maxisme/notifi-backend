@@ -122,7 +122,7 @@ func (n *Notification) Encrypt() {
 }
 
 // AES decrypt notification - only works when user has no public key and the encryption is done
-// on the server TODO only use public key encryption
+// on the Server TODO only use public key encryption
 func (n *Notification) Decrypt() error {
 	title, err := DecryptAES(n.Title, key)
 	if err != nil {
@@ -152,7 +152,7 @@ func (n *Notification) Decrypt() error {
 }
 
 // Fetch all notifications belonging to user. Will only decrypt if the user has no public key and thus
-// the messages were encrypted on the server with AES.
+// the messages were encrypted on the Server with AES.
 func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	query := `
 	SELECT

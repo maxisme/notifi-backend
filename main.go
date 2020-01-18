@@ -49,7 +49,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 	defer db.Close()
-	s := server{db: db} // db pool
+	s := Server{db: db} // db pool
 
 	// SENTRY
 	sentryDsn := os.Getenv("sentry_dsn")

@@ -17,6 +17,7 @@ do
     echo "Waiting for another deploy to finish..."
     sleep 1
 done
+
 touch $DEPLOY_FILE
 trap $(rm -f $DEPLOY_FILE)
 

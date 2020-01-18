@@ -5,7 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type server struct {
+type Server struct {
 	db *sql.DB
 }
 

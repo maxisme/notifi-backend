@@ -35,6 +35,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
 	if len(DBUser.UUID) > 0 {
 		log.Println(DBUser.UUID + " has an account already")
+
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
 			log.Println("Credential key reset for: " + Hash(u.UUID))
 
@@ -131,7 +132,7 @@ func (u User) Verify(db *sql.DB) bool {
 
 // stores the current timestamp that the user has connected to the wss
 // as well as the app version the client is using
-// and the public key to encrypt messages on the server with
+// and the public key to encrypt messages on the Server with
 func (u User) StoreLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1

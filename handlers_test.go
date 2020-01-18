@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-var s server
+var s Server
 
 /////////////
 // helpers //
@@ -86,7 +86,7 @@ func TestMain(m *testing.M) {
 	}
 
 	db, err = DBConn(os.Getenv("db"))
-	s = server{db: db}
+	s = Server{db: db}
 
 	code := m.Run() // RUN THE TEST
 
@@ -219,7 +219,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	defer s.Close()
 	defer ws.Close()
 
-	// fetch stored notifications on server that were sent when not connected
+	// fetch stored notifications on Server that were sent when not connected
 	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond)) // add timeout
 	_, mess, err := ws.ReadMessage()
 	if err != nil {
@@ -234,7 +234,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 }
 
 // send notification while offline, connect to websocket to receive said notification
-// tell server to delete notification, reconnect to websocket and service should not recieve a message
+// tell Server to delete notification, reconnect to websocket and service should not recieve a message
 func TestDeleteNotification(t *testing.T) {
 	var creds, uform = GenUser() // generate user
 
