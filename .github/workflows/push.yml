@@ -31,11 +31,12 @@ jobs:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
-      if: github.ref == 'refs/heads/master'
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USERNAME }}
-        key: ${{ secrets.KEY }}
-        script: |
-          ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
+      - name: Deploy
+        if: github.ref == 'refs/heads/master'
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.KEY }}
+          script: |
+            ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
