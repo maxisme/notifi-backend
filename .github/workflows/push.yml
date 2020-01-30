@@ -29,10 +29,11 @@ jobs:
 
   deploy:
     name: Deploy
+    if: github.ref == 'refs/heads/master'
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Deploy
-        if: github.ref == 'refs/heads/master'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST }}
