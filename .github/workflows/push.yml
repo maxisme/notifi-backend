@@ -1,8 +1,6 @@
 name: notifi
-on:
-  push:
-    branches:
-      - master
+on: [push]
+
 jobs:
   test:
     name: Run tests
@@ -27,14 +25,17 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Test
-        run: encryption_key=UH9ax500yN4mnTO60WLY2ae943tsqzFw test_db_host="root:root@" db="root:root@/notifi_test" go test -v
+        run: encryption_key=46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2 test_db_host="root:root@" db="root:root@/notifi_test" go test ./... -v
 
-      - name: Deploy
-        if: github.ref == 'refs/heads/master'
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          script: |
-            ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    steps:
+      if: github.ref == 'refs/heads/master'
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.HOST }}
+        username: ${{ secrets.USERNAME }}
+        key: ${{ secrets.KEY }}
+        script: |
+          ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
