@@ -20,15 +20,17 @@ func Handle(err error) {
 	}
 }
 
-func WriteError(w http.ResponseWriter, code int, message string) {
-	w.WriteHeader(code)
+func WriteError(w http.ResponseWriter, r *http.Request, code int, message string) {
+	log.Printf("HTTP error: message: %s code: %d\n", message, code)
 
-	_, file, no, ok := runtime.Caller(1)
-	if ok {
-		log.Println("Called from: ", file, no)
+	// log to sentry
+	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+		hub.WithScope(func(scope *sentry.Scope) {
+			scope.SetExtra("message", message)
+			scope.SetExtra("code", string(code))
+			hub.CaptureMessage("Invalid HTTP request")
+		})
 	}
-
-	log.Println("http error: " + message)
-	_, err := w.Write([]byte(message))
-	Handle(err)
+	w.WriteHeader(code)
+	w.Write([]byte(message))
 }

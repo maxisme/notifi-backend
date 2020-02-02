@@ -26,12 +26,20 @@ cd $(dirname "$0")
 git fetch &> /dev/null
 diffs=$(git diff master origin/master)
 
-if [ ! -z "$diffs" ]
+if [[ ! -z "$diffs" ]]
 then
     echo "Pulling code from GitHub..."
     git fetch origin
     git checkout master
     git merge $1
+
+    # update schema (-database arg came from docker-compose)
+    if ! migrate -source=file://sql/ -database mysql://notifi:notifi@/notifi up
+    then
+        echo "Failed to run sql migration"
+        exit 1
+    fi
+
 
     # update app
     docker-compose build app

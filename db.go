@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/maxisme/notifi-backend/crypt"
 )
 
 type Server struct {
@@ -22,8 +23,20 @@ func DBConn(dataSourceName string) (db *sql.DB, err error) {
 /////////////
 // helpers //
 /////////////
-func removeCredKey(db *sql.DB, UUID string) {
-	_, _ = db.Exec(`UPDATE users
-	SET credential_key=''
-	WHERE UUID=?`, Hash(UUID))
+func removeUserCredKey(db *sql.DB, UUID string) {
+	_, err := db.Exec(`UPDATE users
+	SET credential_key = NULL
+	WHERE UUID=?`, crypt.Hash(UUID))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func removeUserCreds(db *sql.DB, UUID string) {
+	_, err := db.Exec(`UPDATE users
+	SET credential_key = NULL, credentials = NULL
+	WHERE UUID=?`, crypt.Hash(UUID))
+	if err != nil {
+		panic(err)
+	}
 }

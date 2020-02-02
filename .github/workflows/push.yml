@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   test:
-    name: Run tests
+    name: Test with version
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,7 +25,7 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Test
-        run: encryption_key=46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2 test_db_host="root:root@" db="root:root@/notifi_test" go test ./... -v
+        run: encryption_key=46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2 db="root:root@" go test ./... -v
 
   deploy:
     name: Deploy

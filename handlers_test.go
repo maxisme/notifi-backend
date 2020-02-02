@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"io/ioutil"
+	"github.com/maxisme/notifi-backend/crypt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -69,27 +73,47 @@ func SendNotification(credentials string, title string) {
 }
 
 // applied to every test
-func TestMain(m *testing.M) {
-	// initialise db
-	db, err := DBConn(os.Getenv("test_db_host") + "/?multiStatements=True")
-	if err != nil {
-		panic(err)
-	}
-	defer db.Close()
+func TestMain(t *testing.M) {
+	TESTDBNAME := "notifi_test"
 
-	schema, _ := ioutil.ReadFile("sql/schema.sql")
-	_, err = db.Exec(`DROP DATABASE IF EXISTS notifi_test; 
-	CREATE DATABASE notifi_test;
-	USE notifi_test; ` + string(schema))
+	// create database
+	db, err := DBConn(os.Getenv("db") + "/?multiStatements=True")
 	if err != nil {
 		panic(err)
 	}
 
-	db, err = DBConn(os.Getenv("db"))
+	_, err = db.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS %[1]v; 
+	CREATE DATABASE %[1]v;`, TESTDBNAME))
+	if err != nil {
+		panic(err)
+	}
+	db.Close()
+
+	// apply patches
+	dbConnStr := os.Getenv("db") + "/" + TESTDBNAME
+	m, err := migrate.New("file://sql/", "mysql://"+dbConnStr)
+	if err != nil {
+		panic(err)
+	}
+
+	// test up and down commands work
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
+	if err := m.Down(); err != nil {
+		panic(err)
+	}
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
+
+	// init server db connection
+	db, err = DBConn(dbConnStr)
 	s = Server{db: db}
 
-	code := m.Run() // RUN THE TEST
+	code := t.Run() // RUN THE TEST
 
+	// after individual test
 	os.Exit(code)
 }
 
@@ -130,7 +154,7 @@ func TestAddNotification(t *testing.T) {
 
 	form := url.Values{}
 	form.Add("credentials", creds.Value)
-	form.Add("title", RandomString(10))
+	form.Add("title", crypt.RandomString(10))
 
 	// POST test
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
@@ -157,7 +181,7 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 	form.Add("credentials", creds.Value)
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
-	expected_status := "You must enter a title!\n"
+	expected_status := "You must enter a title!"
 	if status := r.Body.String(); status != expected_status {
 		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
 	}
@@ -165,8 +189,8 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 
 func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form := url.Values{}
-	form.Add("title", RandomString(25))
-	form.Add("credentials", RandomString(25))
+	form.Add("title", crypt.RandomString(25))
+	form.Add("credentials", crypt.RandomString(25))
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expected_status := ""
@@ -209,7 +233,7 @@ func TestWSHandler(t *testing.T) {
 func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	var creds, uform = GenUser() // generate user
 
-	TITLE := RandomString(100)
+	TITLE := crypt.RandomString(100)
 
 	// send notification to not connected user
 	SendNotification(creds.Value, TITLE)
@@ -239,7 +263,7 @@ func TestDeleteNotification(t *testing.T) {
 	var creds, uform = GenUser() // generate user
 
 	// send notification to not connected user
-	SendNotification(creds.Value, RandomString(10))
+	SendNotification(creds.Value, crypt.RandomString(10))
 
 	// connect to wss
 	s, _, ws, _ := ConnectWSS(creds, uform)
@@ -274,7 +298,7 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	defer ws.Close()
 
 	// send notification over http
-	TITLE := RandomString(10)
+	TITLE := crypt.RandomString(10)
 	SendNotification(creds.Value, TITLE)
 
 	// read notification over ws
@@ -295,8 +319,7 @@ func TestWSSResponseCodes(t *testing.T) {
 	}
 
 	// remove credential_key
-	db, _ := DBConn(os.Getenv("db"))
-	removeCredKey(db, f.Get("UUID"))
+	removeUserCredKey(s.db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
 	if res.StatusCode != ResetKeyCode {
 		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
@@ -304,17 +327,34 @@ func TestWSSResponseCodes(t *testing.T) {
 }
 
 // if there is no credential_key in the db the client should be able to request new key for same credentials
-func TestNewCredentialKey(t *testing.T) {
+// and recieve a new credential key only
+func TestRemovedCredentialKey(t *testing.T) {
 	var _, f = GenUser() // generate user
 
 	// remove credential_key
-	db, _ := DBConn(os.Getenv("db"))
-	removeCredKey(db, f.Get("UUID"))
+	removeUserCredKey(s.db, f.Get("UUID"))
 
 	r := PostRequest("", f, http.HandlerFunc(s.CredentialHandler))
-	var newcreds Credentials
-	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
-	if len(newcreds.Key) == 0 || len(newcreds.Value) != 0 {
-		t.Errorf("Error fetching new credentials for user %v", newcreds)
+	var newCreds Credentials
+	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
+	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
+		t.Errorf("Error fetching new credentials for user %v. Expected new key", newCreds)
+	}
+}
+
+// if there is no credentials and credential_key in the db the UUID user should
+func TestRemovedCredentials(t *testing.T) {
+	var _, f = GenUser() // generate user
+
+	// remove credentials and credential_key
+	removeUserCreds(s.db, f.Get("UUID"))
+
+	r := PostRequest("", f, http.HandlerFunc(s.CredentialHandler))
+	var newCreds Credentials
+	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
+
+	// expects a new credential key to be returned only
+	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
+		t.Errorf("Error fetching new credentials for user %v. Expected new credentials and key", newCreds)
 	}
 }

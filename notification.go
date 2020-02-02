@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"github.com/maxisme/notifi-backend/crypt"
 	"log"
 	"net/http"
 	"os"
@@ -33,22 +34,22 @@ func (n Notification) Store(db *sql.DB) error {
 		return err
 	}
 
-	n.Title, err = EncryptAES(n.Title, key)
+	n.Title, err = crypt.EncryptAES(n.Title, key)
 	if err != nil {
 		return err
 	}
 
-	n.Message, err = EncryptAES(n.Message, key)
+	n.Message, err = crypt.EncryptAES(n.Message, key)
 	if err != nil {
 		return err
 	}
 
-	n.Image, err = EncryptAES(n.Image, key)
+	n.Image, err = crypt.EncryptAES(n.Image, key)
 	if err != nil {
 		return err
 	}
 
-	n.Link, err = EncryptAES(n.Link, key)
+	n.Link, err = crypt.EncryptAES(n.Link, key)
 	if err != nil {
 		return err
 	}
@@ -56,7 +57,7 @@ func (n Notification) Store(db *sql.DB) error {
 	_, err = db.Exec(`
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, Hash(n.Credentials))
+    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
 	return err
 }
 
@@ -116,34 +117,29 @@ func (n Notification) Validate() error {
 	return nil
 }
 
-// Public Key Encrypt
-func (n *Notification) Encrypt() {
-
-}
-
 // AES decrypt notification - only works when user has no public key and the encryption is done
 // on the Server TODO only use public key encryption
 func (n *Notification) Decrypt() error {
-	title, err := DecryptAES(n.Title, key)
+	title, err := crypt.DecryptAES(n.Title, key)
 	if err != nil {
 		return err
 	} else {
 		n.Title = title
 	}
 
-	message, err := DecryptAES(n.Message, key)
+	message, err := crypt.DecryptAES(n.Message, key)
 	Handle(err)
 	if err == nil {
 		n.Message = message
 	}
 
-	image, err := DecryptAES(n.Image, key)
+	image, err := crypt.DecryptAES(n.Image, key)
 	Handle(err)
 	if err == nil {
 		n.Image = image
 	}
 
-	link, err := DecryptAES(n.Link, key)
+	link, err := crypt.DecryptAES(n.Link, key)
 	Handle(err)
 	if err == nil {
 		n.Link = link
@@ -164,7 +160,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 		link
 	FROM notifications
 	WHERE credentials = ?`
-	rows, err := db.Query(query, Hash(u.Credentials.Value))
+	rows, err := db.Query(query, crypt.Hash(u.Credentials.Value))
 	if err != nil {
 		log.Println(err)
 	}
@@ -191,7 +187,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
-	IDArr := []interface{}{Hash(u.Credentials.Value)}
+	IDArr := []interface{}{crypt.Hash(u.Credentials.Value)}
 
 	// validate all comma separated values are integers
 	for _, element := range strings.Split(ids, ",") {
@@ -216,7 +212,7 @@ func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
 
 func IncreaseNotificationCnt(db *sql.DB, credentials string) {
 	_, _ = db.Exec(`UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, Hash(credentials))
+	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(credentials))
 	// TODO handle err when not to do with not being able to increase because there are no matching credentials
 }
 

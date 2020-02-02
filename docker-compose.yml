@@ -8,9 +8,11 @@ services:
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
     container_name: notifi-backend-db
+    ports:
+      - "127.0.0.1:3306:3306" # added local exposed ports for migration script
     tty: true
     volumes:
-      - ./sql:/docker-entrypoint-initdb.d/:ro
+      - ./sql/init:/docker-entrypoint-initdb.d/:ro
     restart: always
 
   app:
@@ -25,14 +27,5 @@ services:
     tty: true
     ports:
       - "127.0.0.1:8080:8080"
-    depends_on:
-      - db
-        
-  flyway:
-    container_name: notifi-flyway
-    image: boxfuse/flyway
-    command: -url=jdbc:mysql://notifi-backend-db:3306/notifi -schemas=notifi -user=notifi -password=notifi -baselineOnMigrate=true migrate
-    volumes:
-      - "./sql/migration:/flyway/sql"
     depends_on:
       - db

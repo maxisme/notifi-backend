@@ -8,11 +8,13 @@ require (
 	github.com/getsentry/sentry-go v0.3.0
 	github.com/go-errors/errors v1.0.1
 	github.com/go-sql-driver/mysql v1.4.1
+	github.com/golang-migrate/migrate/v4 v4.8.0
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/schema v1.1.0
 	github.com/gorilla/websocket v1.4.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/satori/go.uuid v1.2.0
+	github.com/spf13/cobra v0.0.5
 	golang.org/x/crypto v0.0.0-20191011161858-a950601f39e6
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 )

@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"github.com/go-errors/errors"
+	"github.com/maxisme/notifi-backend/crypt"
 	"log"
 )
 
@@ -22,13 +23,18 @@ type Credentials struct {
 	Key   string `json:"key"`
 }
 
+var (
+	CREDENTIALLEN    = 25
+	CREDENTIALKEYLEN = 100
+)
+
 // create user or update user with new credentials depending on whether the user passes current credentials
 // in the User struct.
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
-		RandomString(25),
-		RandomString(100),
+		crypt.RandomString(CREDENTIALLEN),
+		crypt.RandomString(CREDENTIALKEYLEN),
 	}
 
 	var DBUser User
@@ -37,10 +43,10 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 		log.Println(DBUser.UUID + " has an account already")
 
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-			log.Println("Credential key reset for: " + Hash(u.UUID))
+			log.Println("Credential key reset for: " + crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
-			_, err := db.Exec(query, PassHash(creds.Key), Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(err)
 				return Credentials{}, err
@@ -48,10 +54,10 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 			creds.Value = ""
 			return creds, nil
 		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
-			log.Println("Account reset for: " + Hash(u.UUID))
+			log.Println("Account reset for: " + crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
-			_, err := db.Exec(query, PassHash(creds.Key), Hash(creds.Value), Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(err)
 				return Credentials{}, err
@@ -89,7 +95,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 		WHERE UUID = ?`
 	}
 
-	_, err := db.Exec(query, Hash(creds.Value), PassHash(creds.Key), Hash(u.UUID))
+	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -101,7 +107,7 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE UUID = ?
-	`, Hash(UUID))
+	`, crypt.Hash(UUID))
 	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
@@ -110,7 +116,7 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
-	`, Hash(credentials))
+	`, crypt.Hash(credentials))
 	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
@@ -122,8 +128,8 @@ func (u User) Verify(db *sql.DB) bool {
 		return false
 	}
 
-	valid_key := VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
-	valid_UUID := DBUser.UUID == Hash(u.UUID)
+	valid_key := crypt.VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
+	valid_UUID := DBUser.UUID == crypt.Hash(u.UUID)
 	if valid_key && valid_UUID {
 		return true
 	}
@@ -136,13 +142,13 @@ func (u User) Verify(db *sql.DB) bool {
 func (u User) StoreLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1
-	WHERE credentials = ? AND UUID = ?`, u.AppVersion, Hash(u.Credentials.Value), Hash(u.UUID))
+	WHERE credentials = ? AND UUID = ?`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID))
 	return err
 }
 
 func (u User) CloseLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET is_connected = 0
-	WHERE credentials = ? AND UUID = ?`, Hash(u.Credentials.Value), Hash(u.UUID))
+	WHERE credentials = ? AND UUID = ?`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID))
 	return err
 }
