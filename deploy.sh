@@ -40,9 +40,12 @@ then
         exit 1
     fi
 
-
     # update app
-    docker-compose build app
+    if ! docker-compose build app
+    then
+        echo "Failed to build app!"
+        exit 1
+    fi
     docker-compose up --no-deps -d app
 
     # kill all unused dockers
