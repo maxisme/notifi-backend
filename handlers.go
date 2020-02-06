@@ -189,7 +189,10 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	IncreaseNotificationCnt(s.db, notification.Credentials)
+	if err := IncreaseNotificationCnt(s.db, notification); err != nil {
+		// no such user with credentials
+		return
+	}
 
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)

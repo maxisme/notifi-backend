@@ -11,9 +11,9 @@ import (
 
 func Handle(err error) {
 	if err != nil {
-		pc, _, _, _ := runtime.Caller(1)
+		pc, _, ln, _ := runtime.Caller(1)
 		details := runtime.FuncForPC(pc)
-		log.Println("Fatal: " + err.Error() + " - " + details.Name())
+		log.Printf("Fatal: %s - %s %d", err.Error(), details.Name(), ln)
 
 		// log to sentry
 		sentry.CaptureException(err)

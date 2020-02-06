@@ -103,21 +103,21 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 }
 
 func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
-	rows := db.QueryRow(`
+	row := db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE UUID = ?
 	`, crypt.Hash(UUID))
-	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 func (u *User) Get(db *sql.DB, credentials string) error {
-	rows := db.QueryRow(`
+	row := db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
 	`, crypt.Hash(credentials))
-	return rows.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 func (u User) Verify(db *sql.DB) bool {

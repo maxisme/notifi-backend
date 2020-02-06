@@ -23,7 +23,7 @@ func IsValidUUID(str string) bool {
 }
 
 func IsValidCredentials(credentials string) bool {
-	return len(credentials) == 25
+	return len(credentials) == CREDENTIALLEN
 }
 
 func IsValidURL(url string) error {

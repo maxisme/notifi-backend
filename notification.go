@@ -27,38 +27,33 @@ var maxmessage = 10000
 var maximage = 100000
 var key = []byte(os.Getenv("encryption_key"))
 
-func (n Notification) Store(db *sql.DB) error {
-	var DBUser User
-	err := DBUser.Get(db, n.Credentials)
-	if err != nil {
-		return err
-	}
+func (n Notification) Store(db *sql.DB) (err error) {
 
 	n.Title, err = crypt.EncryptAES(n.Title, key)
 	if err != nil {
-		return err
+		return
 	}
 
 	n.Message, err = crypt.EncryptAES(n.Message, key)
 	if err != nil {
-		return err
+		return
 	}
 
 	n.Image, err = crypt.EncryptAES(n.Image, key)
 	if err != nil {
-		return err
+		return
 	}
 
 	n.Link, err = crypt.EncryptAES(n.Link, key)
 	if err != nil {
-		return err
+		return
 	}
 
 	_, err = db.Exec(`
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
     VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
-	return err
+	return
 }
 
 func (n Notification) Validate() error {
@@ -162,7 +157,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	WHERE credentials = ?`
 	rows, err := db.Query(query, crypt.Hash(u.Credentials.Value))
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 	defer rows.Close()
 
@@ -210,17 +205,21 @@ func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
 	}
 }
 
-func IncreaseNotificationCnt(db *sql.DB, credentials string) {
-	_, _ = db.Exec(`UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(credentials))
-	// TODO handle err when not to do with not being able to increase because there are no matching credentials
+func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
+	res, err := db.Exec(`UPDATE users 
+	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	Handle(err)
+	num, err := res.RowsAffected()
+	Handle(err)
+	if num == 0 {
+		return errors.New("no such user with credentials")
+	}
+	return nil
 }
 
 func FetchNumNotifications(db *sql.DB) int {
 	id := 0
-	rows, _ := db.Query("SELECT SUM(notification_cnt) from users")
-	if rows.Next() {
-		_ = rows.Scan(&id)
-	}
-	return id
+	rows := db.QueryRow("SELECT sum(notification_cnt) from users")
+	Handle(rows.Scan(&id))
+	return id + 1
 }

@@ -182,16 +182,16 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expected_status := "You must enter a title!"
-	status := r.Body.String()
-	if strings.TrimSpace(status) != expected_status {
+	status := strings.TrimSpace(r.Body.String())
+	if status != expected_status {
 		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
 	}
 }
 
 func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form := url.Values{}
-	form.Add("title", crypt.RandomString(25))
-	form.Add("credentials", crypt.RandomString(25))
+	form.Add("title", "test")
+	form.Add("credentials", crypt.RandomString(CREDENTIALLEN))
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expected_status := ""
@@ -359,3 +359,5 @@ func TestRemovedCredentials(t *testing.T) {
 		t.Errorf("Error fetching new credentials for user %v. Expected new credentials and key", newCreds)
 	}
 }
+
+// TODO test DeleteReceivedNotifications
