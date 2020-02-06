@@ -206,7 +206,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		// set notification time
 		notification.Time = time.Now().Format(TimeLayout)
 
-		bytes, _ := json.Marshal([]Notification{notification}) // pass as array
+		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
 		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
 			Handle(err)
 		} else {

@@ -245,7 +245,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	defer ws.Close()
 
 	// fetch stored notifications on Server that were sent when not connected
-	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond)) // add timeout
+	_ = ws.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
 	_, mess, err := ws.ReadMessage()
 	if err != nil {
 		t.Fatalf(err.Error())

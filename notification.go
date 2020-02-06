@@ -219,7 +219,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 
 func FetchNumNotifications(db *sql.DB) int {
 	id := 0
-	rows := db.QueryRow("SELECT sum(notification_cnt) from users")
-	Handle(rows.Scan(&id))
+	row := db.QueryRow("SELECT sum(notification_cnt) from users")
+	Handle(row.Scan(&id))
 	return id + 1
 }
