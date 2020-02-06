@@ -25,7 +25,10 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Test
-        run: encryption_key=46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2 db="root:root@" go test ./... -v
+        env:
+          encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
+          db: "root:root@"
+        run: go test ./... -v
 
   deploy:
     name: Deploy
