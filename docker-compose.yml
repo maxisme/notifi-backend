@@ -11,8 +11,6 @@ services:
     ports:
       - "127.0.0.1:3306:3306" # added local exposed ports for migration script
     tty: true
-    volumes:
-      - ./sql/init:/docker-entrypoint-initdb.d/:ro
     restart: always
 
   app:
