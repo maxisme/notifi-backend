@@ -102,7 +102,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := WSConn.ReadMessage()
 		if err != nil {
-			Handle(err)
 			break
 		}
 
