@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/getsentry/sentry-go"
 	"log"
 	"net/http"
@@ -21,16 +22,22 @@ func Handle(err error) {
 }
 
 func WriteError(w http.ResponseWriter, r *http.Request, code int, message string) {
-	log.Printf("HTTP error: message: %s code: %d\n", message, code)
+	// find where this function has been called from
+	pc, _, line, _ := runtime.Caller(1)
+	details := runtime.FuncForPC(pc)
+	calledFrom := fmt.Sprintf("%s line:%d", details.Name(), line)
+
+	log.Printf("HTTP error: message: %s code: %d from:%s \n", message, code, calledFrom)
 
 	// log to sentry
 	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 		hub.WithScope(func(scope *sentry.Scope) {
-			scope.SetExtra("message", message)
-			scope.SetExtra("code", string(code))
-			hub.CaptureMessage("Invalid HTTP request")
+			scope.SetExtra("Called From", calledFrom)
+			scope.SetExtra("code", code)
+			hub.CaptureMessage(message)
 		})
 	}
-	w.WriteHeader(code)
+
+	http.Error(w, message, code)
 	w.Write([]byte(message))
 }

@@ -22,7 +22,7 @@ const (
 
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", ErrorCode)
+		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
@@ -120,19 +120,18 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		http.Error(w, "Method not allowed", ErrorCode)
+		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
 	if r.Header.Get("Sec-Key") != SERVERKEY {
-		http.Error(w, "Invalid form data", ErrorCode)
+		WriteError(w, r, ErrorCode, "Invalid form data")
 		return
 	}
 
 	err := r.ParseForm()
 	if err != nil {
-		Handle(err)
-		http.Error(w, "Invalid form data", ErrorCode)
+		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
@@ -148,7 +147,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		http.Error(w, "Invalid form data", ErrorCode)
+		WriteError(w, r, ErrorCode, "Invalid form data")
 		return
 	}
 
