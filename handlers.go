@@ -156,8 +156,10 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 		if ok && mysqlErr.Number != 1062 {
 			// log to sentry as a very big issue
-			sentry.CaptureMessage(mysqlErr.Message)
-			sentry.Flush(time.Second * 5)
+			sentry.WithScope(func(scope *sentry.Scope) {
+				scope.SetLevel(sentry.LevelFatal)
+				sentry.CaptureException(err)
+			})
 		}
 		Handle(err)
 		WriteError(w, r, 401, err.Error())
@@ -174,12 +176,12 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	var notification Notification
 
 	if err := r.ParseForm(); err != nil {
-		WriteError(w, r, ErrorCode, "Invalid form data")
+		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
 	if err := Decoder.Decode(&notification, r.Form); err != nil {
-		WriteError(w, r, ErrorCode, "Invalid form data")
+		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 

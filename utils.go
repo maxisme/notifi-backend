@@ -33,7 +33,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, message string
 	if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 		hub.WithScope(func(scope *sentry.Scope) {
 			scope.SetExtra("Called From", calledFrom)
-			scope.SetExtra("code", code)
+			scope.SetExtra("Header Code", code)
 			hub.CaptureMessage(message)
 		})
 	}
