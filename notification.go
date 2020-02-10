@@ -58,7 +58,7 @@ func (n Notification) Store(db *sql.DB) (err error) {
 
 func (n Notification) Validate() error {
 	if len(n.Credentials) == 0 {
-		return errors.New("Invalid credentials!")
+		return errors.New("You must specify credentials!")
 	}
 
 	if n.Credentials == "<credentials>" {
