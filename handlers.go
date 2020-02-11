@@ -186,7 +186,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := notification.Validate(); err != nil {
-		WriteError(w, r, ErrorCode, err.Error())
+		http.Error(w, err.Error(), ErrorCode)
 		return
 	}
 
