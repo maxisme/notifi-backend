@@ -194,12 +194,12 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form := url.Values{}
 	form.Add("title", "test")
-	form.Add("credentials", crypt.RandomString(CREDENTIALLEN))
+	form.Add("credentials", crypt.RandomString(CredentialLen))
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
-	expected_status := ""
-	if status := r.Body.String(); status != expected_status {
-		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
+	expectedStatus := ""
+	if status := r.Body.String(); status != expectedStatus {
+		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expectedStatus)
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"math/rand"
 )
 
+// EncryptAES encrypts a string using AES with a key
 func EncryptAES(str string, key []byte) (string, error) {
 	if len(str) == 0 {
 		return "", nil
@@ -35,12 +36,13 @@ func EncryptAES(str string, key []byte) (string, error) {
 	return b64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(str), nil)), nil
 }
 
-func DecryptAES(encryptedstr string, key []byte) (string, error) {
-	if len(encryptedstr) == 0 {
+// DecryptAES decrypts a string using AES with a key
+func DecryptAES(str string, key []byte) (string, error) {
+	if len(str) == 0 {
 		return "", nil
 	}
 
-	encryptedbytes, _ := b64.StdEncoding.DecodeString(encryptedstr)
+	encryptedbytes, _ := b64.StdEncoding.DecodeString(str)
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
@@ -65,6 +67,7 @@ func DecryptAES(encryptedstr string, key []byte) (string, error) {
 	return string(plaintext), nil
 }
 
+// RandomString generates a random string
 func RandomString(n int) string {
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
@@ -75,15 +78,18 @@ func RandomString(n int) string {
 	return string(b)
 }
 
+// Hash hashes a string
 func Hash(str string) string {
 	return HashWithBytes([]byte(str))
 }
 
+// HashWithBytes hashes bytes
 func HashWithBytes(str []byte) string {
 	v := sha256.Sum256(str)
 	return b64.StdEncoding.EncodeToString(v[:])
 }
 
+// PassHash hashes a string specifically to be used for passwords
 func PassHash(str string) string {
 	hash, err := bcrypt.GenerateFromPassword([]byte(str), bcrypt.MinCost)
 	if err != nil {
@@ -92,7 +98,8 @@ func PassHash(str string) string {
 	return string(hash)
 }
 
-func VerifyPassHash(str string, expectedstr string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(str), []byte(expectedstr))
+// VerifyPassHash verifies that two hashed strings are for the same password string
+func VerifyPassHash(str string, expectedStr string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(str), []byte(expectedStr))
 	return err == nil
 }

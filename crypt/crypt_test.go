@@ -38,3 +38,17 @@ func TestHash(t *testing.T) {
 		t.Errorf("Hash algo not working as expected")
 	}
 }
+
+func TestPassHash(t *testing.T) {
+	passwordStr := RandomString(10)
+	passwordHash := PassHash(passwordStr)
+	passwordHash2 := PassHash(passwordStr)
+
+	if passwordHash == passwordHash2 {
+		t.Errorf("hashed passwords should be different")
+	}
+
+	if VerifyPassHash(passwordHash, passwordHash2) {
+		t.Errorf("password should have verified succesfully")
+	}
+}

@@ -78,11 +78,11 @@ func (n Notification) Validate() error {
 		return errors.New("You must enter a shorter message!")
 	}
 
-	if IsValidURL(n.Link) != nil {
+	if !IsValidURL(n.Link) {
 		return errors.New("Invalid URL for link!")
 	}
 
-	if IsValidURL(n.Image) != nil {
+	if !IsValidURL(n.Image) {
 		return errors.New("Invalid URL for image!")
 	}
 

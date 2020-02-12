@@ -22,9 +22,9 @@ type Credentials struct {
 	Key   string `json:"key"`
 }
 
-var (
-	CREDENTIALLEN    = 25
-	CREDENTIALKEYLEN = 100
+const (
+	CredentialLen    = 25
+	CredentialKeyLen = 100
 )
 
 // create user or update user with new credentials depending on whether the user passes current credentials
@@ -32,8 +32,8 @@ var (
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
-		crypt.RandomString(CREDENTIALLEN),
-		crypt.RandomString(CREDENTIALKEYLEN),
+		crypt.RandomString(CredentialLen),
+		crypt.RandomString(CredentialKeyLen),
 	}
 
 	var DBUser User
