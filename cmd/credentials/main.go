@@ -13,7 +13,7 @@ import (
 var (
 	dbConn      *sql.DB
 	credentials string
-	UUID        string
+	uuid        string
 )
 
 func Handle(err error) {
@@ -55,7 +55,7 @@ func main() {
 			UPDATE users
 			SET credentials = ?
 			WHERE UUID=?
-			`, crypt.Hash(credentials), UUID)
+			`, crypt.Hash(credentials), uuid)
 			Handle(err)
 
 			rowsEffected, err := res.RowsAffected()
@@ -67,7 +67,7 @@ func main() {
 	}
 	editCmd.Flags().StringVarP(&credentials, "credentials", "c", "", "25 character string")
 	Handle(editCmd.MarkFlagRequired("credentials"))
-	editCmd.Flags().StringVarP(&UUID, "UUID", "u", "", "UUID of user (hashed)")
+	editCmd.Flags().StringVarP(&uuid, "UUID", "u", "", "UUID of user (hashed)")
 	Handle(editCmd.MarkFlagRequired("UUID"))
 	rootCmd.AddCommand(editCmd)
 
@@ -83,7 +83,7 @@ func main() {
 			UPDATE users
 			SET credentials = NULL, credential_key = NULL
 			WHERE UUID=?
-			`, UUID)
+			`, uuid)
 			Handle(err)
 
 			rowsEffected, err := res.RowsAffected()
@@ -93,7 +93,7 @@ func main() {
 			}
 		},
 	}
-	deleteCmd.Flags().StringVarP(&UUID, "UUID", "u", "", "UUID of user (hashed)")
+	deleteCmd.Flags().StringVarP(&uuid, "UUID", "u", "", "UUID of user (hashed)")
 	Handle(deleteCmd.MarkFlagRequired("UUID"))
 	rootCmd.AddCommand(deleteCmd)
 
