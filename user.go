@@ -7,6 +7,7 @@ import (
 	"log"
 )
 
+// User structure
 type User struct {
 	ID              int
 	Created         string
@@ -17,6 +18,7 @@ type User struct {
 	UUID            string
 }
 
+// Credentials structure
 type Credentials struct {
 	Value string `json:"credentials"`
 	Key   string `json:"key"`
@@ -27,8 +29,8 @@ const (
 	CredentialKeyLen = 100
 )
 
-// create user or update user with new credentials depending on whether the user passes current credentials
-// in the u User struct.
+// Store stores or updates u User with new credentials depending on whether the user passes current credentials
+// in the u User struct. TODO badly structured seperate update and store
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
@@ -101,6 +103,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 	return creds, nil
 }
 
+// GetWithUUID will return user params based on a UUID
 func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	row := db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
@@ -110,6 +113,7 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
+// Get will return user params based on credentials
 func (u *User) Get(db *sql.DB, credentials string) error {
 	row := db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
@@ -119,6 +123,7 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
+// Verify verifies a u User s credentials
 func (u User) Verify(db *sql.DB) bool {
 	var DBUser User
 	err := DBUser.Get(db, u.Credentials.Value)
@@ -127,17 +132,16 @@ func (u User) Verify(db *sql.DB) bool {
 		return false
 	}
 
-	valid_key := crypt.VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
-	valid_UUID := DBUser.UUID == crypt.Hash(u.UUID)
-	if valid_key && valid_UUID {
+	isValidKey := crypt.VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
+	isValidUUID := DBUser.UUID == crypt.Hash(u.UUID)
+	if isValidKey && isValidUUID {
 		return true
 	}
 	return false
 }
 
-// stores the current timestamp that the user has connected to the wss
-// as well as the app version the client is using
-// and the public key to encrypt messages on the Server with
+// StoreLogin stores the current timestamp that the user has connected to the web socket as well as the app version
+// the client is using and the public key to encrypt messages on the Server with
 func (u User) StoreLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1
@@ -145,6 +149,7 @@ func (u User) StoreLogin(db *sql.DB) error {
 	return err
 }
 
+// CloseLogin marks a user as no longer connected to web socket in db
 func (u User) CloseLogin(db *sql.DB) error {
 	_, err := db.Exec(`UPDATE users
 	SET is_connected = 0
