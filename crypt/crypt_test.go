@@ -49,6 +49,6 @@ func TestPassHash(t *testing.T) {
 	}
 
 	if VerifyPassHash(passwordHash, passwordHash2) {
-		t.Errorf("password should have verified succesfully")
+		t.Errorf("password should have verified successfully")
 	}
 }

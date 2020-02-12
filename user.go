@@ -30,7 +30,7 @@ const (
 )
 
 // Store stores or updates u User with new credentials depending on whether the user passes current credentials
-// in the u User struct. TODO badly structured seperate update and store
+// in the u User struct. TODO badly structured separate update and store
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{

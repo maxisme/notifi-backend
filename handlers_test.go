@@ -262,7 +262,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 }
 
 // send notification while offline, connect to websocket to receive said notification
-// tell Server to delete notification, reconnect to websocket and service should not recieve a message
+// tell Server to delete notification, reconnect to websocket and service should not receive a message
 func TestDeleteNotification(t *testing.T) {
 	var creds, uform = GenUser() // generate user
 
@@ -331,7 +331,7 @@ func TestWSSResponseCodes(t *testing.T) {
 }
 
 // if there is no credential_key in the db the client should be able to request new key for same credentials
-// and recieve a new credential key only
+// and receive a new credential key only
 func TestRemovedCredentialKey(t *testing.T) {
 	var _, f = GenUser() // generate user
 
