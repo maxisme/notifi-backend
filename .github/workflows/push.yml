@@ -34,19 +34,20 @@ jobs:
     name: Coverage
     needs: test
     runs-on: ubuntu-latest
-    - name: Coveralls
-      uses: coverallsapp/github-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Convert cover to html
-      run: go tool cover -html=coverage.out -o coverage.html
+      - name: Convert cover to html
+        run: go tool cover -html=coverage.out -o coverage.html
 
-    - name: Store HTML coverage
-      uses: actions/upload-artifact@v1
-      with:
-        name: Coverage
-        path: coverage.html
+      - name: Store HTML coverage
+        uses: actions/upload-artifact@v1
+        with:
+          name: Coverage
+          path: coverage.html
 
   deploy:
     name: Deploy
