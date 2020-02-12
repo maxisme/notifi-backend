@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// ValidVersionRegex is regex to match a valid version
 var ValidVersionRegex *regexp.Regexp
 
 func init() {
