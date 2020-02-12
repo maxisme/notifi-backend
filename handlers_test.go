@@ -363,4 +363,50 @@ func TestRemovedCredentials(t *testing.T) {
 	}
 }
 
+var invalidHandlerMethods = []struct {
+	handler       http.HandlerFunc
+	invalidMethod string
+}{
+	{http.HandlerFunc(s.CredentialHandler), "GET"},
+	{http.HandlerFunc(s.APIHandler), "PUT"},
+	{http.HandlerFunc(s.WSHandler), "POST"},
+}
+
+// request handlers with incorrect methods
+func TestInvalidHandlerMethods(t *testing.T) {
+	for i, tt := range invalidHandlerMethods {
+		t.Run(string(i), func(t *testing.T) {
+			req, _ := http.NewRequest(tt.invalidMethod, "", nil)
+
+			rr := httptest.NewRecorder()
+			tt.handler.ServeHTTP(rr, req)
+			if rr.Code != ErrorCode {
+				t.Errorf("Should have responded with error code %d not %d", ErrorCode, rr.Code)
+			}
+		})
+	}
+}
+
+var secKeyHandlers = []struct {
+	handler http.HandlerFunc
+	method  string
+}{
+	{http.HandlerFunc(s.CredentialHandler), "POST"},
+	{http.HandlerFunc(s.WSHandler), "GET"},
+}
+
+// test handlers with correct methods but no secret server_key
+func TestMissingSecKeyHandlers(t *testing.T) {
+	for i, tt := range secKeyHandlers {
+		t.Run(string(i), func(t *testing.T) {
+			req, _ := http.NewRequest(tt.method, "", nil)
+			rr := httptest.NewRecorder()
+			tt.handler.ServeHTTP(rr, req)
+			if rr.Code != ErrorCode {
+				t.Errorf("Should have responded with error code %d not %d", ErrorCode, rr.Code)
+			}
+		})
+	}
+}
+
 // TODO test DeleteReceivedNotifications

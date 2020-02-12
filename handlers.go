@@ -30,7 +30,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Sec-Key") != ServerKey {
-		WriteError(w, r, ErrorCode, "Invalid key")
+		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
@@ -92,16 +92,16 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Client Connected:", crypt.Hash(u.Credentials.Value))
 
+	// send all pending notifications in db
 	notifications, err := u.FetchNotifications(s.db)
 	Handle(err)
 	if len(notifications) > 0 {
 		bytes, _ := json.Marshal(notifications)
-		if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			log.Println(err.Error())
-		}
+		err := WSConn.WriteMessage(websocket.TextMessage, bytes)
+		Handle(err)
 	}
 
-	// INCOMING SOCKET MESSAGES
+	// listen for socket messages until disconnected
 	for {
 		_, message, err := WSConn.ReadMessage()
 		if err != nil {
@@ -129,7 +129,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.Header.Get("Sec-Key") != ServerKey {
-		WriteError(w, r, ErrorCode, "Invalid form data")
+		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
@@ -179,6 +179,10 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 // APIHandler is the http handler for handling API calls to create notifications
 func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	var notification Notification
+	if r.Method != "POST" && r.Method != "GET" {
+		WriteError(w, r, ErrorCode, "Method not allowed")
+		return
+	}
 
 	if err := r.ParseForm(); err != nil {
 		WriteError(w, r, ErrorCode, err.Error())
@@ -206,11 +210,11 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	// fetch client socket
 	WSClientsMutex.RLock()
-	socket, ok := WSClients[notification.Credentials]
+	socket, gotSocket := WSClients[notification.Credentials]
 	WSClientsMutex.RUnlock()
 
-	if ok {
-		// set notification time
+	if gotSocket {
+		// set notification time to now
 		notification.Time = time.Now().Format(TimeLayout)
 
 		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
