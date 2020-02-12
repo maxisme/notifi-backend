@@ -34,7 +34,6 @@ jobs:
     name: Coverage
     needs: test
     runs-on: ubuntu-latest
-      -
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
