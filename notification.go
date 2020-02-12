@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// structure of Notification
+// Notification structure
 type Notification struct {
 	ID          int    `json:"id"`
 	Credentials string `json:"-"`
@@ -23,30 +23,34 @@ type Notification struct {
 	Link        string `json:"link"`
 }
 
-var maxtitle = 1000
-var maxmessage = 10000
-var maximage = 100000
-var key = []byte(os.Getenv("encryption_key"))
+// size restrictions of notifications
+const (
+	maxTitle      = 1000
+	maxMessage    = 10000
+	maxImageBytes = 100000
+)
+
+var encryptionKey = []byte(os.Getenv("encryption_key"))
 
 // Store will store n Notification in the database after encrypting the content
 func (n Notification) Store(db *sql.DB) (err error) {
 
-	n.Title, err = crypt.EncryptAES(n.Title, key)
+	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Message, err = crypt.EncryptAES(n.Message, key)
+	n.Message, err = crypt.EncryptAES(n.Message, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Image, err = crypt.EncryptAES(n.Image, key)
+	n.Image, err = crypt.EncryptAES(n.Image, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Link, err = crypt.EncryptAES(n.Link, key)
+	n.Link, err = crypt.EncryptAES(n.Link, encryptionKey)
 	if err != nil {
 		return
 	}
@@ -70,11 +74,11 @@ func (n Notification) Validate() error {
 
 	if len(n.Title) == 0 {
 		return errors.New("You must enter a title!")
-	} else if len(n.Title) > maxtitle {
+	} else if len(n.Title) > maxTitle {
 		return errors.New("You must enter a shorter title!")
 	}
 
-	if len(n.Message) > maxmessage {
+	if len(n.Message) > maxMessage {
 		return errors.New("You must enter a shorter message!")
 	}
 
@@ -106,8 +110,8 @@ func (n Notification) Validate() error {
 				n.Image = "" // remove image reference
 			}
 
-			if contentlen > maximage {
-				return errors.New("Image too large (" + string(contentlen) + ") should be less than " + string(maximage))
+			if contentlen > maxImageBytes {
+				return errors.New("Image too large (" + string(contentlen) + ") should be less than " + string(maxImageBytes))
 			}
 		}
 	}
@@ -117,27 +121,22 @@ func (n Notification) Validate() error {
 
 // Decrypt decrypts n Notification
 func (n *Notification) Decrypt() error {
-	title, err := crypt.DecryptAES(n.Title, key)
-	if err != nil {
-		return err
-	} else {
+	title, err := crypt.DecryptAES(n.Title, encryptionKey)
+	if err == nil {
 		n.Title = title
 	}
 
-	message, err := crypt.DecryptAES(n.Message, key)
-	Handle(err)
+	message, err := crypt.DecryptAES(n.Message, encryptionKey)
 	if err == nil {
 		n.Message = message
 	}
 
-	image, err := crypt.DecryptAES(n.Image, key)
-	Handle(err)
+	image, err := crypt.DecryptAES(n.Image, encryptionKey)
 	if err == nil {
 		n.Image = image
 	}
 
-	link, err := crypt.DecryptAES(n.Link, key)
-	Handle(err)
+	link, err := crypt.DecryptAES(n.Link, encryptionKey)
 	if err == nil {
 		n.Link = link
 	}
@@ -173,7 +172,6 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 
 		// if there is no public key decrypt using AES notification
 		err = n.Decrypt()
-
 		if err == nil {
 			notifications = append(notifications, n)
 		} else {
