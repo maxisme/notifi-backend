@@ -77,7 +77,7 @@ func TestMain(t *testing.M) {
 	TESTDBNAME := "notifi_test"
 
 	// create database
-	db, err := DBConn(os.Getenv("db") + "/?multiStatements=True")
+	db, err := dbConn(os.Getenv("db") + "/?multiStatements=True")
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +108,10 @@ func TestMain(t *testing.M) {
 	}
 
 	// init server db connection
-	db, err = DBConn(dbConnStr)
+	db, err = dbConn(dbConnStr)
+	if err != nil {
+		panic(err)
+	}
 	s = Server{db: db}
 
 	code := t.Run() // RUN THE TEST
@@ -280,7 +283,7 @@ func TestDeleteNotification(t *testing.T) {
 	ws.Close()
 
 	// reconnect to ws
-	s, _, ws, _ = ConnectWSS(creds, uform)
+	_, _, ws, _ = ConnectWSS(creds, uform)
 
 	// expect timeout on read notification
 	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond))

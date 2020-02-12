@@ -17,9 +17,9 @@ func TestEncrypt(t *testing.T) {
 }
 
 func TestInvalidtest_key(t *testing.T) {
-	test_key2 := []byte(RandomString(10))
+	testKey2 := []byte(RandomString(10))
 	encryptedstr, _ := EncryptAES(testStr, testKey)
-	_, err := DecryptAES(encryptedstr, test_key2)
+	_, err := DecryptAES(encryptedstr, testKey2)
 	if err == nil {
 		t.Errorf("Invalid test_key did not break!")
 	}
@@ -36,12 +36,5 @@ func TestInvalidString(t *testing.T) {
 func TestHash(t *testing.T) {
 	if len(Hash(RandomString(10))) != 44 {
 		t.Errorf("Hash algo not working as expected")
-	}
-	if Hash(RandomString(10)) == Hash(RandomString(10)) {
-		t.Errorf("Hash is not hashing properly")
-	}
-	str := RandomString(10)
-	if Hash(str) != Hash(str) {
-		t.Errorf("Hash is not hashing properly 2")
 	}
 }

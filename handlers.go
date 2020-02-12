@@ -55,7 +55,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	var errorCode = 0
 	var DBUser User
-	err := DBUser.GetWithUUID(s.db, u.UUID)
+	_ = DBUser.GetWithUUID(s.db, u.UUID)
 	if len(DBUser.Credentials.Key) == 0 {
 		if len(DBUser.Credentials.Value) == 0 {
 			log.Println("No credentials or key for: " + u.UUID)

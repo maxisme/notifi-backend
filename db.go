@@ -6,11 +6,12 @@ import (
 	"github.com/maxisme/notifi-backend/crypt"
 )
 
+// Server is used for database pooling - sharing the db connection to the web handlers.
 type Server struct {
 	db *sql.DB
 }
 
-func DBConn(dataSourceName string) (db *sql.DB, err error) {
+func dbConn(dataSourceName string) (db *sql.DB, err error) {
 	db, err = sql.Open("mysql", dataSourceName)
 	if err != nil {
 		Handle(err)

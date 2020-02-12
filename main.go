@@ -44,7 +44,7 @@ func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handle
 
 func main() {
 	// connect to db
-	db, err := DBConn(os.Getenv("db"))
+	db, err := dbConn(os.Getenv("db"))
 	if err != nil {
 		log.Fatal(err.Error())
 	}

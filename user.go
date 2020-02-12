@@ -12,7 +12,6 @@ type User struct {
 	Created         string
 	Credentials     Credentials
 	LastLogin       string
-	isConnected     string
 	AppVersion      string
 	NotificationCnt string
 	UUID            string
