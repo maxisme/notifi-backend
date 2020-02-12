@@ -30,23 +30,9 @@ jobs:
           db: "root:root@"
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
-  coverage:
-    name: Coverage
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
       - uses: codecov/codecov-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-      - name: Convert cover to html
-        run: go tool cover -html=coverage.out -o coverage.html
-
-      - name: Store HTML coverage
-        uses: actions/upload-artifact@v1
-        with:
-          name: Coverage
-          path: coverage.html
 
   deploy:
     name: Deploy
