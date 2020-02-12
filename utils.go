@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Handle handles errors and logs them to sentry
 func Handle(err error) {
 	if err != nil {
 		pc, _, ln, _ := runtime.Caller(1)
@@ -21,6 +22,7 @@ func Handle(err error) {
 	}
 }
 
+// WriteError will write a http.Error as well as logging the error locally and to Sentry
 func WriteError(w http.ResponseWriter, r *http.Request, code int, message string) {
 	// find where this function has been called from
 	pc, _, line, _ := runtime.Caller(1)

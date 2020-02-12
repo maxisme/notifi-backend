@@ -16,7 +16,7 @@ var (
 	uuid        string
 )
 
-func Handle(err error) {
+func handle(err error) {
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -28,7 +28,7 @@ var rootCmd = &cobra.Command{Use: "credentials",
 		// connect to db
 		var err error
 		dbConn, err = sql.Open("mysql", os.Getenv("db"))
-		Handle(err)
+		handle(err)
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
 		// disconnect from db
@@ -56,19 +56,19 @@ func main() {
 			SET credentials = ?
 			WHERE UUID=?
 			`, crypt.Hash(credentials), uuid)
-			Handle(err)
+			handle(err)
 
 			rowsEffected, err := res.RowsAffected()
-			Handle(err)
+			handle(err)
 			if rowsEffected == 0 {
-				Handle(errors.New("credentials were not updated"))
+				handle(errors.New("credentials were not updated"))
 			}
 		},
 	}
 	editCmd.Flags().StringVarP(&credentials, "credentials", "c", "", "25 character string")
-	Handle(editCmd.MarkFlagRequired("credentials"))
+	handle(editCmd.MarkFlagRequired("credentials"))
 	editCmd.Flags().StringVarP(&uuid, "UUID", "u", "", "UUID of user (hashed)")
-	Handle(editCmd.MarkFlagRequired("UUID"))
+	handle(editCmd.MarkFlagRequired("UUID"))
 	rootCmd.AddCommand(editCmd)
 
 	////////////
@@ -84,17 +84,17 @@ func main() {
 			SET credentials = NULL, credential_key = NULL
 			WHERE UUID=?
 			`, uuid)
-			Handle(err)
+			handle(err)
 
 			rowsEffected, err := res.RowsAffected()
-			Handle(err)
+			handle(err)
 			if rowsEffected == 0 {
-				Handle(errors.New("credentials were not deleted"))
+				handle(errors.New("credentials were not deleted"))
 			}
 		},
 	}
 	deleteCmd.Flags().StringVarP(&uuid, "UUID", "u", "", "UUID of user (hashed)")
-	Handle(deleteCmd.MarkFlagRequired("UUID"))
+	handle(deleteCmd.MarkFlagRequired("UUID"))
 	rootCmd.AddCommand(deleteCmd)
 
 	// execute
