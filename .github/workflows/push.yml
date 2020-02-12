@@ -28,6 +28,7 @@ jobs:
         env:
           encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           db: "root:root@"
+          server_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
       - uses: codecov/codecov-action@v1

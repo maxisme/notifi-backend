@@ -8,7 +8,6 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/schema"
 	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"os"
 	"sync"
@@ -43,10 +42,16 @@ func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handle
 }
 
 func main() {
+	// check all envs are set
+	err := RequiredEnvs([]string{"db", "encryption_key", "server_key"})
+	if err != nil {
+		panic(err)
+	}
+
 	// connect to db
 	db, err := dbConn(os.Getenv("db"))
 	if err != nil {
-		log.Fatal(err.Error())
+		panic(err.Error())
 	}
 	defer db.Close()
 	s := Server{db: db} // db pool

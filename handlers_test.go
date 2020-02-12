@@ -95,6 +95,12 @@ func removeUserCreds(db *sql.DB, UUID string) {
 func TestMain(t *testing.M) {
 	TESTDBNAME := "notifi_test"
 
+	// make sure tests have all env variables
+	err := RequiredEnvs([]string{"db", "encryption_key", "server_key"})
+	if err != nil {
+		panic(err)
+	}
+
 	// create database
 	db, err := dbConn(os.Getenv("db") + "/?multiStatements=True")
 	if err != nil {

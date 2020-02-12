@@ -5,6 +5,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"log"
 	"net/http"
+	"os"
 	"runtime"
 	"time"
 )
@@ -41,4 +42,14 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, message string
 	}
 
 	http.Error(w, message, code)
+}
+
+func RequiredEnvs(envKeys []string) error {
+	for _, envKey := range envKeys {
+		envValue := os.Getenv(envKey)
+		if envValue == "" {
+			return fmt.Errorf("missing env '%s'", envKey)
+		}
+	}
+	return nil
 }
