@@ -29,7 +29,7 @@ var (
 )
 
 // create user or update user with new credentials depending on whether the user passes current credentials
-// in the User struct.
+// in the u User struct.
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{

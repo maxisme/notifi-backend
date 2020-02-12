@@ -5,6 +5,9 @@
 ## [Mac App](https://github.com/maxisme/notifi) | [Website](https://github.com/maxisme/notifi.it) | Backend
 
 [![Build Status](https://github.com/maxisme/notifi-backend/workflows/notifi/badge.svg)](https://github.com/maxisme/notifi-backend/actions)
+[![Supported Go Versions](https://img.shields.io/badge/Go%20Versions-1.12%2C%201.13%2C%201.14-green&style=plastic)](https://github.com/maxisme/notifi-backend/actions)
+[![Go Report Card](https://goreporard.com/badge/github.com/maxisme/notifi-backend)](https://goreportcard.com/report/github.com/maxisme/notifi-backend)
+[![Coverage Status](https://coveralls.io/repos/github/maxisme/notifi-backend/badge.svg?branch=master)](https://coveralls.io/github/maxisme/notifi-backend?branch=master)
 
 Add `.env` to project:
 ```
