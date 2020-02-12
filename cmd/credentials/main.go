@@ -10,9 +10,11 @@ import (
 	"os"
 )
 
-var dbConn *sql.DB
-var Credentials string
-var UUID string
+var (
+	dbConn      *sql.DB
+	credentials string
+	UUID        string
+)
 
 func Handle(err error) {
 	if err != nil {
@@ -21,8 +23,7 @@ func Handle(err error) {
 	}
 }
 
-var rootCmd = &cobra.Command{
-	Use: "credentials",
+var rootCmd = &cobra.Command{Use: "credentials",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// connect to db
 		var err error
@@ -44,7 +45,7 @@ func main() {
 		Short: "Set custom credentials for user",
 		Long:  "Set 25 character custom credentials for a specific user (UUID)",
 		Args: func(cmd *cobra.Command, args []string) error {
-			if len(Credentials) != 25 {
+			if len(credentials) != 25 {
 				return fmt.Errorf("credentials must be 25 chars")
 			}
 			return nil
@@ -54,7 +55,7 @@ func main() {
 			UPDATE users
 			SET credentials = ?
 			WHERE UUID=?
-			`, crypt.Hash(Credentials), UUID)
+			`, crypt.Hash(credentials), UUID)
 			Handle(err)
 
 			rowsEffected, err := res.RowsAffected()
@@ -64,7 +65,7 @@ func main() {
 			}
 		},
 	}
-	editCmd.Flags().StringVarP(&Credentials, "credentials", "c", "", "25 character string")
+	editCmd.Flags().StringVarP(&credentials, "credentials", "c", "", "25 character string")
 	Handle(editCmd.MarkFlagRequired("credentials"))
 	editCmd.Flags().StringVarP(&UUID, "UUID", "u", "", "UUID of user (hashed)")
 	Handle(editCmd.MarkFlagRequired("UUID"))

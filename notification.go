@@ -12,6 +12,7 @@ import (
 	"time"
 )
 
+// structure of Notification
 type Notification struct {
 	ID          int    `json:"id"`
 	Credentials string `json:"-"`
@@ -27,6 +28,7 @@ var maxmessage = 10000
 var maximage = 100000
 var key = []byte(os.Getenv("encryption_key"))
 
+// Store will store n Notification in the database after encrypting the content
 func (n Notification) Store(db *sql.DB) (err error) {
 
 	n.Title, err = crypt.EncryptAES(n.Title, key)
@@ -56,6 +58,7 @@ func (n Notification) Store(db *sql.DB) (err error) {
 	return
 }
 
+// Validate runs validation on n Notification
 func (n Notification) Validate() error {
 	if len(n.Credentials) == 0 {
 		return errors.New("You must specify credentials!")
@@ -112,8 +115,7 @@ func (n Notification) Validate() error {
 	return nil
 }
 
-// AES decrypt notification - only works when user has no public key and the encryption is done
-// on the Server TODO only use public key encryption
+// Decrypt decrypts n Notification
 func (n *Notification) Decrypt() error {
 	title, err := crypt.DecryptAES(n.Title, key)
 	if err != nil {
@@ -142,8 +144,8 @@ func (n *Notification) Decrypt() error {
 	return err
 }
 
-// Fetch all notifications belonging to user. Will only decrypt if the user has no public key and thus
-// the messages were encrypted on the Server with AES.
+// FetchNotifications Fetches all notifications belonging to user.
+// Will only decrypt if the user has no public key and thus the messages were encrypted on the Server with AES.
 func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	query := `
 	SELECT
@@ -181,17 +183,18 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	return notifications, nil
 }
 
+// DeleteReceivedNotifications deletes all comma separated ids
 func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
 	IDArr := []interface{}{crypt.Hash(u.Credentials.Value)}
 
 	// validate all comma separated values are integers
 	for _, element := range strings.Split(ids, ",") {
-		if val, err := strconv.Atoi(element); err != nil {
+		val, err := strconv.Atoi(element)
+		if err != nil {
 			log.Println(element + " is not a number!")
 			return
-		} else {
-			IDArr = append(IDArr, val)
 		}
+		IDArr = append(IDArr, val)
 	}
 
 	query := `
@@ -205,6 +208,8 @@ func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
 	}
 }
 
+// IncreaseNotificationCnt increases the notification count in the database of the specific credentials from the
+// Notification
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
@@ -217,6 +222,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	return nil
 }
 
+// FetchNumNotifications fetches the total number of notifications sent on notifi
 func FetchNumNotifications(db *sql.DB) int {
 	id := 0
 	row := db.QueryRow("SELECT sum(notification_cnt) from users")

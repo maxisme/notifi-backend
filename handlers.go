@@ -11,14 +11,16 @@ import (
 	"time"
 )
 
+// custom error codes
 const (
 	ErrorCode        = 400
 	ResetKeyCode     = 401
 	NoUUIDCode       = 402
 	InvalidLoginCode = 403
-
-	TimeLayout = "2006-01-02 15:04:05"
 )
+
+// layout for times Format()
+const TimeLayout = "2006-01-02 15:04:05"
 
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
@@ -78,7 +80,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// CONNECT TO SOCKET
+	// connect to socket
 	WSConn, err := UPGRADER.Upgrade(w, r, nil)
 	Handle(err)
 

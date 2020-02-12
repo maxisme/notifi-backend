@@ -184,10 +184,10 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 	form.Add("credentials", creds.Value)
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
-	expected_status := "You must enter a title!"
+	expectedStatus := "You must enter a title!"
 	status := strings.TrimSpace(r.Body.String())
-	if status != expected_status {
-		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expected_status)
+	if status != expectedStatus {
+		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expectedStatus)
 	}
 }
 
