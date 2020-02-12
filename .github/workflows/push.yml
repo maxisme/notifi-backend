@@ -35,10 +35,9 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - name: Coveralls
-        uses: coverallsapp/github-action@master
+      - uses: codecov/codecov-action@v1
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Convert cover to html
         run: go tool cover -html=coverage.out -o coverage.html
