@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	UPGRADER = websocket.Upgrader{
+	Upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
@@ -33,7 +33,7 @@ var lmt = tollbooth.NewLimiter(5, &limiter.ExpirableOptions{DefaultExpirationTTL
 })
 
 // callback function
-var sentryHandler *sentryhttp.Handler = nil
+var sentryHandler *sentryhttp.Handler
 
 func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handler {
 	if sentryHandler != nil {

@@ -81,7 +81,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// connect to socket
-	WSConn, err := UPGRADER.Upgrade(w, r, nil)
+	WSConn, err := Upgrader.Upgrade(w, r, nil)
 	Handle(err)
 
 	// add conn to clients
