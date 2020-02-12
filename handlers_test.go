@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/golang-migrate/migrate/v4"
@@ -70,6 +71,24 @@ func SendNotification(credentials string, title string) {
 	req, _ := http.NewRequest("GET", "/api?"+nform.Encode(), nil)
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
+}
+
+func removeUserCredKey(db *sql.DB, UUID string) {
+	_, err := db.Exec(`UPDATE users
+	SET credential_key = NULL
+	WHERE UUID=?`, crypt.Hash(UUID))
+	if err != nil {
+		panic(err)
+	}
+}
+
+func removeUserCreds(db *sql.DB, UUID string) {
+	_, err := db.Exec(`UPDATE users
+	SET credential_key = NULL, credentials = NULL
+	WHERE UUID=?`, crypt.Hash(UUID))
+	if err != nil {
+		panic(err)
+	}
 }
 
 // applied to every test
