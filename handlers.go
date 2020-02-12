@@ -22,13 +22,14 @@ const (
 // layout for times Format()
 const TimeLayout = "2006-01-02 15:04:05"
 
+// WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != SERVERKEY {
+	if r.Header.Get("Sec-Key") != ServerKey {
 		WriteError(w, r, ErrorCode, "Invalid key")
 		return
 	}
@@ -120,13 +121,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	Handle(u.CloseLogin(s.db))
 }
 
+// CredentialHandler is the http handler for creating and updating credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != SERVERKEY {
+	if r.Header.Get("Sec-Key") != ServerKey {
 		WriteError(w, r, ErrorCode, "Invalid form data")
 		return
 	}
@@ -174,6 +176,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	Handle(err)
 }
 
+// APIHandler is the http handler for handling API calls to create notifications
 func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	var notification Notification
 
