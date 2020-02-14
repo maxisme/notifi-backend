@@ -1,0 +1,5 @@
+coverage:
+  range: "65...80"
+
+ignore:
+  - "main.go"
