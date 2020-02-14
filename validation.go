@@ -8,11 +8,7 @@ import (
 )
 
 // ValidVersionRegex is regex to match a valid version
-var ValidVersionRegex *regexp.Regexp
-
-func init() {
-	ValidVersionRegex = regexp.MustCompile(`^[\d\.]*$`)
-}
+var ValidVersionRegex = regexp.MustCompile(`^[\d\.]*$`)
 
 // IsValidVersion checks if a string is in the format of a valid version
 func IsValidVersion(version string) bool {
@@ -31,7 +27,7 @@ func IsValidUUID(str string) bool {
 
 // IsValidCredentials checks a string is the length of expected credentials
 func IsValidCredentials(credentials string) bool {
-	return len(credentials) == CredentialLen
+	return len(credentials) == credentialLen
 }
 
 // IsValidURL checks a string is a URL

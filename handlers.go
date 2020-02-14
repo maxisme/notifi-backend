@@ -20,7 +20,7 @@ const (
 )
 
 // layout for times Format()
-const TimeLayout = "2006-01-02 15:04:05"
+const timeLayout = "2006-01-02 15:04:05"
 
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,7 +29,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != ServerKey {
+	if r.Header.Get("Sec-Key") != serverKey {
 		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
@@ -82,13 +82,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// connect to socket
-	WSConn, err := Upgrader.Upgrade(w, r, nil)
+	WSConn, err := upgrader.Upgrade(w, r, nil)
 	Handle(err)
 
 	// add conn to clients
-	WSClientsMutex.Lock()
-	WSClients[u.Credentials.Value] = WSConn
-	WSClientsMutex.Unlock()
+	clientsWSMutex.Lock()
+	clientsWS[u.Credentials.Value] = WSConn
+	clientsWSMutex.Unlock()
 
 	log.Println("Client Connected:", crypt.Hash(u.Credentials.Value))
 
@@ -111,9 +111,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		go u.DeleteReceivedNotifications(s.db, string(message))
 	}
 
-	WSClientsMutex.Lock()
-	delete(WSClients, u.Credentials.Value)
-	WSClientsMutex.Unlock()
+	clientsWSMutex.Lock()
+	delete(clientsWS, u.Credentials.Value)
+	clientsWSMutex.Unlock()
 
 	log.Println("Client Disconnected:", crypt.Hash(u.Credentials.Value))
 
@@ -128,7 +128,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != ServerKey {
+	if r.Header.Get("Sec-Key") != serverKey {
 		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
 	}
@@ -189,7 +189,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := Decoder.Decode(&notification, r.Form); err != nil {
+	if err := decoder.Decode(&notification, r.Form); err != nil {
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
@@ -209,13 +209,13 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	notification.ID = FetchNumNotifications(s.db)
 
 	// fetch client socket
-	WSClientsMutex.RLock()
-	socket, gotSocket := WSClients[notification.Credentials]
-	WSClientsMutex.RUnlock()
+	clientsWSMutex.RLock()
+	socket, gotSocket := clientsWS[notification.Credentials]
+	clientsWSMutex.RUnlock()
 
 	if gotSocket {
 		// set notification time to now
-		notification.Time = time.Now().Format(TimeLayout)
+		notification.Time = time.Now().Format(timeLayout)
 
 		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
 		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {

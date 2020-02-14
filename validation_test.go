@@ -45,7 +45,7 @@ func TestVersionValidity(t *testing.T) {
 }
 
 func TestIsValidCredentials(t *testing.T) {
-	credentials := crypt.RandomString(CredentialLen)
+	credentials := crypt.RandomString(credentialLen)
 	if !IsValidCredentials(credentials) {
 		t.Errorf("'%s' should have been valid credentials", credentials)
 	}

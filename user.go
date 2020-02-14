@@ -25,8 +25,8 @@ type Credentials struct {
 }
 
 const (
-	CredentialLen    = 25
-	CredentialKeyLen = 100
+	credentialLen    = 25
+	credentialKeyLen = 100
 )
 
 // Store stores or updates u User with new credentials depending on whether the user passes current credentials
@@ -34,8 +34,8 @@ const (
 func (u User) Store(db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
-		crypt.RandomString(CredentialLen),
-		crypt.RandomString(CredentialKeyLen),
+		crypt.RandomString(credentialLen),
+		crypt.RandomString(credentialKeyLen),
 	}
 
 	var DBUser User

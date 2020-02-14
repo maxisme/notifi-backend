@@ -42,6 +42,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, message string
 	}
 
 	http.Error(w, message, code)
+	w.Write([]byte(message))
 }
 
 func RequiredEnvs(envKeys []string) error {

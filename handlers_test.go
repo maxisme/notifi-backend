@@ -219,7 +219,7 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form := url.Values{}
 	form.Add("title", "test")
-	form.Add("credentials", crypt.RandomString(CredentialLen))
+	form.Add("credentials", crypt.RandomString(credentialLen))
 
 	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
 	expectedStatus := ""

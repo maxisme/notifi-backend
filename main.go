@@ -15,15 +15,15 @@ import (
 )
 
 var (
-	Upgrader = websocket.Upgrader{
+	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 	}
-	Decoder   = schema.NewDecoder()
-	ServerKey = os.Getenv("server_key") // has to be passed with every request
+	decoder   = schema.NewDecoder()
+	serverKey = os.Getenv("server_key") // has to be passed with every request
 
-	WSClients      = make(map[string]*websocket.Conn)
-	WSClientsMutex = sync.RWMutex{}
+	clientsWS      = make(map[string]*websocket.Conn)
+	clientsWSMutex = sync.RWMutex{}
 )
 
 // set http request limiter to max 5 requests per second
