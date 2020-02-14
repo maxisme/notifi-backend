@@ -45,6 +45,7 @@ func WriteError(w http.ResponseWriter, r *http.Request, code int, message string
 	w.Write([]byte(message))
 }
 
+// RequiredEnvs verifies envKeys all have values
 func RequiredEnvs(envKeys []string) error {
 	for _, envKey := range envKeys {
 		envValue := os.Getenv(envKey)
