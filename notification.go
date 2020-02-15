@@ -3,8 +3,8 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/maxisme/notifi-backend/crypt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -181,29 +181,44 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	return notifications, nil
 }
 
-// DeleteReceivedNotifications deletes all comma separated ids
-func (u User) DeleteReceivedNotifications(db *sql.DB, ids string) {
-	IDArr := []interface{}{crypt.Hash(u.Credentials.Value)}
+// DeleteNotificationsWithIDs deletes all comma separated ids
+func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
+	// arguments to be passed to the SQL query
+	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
 
 	// validate all comma separated values are integers
+	numIds := int64(0)
 	for _, element := range strings.Split(ids, ",") {
+		if len(element) == 0 {
+			continue
+		}
 		val, err := strconv.Atoi(element)
 		if err != nil {
-			log.Println(element + " is not a number!")
-			return
+			return err
 		}
-		IDArr = append(IDArr, val)
+		SQLArgs = append(SQLArgs, val)
+		numIds += 1
 	}
 
 	query := `
 	DELETE FROM notifications
 	WHERE credentials = ?
-	AND id IN (?` + strings.Repeat(",?", len(IDArr)-2) + `)`
+	AND id IN (?` + strings.Repeat(",?", len(SQLArgs)-2) + `)`
 
-	_, err := db.Exec(query, IDArr...)
+	res, err := db.Exec(query, SQLArgs...)
 	if err != nil {
-		log.Println(err.Error())
+		return err
 	}
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected != numIds {
+		err = errors.New(fmt.Sprintf("Not all rows passed have been deleted: %d != %d", rowsAffected, numIds))
+		return err
+	}
+	return nil
 }
 
 // IncreaseNotificationCnt increases the notification count in the database of the specific credentials from the

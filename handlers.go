@@ -108,7 +108,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		go u.DeleteReceivedNotifications(s.db, string(message))
+		go Handle(u.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
 	clientsWSMutex.Lock()
@@ -225,12 +225,5 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := notification.Store(s.db); err != nil {
-		mysqlErr, ok := err.(*mysql.MySQLError)
-		if !ok || mysqlErr.Number != 1452 {
-			// return any error other than the one inferring that there are no such user credentials
-			// we don't want to give that away
-			Handle(err)
-		}
-	}
+	Handle(notification.Store(s.db))
 }

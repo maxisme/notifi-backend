@@ -64,13 +64,14 @@ func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *
 	return s, res, ws, err
 }
 
-func SendNotification(credentials string, title string) {
+func SendNotification(credentials string, title string) *httptest.ResponseRecorder {
 	nform := url.Values{}
 	nform.Add("credentials", credentials)
 	nform.Add("title", title)
 	req, _ := http.NewRequest("GET", "/api?"+nform.Encode(), nil)
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
+	return rr
 }
 
 func removeUserCredKey(db *sql.DB, UUID string) {
@@ -228,6 +229,13 @@ func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	}
 }
 
+func TestSendNotificationToNonExistentUser(t *testing.T) {
+	rr := SendNotification(crypt.RandomString(credentialLen), "foo")
+	if rr.Code != 200 {
+		t.Errorf("handler returned wrong status code: got '%d' want '%d'", rr.Code, 200)
+	}
+}
+
 func TestWSHandler(t *testing.T) {
 	creds, form := GenUser() // generate user
 
@@ -283,38 +291,6 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 
 	if notifications[0].Title != TITLE {
 		t.Error("Incorrect title returned!")
-	}
-}
-
-// send notification while offline, connect to websocket to receive said notification
-// tell Server to delete notification, reconnect to websocket and service should not receive a message
-func TestDeleteNotification(t *testing.T) {
-	var creds, uform = GenUser() // generate user
-
-	// send notification to not connected user
-	SendNotification(creds.Value, crypt.RandomString(10))
-
-	// connect to wss
-	s, _, ws, _ := ConnectWSS(creds, uform)
-
-	// delete notification
-	_, mess, _ := ws.ReadMessage()
-	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
-	_ = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
-
-	// disconnect from ws
-	s.Close()
-	ws.Close()
-
-	// reconnect to ws
-	_, _, ws, _ = ConnectWSS(creds, uform)
-
-	// expect timeout on read notification
-	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	_, _, err := ws.ReadMessage()
-	if err == nil {
-		t.Errorf("Should have had i/o timeout and received nothing")
 	}
 }
 
@@ -434,4 +410,74 @@ func TestMissingSecKeyHandlers(t *testing.T) {
 	}
 }
 
-// TODO test DeleteReceivedNotifications
+func TestDeleteNotificationsWithIncorrectIDs(t *testing.T) {
+	var userCreds, form = GenUser() // generate user
+
+	// send 3 notifications to user
+	SendNotification(userCreds.Value, crypt.RandomString(10))
+	SendNotification(userCreds.Value, crypt.RandomString(10))
+	SendNotification(userCreds.Value, crypt.RandomString(10))
+
+	// read notifications over ws
+	sock, _, ws, _ := ConnectWSS(userCreds, form)
+	defer sock.Close()
+	defer ws.Close()
+	_, mess, _ := ws.ReadMessage()
+	var notifications []Notification
+	_ = json.Unmarshal(mess, &notifications)
+
+	// fetch ids from notifications
+	var ids string
+	for _, notification := range notifications {
+		ids = fmt.Sprintf("%s%d,", ids, notification.ID)
+	}
+
+	u := User{Credentials: Credentials{Value: userCreds.Value}}
+
+	err := u.DeleteNotificationsWithIDs(s.db, ids) // correct ids
+	if err != nil {
+		t.Errorf("Expected no error got: %v", err)
+	}
+
+	err = u.DeleteNotificationsWithIDs(s.db, ids+"10000") // invalid id
+	if err == nil {
+		t.Errorf("Expected error")
+	}
+
+	err = u.DeleteNotificationsWithIDs(s.db, ids+"foo") // foo isn't an int so should fail
+	if err == nil {
+		t.Errorf("Expected error")
+	}
+}
+
+// send notification while offline, connect to websocket to receive said notification
+// tell Server to delete notification, reconnect to websocket and service should not receive a message
+func TestDeleteNotification(t *testing.T) {
+	var creds, uform = GenUser() // generate user
+
+	// send notification to not connected user
+	SendNotification(creds.Value, crypt.RandomString(10))
+
+	// connect to wss
+	s, _, ws, _ := ConnectWSS(creds, uform)
+
+	// delete notification
+	_, mess, _ := ws.ReadMessage()
+	var notifications []Notification
+	_ = json.Unmarshal(mess, &notifications)
+	_ = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
+
+	// disconnect from ws
+	s.Close()
+	ws.Close()
+
+	// reconnect to ws
+	_, _, ws, _ = ConnectWSS(creds, uform)
+
+	// expect timeout on read notification
+	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_, _, err := ws.ReadMessage()
+	if err == nil {
+		t.Errorf("Should have had i/o timeout and received nothing")
+	}
+}
