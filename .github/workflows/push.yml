@@ -45,7 +45,7 @@ jobs:
       - name: Publish to Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: ${{ github.repository }}
+          name: ${{ github.repository }}/notifi
           username: ${{ github.actor }}
           password: ${{ github.token }}
           registry: docker.pkg.github.com
