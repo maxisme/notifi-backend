@@ -48,7 +48,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ github.token }}
           registry: docker.pkg.github.com
-          workdir: ${{ github.workspace }}
+          dockerfile: ${{ github.workspace }}/Dockerfile
 
   deploy:
     name: Deploy
