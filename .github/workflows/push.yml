@@ -35,6 +35,19 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
+  publish:
+    name: Publish Docker to GitHub Package Registry
+    if: github.ref == 'refs/heads/master'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish to Registry
+        uses: elgohr/Publish-Docker-Github-Action@master
+        with:
+          name: ${{ github.repository }}
+          username: ${{ github.actor }}
+          registry: docker.pkg.github.com
+
   deploy:
     name: Deploy
     if: github.ref == 'refs/heads/master'
