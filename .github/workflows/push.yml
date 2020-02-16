@@ -54,7 +54,7 @@ jobs:
   deploy:
     name: Deploy
     if: github.ref == 'refs/heads/master'
-    needs: test
+    needs: publish
     runs-on: ubuntu-latest
     steps:
       - name: Deploy
