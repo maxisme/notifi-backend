@@ -33,7 +33,7 @@ then
     git checkout master
     git merge $1
 
-    # update schema (-database arg came from docker-compose)
+    # run migrations on db
     docker-compose run migrate
 
     # update app
