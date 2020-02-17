@@ -34,11 +34,7 @@ then
     git merge $1
 
     # update schema (-database arg came from docker-compose)
-    if ! migrate -source=file://sql/ -database mysql://notifi:notifi@/notifi up
-    then
-        echo "Failed to run sql migration"
-        exit 1
-    fi
+    docker-compose run migrate
 
     # update app
     if ! docker-compose build app

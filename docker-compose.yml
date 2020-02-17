@@ -13,6 +13,14 @@ services:
     tty: true
     restart: always
 
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - .sql:/sql
+    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
+    links:
+      - db
+
   app:
     build:
       context: .
