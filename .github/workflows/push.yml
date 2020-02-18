@@ -42,6 +42,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
+      - name: Bump version and push tag
+        id: tag
+        uses: anothrNick/github-tag-action@1.17.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WITH_V: true
       - name: Publish to Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
@@ -50,6 +56,7 @@ jobs:
           password: ${{ github.token }}
           registry: docker.pkg.github.com
           context: ${{ github.workspace }}
+          tags: latest,${{ steps.tag.outputs.new_tag }}
 
   deploy:
     name: Deploy
