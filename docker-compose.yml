@@ -8,8 +8,6 @@ services:
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
     container_name: notifi-backend-db
-    ports:
-      - "127.0.0.1:3306:3306" # added local exposed ports for migration script
     tty: true
     restart: always
 
@@ -34,4 +32,6 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
+      - db
+    links:
       - db

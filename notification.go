@@ -215,8 +215,7 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 	}
 
 	if rowsAffected != numIds {
-		err = errors.New(fmt.Sprintf("Not all rows passed have been deleted: %d != %d", rowsAffected, numIds))
-		return err
+		return fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds)
 	}
 	return nil
 }
