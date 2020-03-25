@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/maxisme/notifi-backend/crypt"
 	"net/http"
 	"os"
@@ -15,6 +14,7 @@ import (
 // Notification structure
 type Notification struct {
 	ID          int    `json:"id"`
+	UUID        string `json:"uuid"`
 	Credentials string `json:"-"`
 	Time        string `json:"time"`
 	Title       string `json:"title"`
@@ -57,8 +57,8 @@ func (n Notification) Store(db *sql.DB) (err error) {
 
 	_, err = db.Exec(`
 	INSERT INTO notifications 
-    (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
+    (uuid, title, message, image, link, credentials) 
+    VALUES(?, ?, ?, ?, ?, ?)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
 	return
 }
 
@@ -160,7 +160,6 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	var notifications []Notification
 	for rows.Next() {
@@ -178,6 +177,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 			return nil, err
 		}
 	}
+	rows.Close()
 	return notifications, nil
 }
 
@@ -200,22 +200,15 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 		numIds += 1
 	}
 
+	commaSeperatedIDs := strings.Repeat(",?", len(SQLArgs)-2)
 	query := `
 	DELETE FROM notifications
 	WHERE credentials = ?
-	AND id IN (?` + strings.Repeat(",?", len(SQLArgs)-2) + `)`
+	AND id IN (?` + commaSeperatedIDs + `)`
 
-	res, err := db.Exec(query, SQLArgs...)
+	_, err := db.Exec(query, SQLArgs...)
 	if err != nil {
 		return err
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected != numIds {
-		return fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds)
 	}
 	return nil
 }
@@ -225,9 +218,13 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
-	Handle(err)
+	if err != nil {
+		return err
+	}
 	num, err := res.RowsAffected()
-	Handle(err)
+	if err != nil {
+		return err
+	}
 	if num == 0 {
 		return errors.New("no such user with credentials")
 	}
@@ -235,8 +232,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 }
 
 // FetchNumNotifications fetches the total number of notifications sent on notifi
-func FetchNumNotifications(db *sql.DB) int {
-	id := 0
+func FetchNumNotifications(db *sql.DB) (id int) {
 	row := db.QueryRow("SELECT sum(notification_cnt) from users")
 	Handle(row.Scan(&id))
 	return id + 1
