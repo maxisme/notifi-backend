@@ -6,6 +6,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 	"github.com/maxisme/notifi-backend/crypt"
+	uuid "github.com/satori/go.uuid"
 	"log"
 	"net/http"
 	"time"
@@ -108,7 +109,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 
-		go Handle(u.DeleteNotificationsWithIDs(s.db, string(message)))
+		Handle(u.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
 	clientsWSMutex.Lock()
@@ -201,23 +202,25 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	// increase notification count
 	if err := IncreaseNotificationCnt(s.db, notification); err != nil {
+		Handle(err)
 		// no such user with credentials
 		return
 	}
 
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)
+	notification.UUID = uuid.NewV4().String()
 
 	// fetch client socket
-	clientsWSMutex.RLock()
+	clientsWSMutex.Lock()
+	defer clientsWSMutex.Unlock()
 	socket, gotSocket := clientsWS[notification.Credentials]
-	clientsWSMutex.RUnlock()
 
 	if gotSocket {
 		// set notification time to now
 		notification.Time = time.Now().Format(timeLayout)
 
-		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
+		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array back to client
 		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
 			Handle(err)
 		} else {
