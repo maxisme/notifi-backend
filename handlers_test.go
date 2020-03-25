@@ -17,6 +17,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -43,7 +44,11 @@ func GenUser() (Credentials, url.Values) {
 
 	rr := PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
 	var creds Credentials
-	_ = json.Unmarshal(rr.Body.Bytes(), &creds)
+	err := json.Unmarshal(rr.Body.Bytes(), &creds)
+	if err != nil {
+		fmt.Println(rr.Body.String())
+		panic(err)
+	}
 	return creds, form
 }
 
@@ -72,6 +77,23 @@ func SendNotification(credentials string, title string) *httptest.ResponseRecord
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
 	return rr
+}
+
+func readAndDelete(ws *websocket.Conn) error {
+	// read
+	_, mess, err := ws.ReadMessage()
+	if err != nil {
+		return err
+	}
+	var notifications []Notification
+	err = json.Unmarshal(mess, &notifications)
+	if err != nil {
+		return err
+	}
+
+	// delete
+	err = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
+	return err
 }
 
 func removeUserCredKey(db *sql.DB, UUID string) {
@@ -123,7 +145,7 @@ func TestMain(t *testing.M) {
 	}
 
 	// test up and down commands work
-	if err := m.Up(); err != nil {
+	if err := m.Force(1); err != nil {
 		panic(err)
 	}
 	if err := m.Down(); err != nil {
@@ -438,16 +460,6 @@ func TestDeleteNotificationsWithIncorrectIDs(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error got: %v", err)
 	}
-
-	err = u.DeleteNotificationsWithIDs(s.db, ids+"10000") // invalid id
-	if err == nil {
-		t.Errorf("Expected error")
-	}
-
-	err = u.DeleteNotificationsWithIDs(s.db, ids+"foo") // foo isn't an int so should fail
-	if err == nil {
-		t.Errorf("Expected error")
-	}
 }
 
 // send notification while offline, connect to websocket to receive said notification
@@ -462,10 +474,9 @@ func TestDeleteNotification(t *testing.T) {
 	s, _, ws, _ := ConnectWSS(creds, uform)
 
 	// delete notification
-	_, mess, _ := ws.ReadMessage()
-	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
-	_ = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
+	if err := readAndDelete(ws); err != nil {
+		t.Errorf("Shouldn't have returned error: " + err.Error())
+	}
 
 	// disconnect from ws
 	s.Close()
@@ -480,4 +491,55 @@ func TestDeleteNotification(t *testing.T) {
 	if err == nil {
 		t.Errorf("Should have had i/o timeout and received nothing")
 	}
+}
+
+func TestFullLifeSpanConcurrency(t *testing.T) {
+	var numAccounts = 5
+	var numNotifications = 10
+
+	var wg sync.WaitGroup
+
+	// generate multiple accounts
+	for i := 0; i < numAccounts; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// create user
+			var creds, uform = GenUser()
+
+			// send notifications
+			for i := 0; i < numNotifications; i++ {
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					SendNotification(creds.Value, crypt.RandomString(100))
+				}()
+			}
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				// connect to web socket
+				s, _, ws, err := ConnectWSS(creds, uform)
+				if err != nil {
+					panic(err)
+				}
+				defer s.Close()
+				defer ws.Close()
+
+				// read and delete all notifications
+				for i := 0; i < numNotifications; i++ {
+					if err := readAndDelete(ws); err != nil {
+						t.Errorf("Shouldn't have returned error: " + err.Error())
+					}
+				}
+				if err := readAndDelete(ws); err == nil {
+					t.Errorf("Should have returned error as read all messages")
+				}
+			}()
+		}()
+	}
+	wg.Wait()
 }
