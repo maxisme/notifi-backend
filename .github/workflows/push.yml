@@ -58,7 +58,7 @@ jobs:
       - name: Publish to GitHub Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: ${{ github.repository }}/notifi
+          name: ${{ github.repository }}
           username: ${{ github.actor }}
           password: ${{ github.token }}
           registry: docker.pkg.github.com
@@ -67,7 +67,7 @@ jobs:
       - name: Publish to Docker Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
-          name: maxisme/notifi-backend
+          name: ${{ github.repository }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
           context: ${{ github.workspace }}
