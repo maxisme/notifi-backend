@@ -20,8 +20,7 @@ services:
       - db
 
   app:
-    build:
-      context: .
+    image: maxisme/notifi-backend:latest
     restart: always
     environment:
       db: notifi:notifi@tcp(db:3306)/notifi
@@ -30,7 +29,7 @@ services:
       encryption_key: ${encryption_key:?err}
     tty: true
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:9081:9081"
     depends_on:
       - db
     links:
