@@ -10,14 +10,8 @@ services:
     container_name: notifi-backend-db
     tty: true
     restart: always
-
-  migrate:
-    image: migrate/migrate
-    volumes:
-      - .sql:/sql
-    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
-    links:
-      - db
+    networks:
+      - overlay
 
   app:
     image: maxisme/notifi-backend:latest
@@ -27,10 +21,25 @@ services:
       sentry_dsn: ${sentry_dsn:?err}
       server_key: ${server_key:?err}
       encryption_key: ${encryption_key:?err}
+    deploy:
+      mode: global
     tty: true
     ports:
-      - "127.0.0.1:9081:9081"
+      - "9081:8080"
+    networks:
+      - overlay
     depends_on:
       - db
     links:
       - db
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - .sql:/sql
+    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
+    links:
+      - db
+
+networks:
+  overlay:
