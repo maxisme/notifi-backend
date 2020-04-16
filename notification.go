@@ -14,13 +14,13 @@ import (
 
 // Notification structure
 type Notification struct {
-	ID          int         `json:"id"`
-	credentials credentials `json:"-"`
-	Time        string      `json:"time"`
-	Title       string      `json:"title"`
-	Message     string      `json:"message"`
-	Image       string      `json:"image"`
-	Link        string      `json:"link"`
+	credentials credentials
+	ID          int    `json:"id"`
+	Time        string `json:"time"`
+	Title       string `json:"title"`
+	Message     string `json:"message"`
+	Image       string `json:"image"`
+	Link        string `json:"link"`
 }
 
 // size restrictions of notifications
@@ -34,7 +34,6 @@ var encryptionKey = []byte(os.Getenv("encryption_key"))
 
 // Store will store n Notification in the database after encrypting the content
 func (n Notification) Store(db *sql.DB) (err error) {
-
 	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
@@ -182,7 +181,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 // DeleteNotificationsWithIDs deletes all comma separated ids
-func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
+func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) {
 	// arguments to be passed to the SQL query
 	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
 
@@ -193,9 +192,7 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 			continue
 		}
 		val, err := strconv.Atoi(element)
-		if err != nil {
-			return err
-		}
+		Handle(err)
 		SQLArgs = append(SQLArgs, val)
 		numIds += 1
 	}
@@ -206,18 +203,13 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 	AND id IN (?` + strings.Repeat(",?", len(SQLArgs)-2) + `)`
 
 	res, err := db.Exec(query, SQLArgs...)
-	if err != nil {
-		return err
-	}
+	Handle(err)
 	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
+	Handle(err)
 
 	if rowsAffected != numIds {
-		return fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds)
+		Handle(fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds))
 	}
-	return nil
 }
 
 // IncreaseNotificationCnt increases the notification count in the database of the specific credentials from the

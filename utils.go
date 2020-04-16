@@ -13,15 +13,14 @@ import (
 // Handle handles errors and logs them to sentry
 func Handle(err error) {
 	if err != nil {
-		pc, _, ln, _ := runtime.Caller(1)
-		details := runtime.FuncForPC(pc)
-
 		// log err to sentry
 		sentry.CaptureException(err)
 		sentry.Flush(time.Second * 5)
 
-		errorMessage := fmt.Sprintf("Fatal: %s - %s %d", err.Error(), details.Name(), ln)
-		panic(errorMessage)
+		pc, _, ln, _ := runtime.Caller(1)
+		details := runtime.FuncForPC(pc)
+
+		panic(fmt.Sprintf("Fatal: %s - %s %d", err.Error(), details.Name(), ln))
 	}
 }
 

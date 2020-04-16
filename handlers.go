@@ -91,15 +91,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	// initialise funnel
 	funnel := &Funnel{WSConn: WSConn, pubSub: pubSub}
 
-	s.funnels.Lock()
-	// add socket and pubsub connections to clients
-	s.funnels.clients[user.Credentials.Value] = funnel
-	s.funnels.Unlock()
+	s.funnels.addFunnel(funnel, user.Credentials.Value)
 
-	// start redis listener
-	go WSSRedisChannelListener(funnel)
-
-	log.Println("Client Connected:", crypt.Hash(user.Credentials.Value))
+	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
 
 	// send all stored notifications from db
 	go func() {
@@ -116,18 +110,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		_, message, err := WSConn.ReadMessage()
 		if err != nil {
+			// TODO handle specific err
 			break // disconnected from WS
 		}
 
 		go user.DeleteNotificationsWithIDs(s.db, string(message))
 	}
 
-	s.funnels.Lock()
-	// remove client from redis subscription
-	Handle(funnel.pubSub.Unsubscribe())
-	// remove funnel
-	delete(s.funnels.clients, user.Credentials.Value)
-	s.funnels.Unlock()
+	s.funnels.removeFunnel(funnel, user.Credentials.Value)
 
 	log.Println("Client Disconnected:", crypt.Hash(user.Credentials.Value))
 
@@ -246,6 +236,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 			Handle(err)
 			numSubscribers := s.redis.Publish(notification.credentials, string(notificationBytes))
 			if numSubscribers.Val() != 0 {
+				// sent to a redis subscriber
 				return
 			} else {
 				log.Printf("Missing subscribers on channel %s!", notification.credentials)
