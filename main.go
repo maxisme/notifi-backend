@@ -6,6 +6,7 @@ import (
 	"github.com/didip/tollbooth/limiter"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/schema"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -14,6 +15,15 @@ import (
 	"time"
 )
 
+type Funnel struct {
+	WSConn *websocket.Conn
+	pubSub *redis.PubSub
+}
+type Funnels struct {
+	clients map[credentials]*Funnel
+	sync.RWMutex
+}
+
 var (
 	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -21,9 +31,6 @@ var (
 	}
 	decoder   = schema.NewDecoder()
 	serverKey = os.Getenv("server_key") // has to be passed with every request
-
-	clientsWS      = make(map[string]*websocket.Conn)
-	clientsWSMutex = sync.RWMutex{}
 )
 
 // set http request limiter to max 5 requests per second
@@ -49,14 +56,26 @@ func main() {
 	}
 
 	// connect to db
-	db, err := dbConn(os.Getenv("db"))
+	dbConn, err := dbConn(os.Getenv("db"))
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
-	defer db.Close()
-	s := Server{db: db} // db pool
+	defer dbConn.Close()
 
-	// SENTRY
+	// connect to redis
+	redisConn, err := redisConn(os.Getenv("redis"))
+	if err != nil {
+		panic(err)
+	}
+	defer redisConn.Close()
+
+	s := Server{
+		db:      dbConn,
+		redis:   redisConn,
+		funnels: &Funnels{clients: make(map[credentials]*Funnel)},
+	}
+
+	// init sentry
 	sentryDsn := os.Getenv("sentry_dsn")
 	if sentryDsn != "" {
 		if err := sentry.Init(sentry.ClientOptions{Dsn: sentryDsn}); err != nil {

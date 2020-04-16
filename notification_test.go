@@ -17,9 +17,9 @@ func TestValidation(t *testing.T) {
 	n := Notification{}
 	validateNotificationTest(t, n)
 
-	n.Credentials = "<credentials>" // invalid
+	n.credentials = "<credentials>" // invalid
 	validateNotificationTest(t, n)
-	n.Credentials = crypt.RandomString(25) // valid
+	n.credentials = crypt.RandomString(25) // valid
 
 	validateNotificationTest(t, n)
 

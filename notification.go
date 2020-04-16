@@ -14,13 +14,13 @@ import (
 
 // Notification structure
 type Notification struct {
-	ID          int    `json:"id"`
-	Credentials string `json:"-"`
-	Time        string `json:"time"`
-	Title       string `json:"title"`
-	Message     string `json:"message"`
-	Image       string `json:"image"`
-	Link        string `json:"link"`
+	ID          int         `json:"id"`
+	credentials credentials `json:"-"`
+	Time        string      `json:"time"`
+	Title       string      `json:"title"`
+	Message     string      `json:"message"`
+	Image       string      `json:"image"`
+	Link        string      `json:"link"`
 }
 
 // size restrictions of notifications
@@ -58,17 +58,17 @@ func (n Notification) Store(db *sql.DB) (err error) {
 	_, err = db.Exec(`
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
+    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.credentials))
 	return
 }
 
 // Validate runs validation on n Notification
 func (n Notification) Validate() error {
-	if len(n.Credentials) == 0 {
+	if len(n.credentials) == 0 {
 		return errors.New("You must specify credentials!")
 	}
 
-	if n.Credentials == "<credentials>" {
+	if n.credentials == "<credentials>" {
 		return errors.New("You have not set your personal credentials given to you by the notifi app! You instead used the placeholder '<credentials>'!")
 	}
 
@@ -224,7 +224,7 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 // Notification
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.credentials))
 	Handle(err)
 	num, err := res.RowsAffected()
 	Handle(err)

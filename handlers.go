@@ -34,40 +34,40 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := Credentials{
+	credentials := Credentials{
 		Value: r.Header.Get("Credentials"),
 		Key:   r.Header.Get("Credentialkey"),
 	}
-	u := User{
-		Credentials: c,
+	user := User{
+		Credentials: credentials,
 		UUID:        r.Header.Get("Uuid"),
 		AppVersion:  r.Header.Get("Version"),
 	}
 
 	// validate inputs
-	if !IsValidUUID(u.UUID) {
+	if !IsValidUUID(user.UUID) {
 		WriteError(w, r, ErrorCode, "Invalid UUID")
 		return
-	} else if !IsValidVersion(u.AppVersion) {
+	} else if !IsValidVersion(user.AppVersion) {
 		WriteError(w, r, ErrorCode, "Invalid Version")
 		return
-	} else if !IsValidCredentials(u.Credentials.Value) {
+	} else if !IsValidCredentials(user.Credentials.Value) {
 		WriteError(w, r, ErrorCode, "Invalid Credentials")
 		return
 	}
 
 	var errorCode = 0
 	var DBUser User
-	_ = DBUser.GetWithUUID(s.db, u.UUID)
+	_ = DBUser.GetWithUUID(s.db, user.UUID)
 	if len(DBUser.Credentials.Key) == 0 {
 		if len(DBUser.Credentials.Value) == 0 {
-			log.Println("No credentials or key for: " + u.UUID)
+			log.Println("No credentials or key for: " + user.UUID)
 			errorCode = NoUUIDCode
 		} else {
-			log.Println("No credential key for: " + u.UUID)
+			log.Println("No credential key for: " + user.UUID)
 			errorCode = ResetKeyCode
 		}
-	} else if !u.Verify(s.db) {
+	} else if !user.Verify(s.db) {
 		errorCode = InvalidLoginCode
 	}
 	if errorCode != 0 {
@@ -75,7 +75,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := u.StoreLogin(s.db); err != nil {
+	if err := user.StoreLogin(s.db); err != nil {
 		Handle(err)
 		WriteError(w, r, ErrorCode, err.Error())
 		return
@@ -85,40 +85,54 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	WSConn, err := upgrader.Upgrade(w, r, nil)
 	Handle(err)
 
-	// add conn to clients
-	clientsWSMutex.Lock()
-	clientsWS[u.Credentials.Value] = WSConn
-	clientsWSMutex.Unlock()
+	// create redis pubsub subscriber
+	pubSub := s.redis.Subscribe(user.Credentials.Value)
 
-	log.Println("Client Connected:", crypt.Hash(u.Credentials.Value))
+	// initialise funnel
+	funnel := &Funnel{WSConn: WSConn, pubSub: pubSub}
 
-	// send all pending notifications in db
-	notifications, err := u.FetchNotifications(s.db)
-	Handle(err)
-	if len(notifications) > 0 {
-		bytes, _ := json.Marshal(notifications)
-		err := WSConn.WriteMessage(websocket.TextMessage, bytes)
+	s.funnels.Lock()
+	// add socket and pubsub connections to clients
+	s.funnels.clients[user.Credentials.Value] = funnel
+	s.funnels.Unlock()
+
+	// start redis listener
+	go WSSRedisChannelListener(funnel)
+
+	log.Println("Client Connected:", crypt.Hash(user.Credentials.Value))
+
+	// send all stored notifications from db
+	go func() {
+		notifications, err := user.FetchNotifications(s.db)
 		Handle(err)
-	}
+		if len(notifications) > 0 {
+			bytes, _ := json.Marshal(notifications)
+			err := WSConn.WriteMessage(websocket.TextMessage, bytes)
+			Handle(err)
+		}
+	}()
 
 	// listen for socket messages until disconnected
 	for {
 		_, message, err := WSConn.ReadMessage()
 		if err != nil {
-			break
+			break // disconnected from WS
 		}
 
-		go Handle(u.DeleteNotificationsWithIDs(s.db, string(message)))
+		go user.DeleteNotificationsWithIDs(s.db, string(message))
 	}
 
-	clientsWSMutex.Lock()
-	delete(clientsWS, u.Credentials.Value)
-	clientsWSMutex.Unlock()
+	s.funnels.Lock()
+	// remove client from redis subscription
+	Handle(funnel.pubSub.Unsubscribe())
+	// remove funnel
+	delete(s.funnels.clients, user.Credentials.Value)
+	s.funnels.Unlock()
 
-	log.Println("Client Disconnected:", crypt.Hash(u.Credentials.Value))
+	log.Println("Client Disconnected:", crypt.Hash(user.Credentials.Value))
 
 	// close connection
-	Handle(u.CloseLogin(s.db))
+	Handle(user.CloseLogin(s.db))
 }
 
 // CredentialHandler is the http handler for creating and updating credentials
@@ -159,21 +173,23 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 		if ok && mysqlErr.Number != 1062 {
-			// log to sentry as a very big issue
+			// log to sentry as a very big issue TODO what is 🤦‍
 			sentry.WithScope(func(scope *sentry.Scope) {
 				scope.SetLevel(sentry.LevelFatal)
 				sentry.CaptureException(err)
 			})
 		}
-		Handle(err)
 		WriteError(w, r, 401, err.Error())
 		return
 	}
 
 	c, err := json.Marshal(creds)
-	Handle(err)
-	_, err = w.Write(c)
-	Handle(err)
+	if err == nil {
+		_, err = w.Write(c)
+		Handle(err)
+	} else {
+		Handle(err)
+	}
 }
 
 // APIHandler is the http handler for handling API calls to create notifications
@@ -208,20 +224,32 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)
 
-	// fetch client socket
-	clientsWSMutex.RLock()
-	socket, gotSocket := clientsWS[notification.Credentials]
-	clientsWSMutex.RUnlock()
+	// check if websocket is connected locally
+	s.funnels.RLock()
+	funnel, gotSocket := s.funnels.clients[notification.credentials]
+	s.funnels.RUnlock()
 
 	if gotSocket {
-		// set notification time to now
-		notification.Time = time.Now().Format(timeLayout)
-
-		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
-		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
+		notificationBytes, err := json.Marshal([]Notification{notification})
+		Handle(err)
+		Handle(funnel.WSConn.WriteMessage(websocket.TextMessage, notificationBytes))
+	} else {
+		// look to see if there are any subscribers to this redis channel and thus a ws connection
+		cmd := s.redis.PubSubChannels(notification.credentials)
+		Handle(cmd.Err())
+		channels, err := cmd.Result()
+		Handle(err)
+		if len(channels) != 0 { // there is a ws connection
+			notification.Time = time.Now().Format(timeLayout)
+			// convert notification to json and pass as array as that is what the client expects
+			notificationBytes, err := json.Marshal([]Notification{notification})
 			Handle(err)
-		} else {
-			return // skip storing the notification as already sent to client
+			numSubscribers := s.redis.Publish(notification.credentials, string(notificationBytes))
+			if numSubscribers.Val() != 0 {
+				return
+			} else {
+				log.Printf("Missing subscribers on channel %s!", notification.credentials)
+			}
 		}
 	}
 

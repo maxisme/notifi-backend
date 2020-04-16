@@ -19,9 +19,10 @@ type User struct {
 }
 
 // Credentials structure
+type credentials = string
 type Credentials struct {
-	Value string `json:"credentials"`
-	Key   string `json:"key"`
+	Value credentials `json:"credentials"`
+	Key   string      `json:"key"`
 }
 
 const (
@@ -115,7 +116,7 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 
 // Get will return user params based on credentials
 func (u *User) Get(db *sql.DB, credentials string) error {
-	row := db.QueryRow(`
+	var row = db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
@@ -126,7 +127,7 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 // Verify verifies a u User s credentials
 func (u User) Verify(db *sql.DB) bool {
 	var DBUser User
-	err := DBUser.Get(db, u.Credentials.Value)
+	err := DBUser.Get(db, string(u.Credentials.Value))
 	if err != nil {
 		log.Println("No such credentials in db: " + u.Credentials.Value)
 		return false
