@@ -15,7 +15,7 @@ type Funnel struct {
 }
 
 type Funnels struct {
-	clients map[string]*Funnel
+	Clients map[string]*Funnel
 	sync.RWMutex
 }
 
@@ -33,7 +33,7 @@ func (funnel *Funnel) pubSubWSListener(errorHandler func(error)) {
 
 func (funnels *Funnels) Add(f *Funnel, key string) {
 	funnels.Lock()
-	funnels.clients[key] = f
+	funnels.Clients[key] = f
 	funnels.Unlock()
 
 	// start redis listener
@@ -51,7 +51,7 @@ func (funnels *Funnels) Remove(f *Funnel, key string) error {
 
 	// remove funnel from map
 	funnels.Lock()
-	delete(funnels.clients, key)
+	delete(funnels.Clients, key)
 	funnels.Unlock()
 
 	return nil
@@ -60,7 +60,7 @@ func (funnels *Funnels) Remove(f *Funnel, key string) error {
 func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) error {
 	// check if the websocket connection to this client is on this machine
 	funnels.RLock()
-	funnel, gotFunnel := funnels.clients[key]
+	funnel, gotFunnel := funnels.Clients[key]
 	funnels.RUnlock()
 	if gotFunnel {
 		err := funnel.WSConn.WriteMessage(websocket.TextMessage, msg)

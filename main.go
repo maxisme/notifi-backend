@@ -42,7 +42,7 @@ func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handle
 
 func main() {
 	// check all envs are set
-	err := RequiredEnvs([]string{"db", "encryption_key", "server_key"})
+	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +64,7 @@ func main() {
 	s := Server{
 		db:      dbConn,
 		redis:   redisConn,
-		funnels: &ws.Funnels{clients: make(map[credentials]*ws.Funnel)},
+		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
 	}
 
 	// init sentry
