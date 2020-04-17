@@ -4,12 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/mysql"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/google/uuid"
-	"github.com/gorilla/websocket"
-	"github.com/maxisme/notifi-backend/crypt"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +13,13 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/mysql"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
+	"github.com/gorilla/websocket"
+	"github.com/maxisme/notifi-backend/crypt"
 )
 
 var s Server
@@ -41,7 +42,7 @@ func GenUser() (Credentials, url.Values) {
 	UUID, _ := uuid.NewRandom()
 	form.Add("UUID", UUID.String())
 
-	rr := PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
+	rr := PostRequest("", form, s.CredentialHandler)
 	var creds Credentials
 	_ = json.Unmarshal(rr.Body.Bytes(), &creds)
 	return creds, form
@@ -66,7 +67,7 @@ func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *
 
 func SendNotification(credentials string, title string) *httptest.ResponseRecorder {
 	nform := url.Values{}
-	nform.Add("credentials", credentials)
+	nform.Add("Credentials", credentials)
 	nform.Add("title", title)
 	req, _ := http.NewRequest("GET", "/api?"+nform.Encode(), nil)
 	rr := httptest.NewRecorder()
@@ -160,17 +161,17 @@ func TestCredentials(t *testing.T) {
 	}
 
 	// try create a new user without specifying current credentials
-	r := PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
+	r := PostRequest("", form, s.CredentialHandler)
 	var nocreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
 	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
 		t.Errorf("Shouldn't have been able to generate new creds for user!")
 	}
 
-	// ask for new credentials for user
+	// ask for new Credentials for user
 	form.Add("current_credentials", creds.Value)
 	form.Add("current_key", creds.Key)
-	r = PostRequest("", form, http.HandlerFunc(s.CredentialHandler))
+	r = PostRequest("", form, s.CredentialHandler)
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Value) == 0 || creds.Value == newcreds.Value {
@@ -182,11 +183,11 @@ func TestAddNotification(t *testing.T) {
 	var creds, _ = GenUser()
 
 	form := url.Values{}
-	form.Add("credentials", creds.Value)
+	form.Add("Credentials", creds.Value)
 	form.Add("title", crypt.RandomString(10))
 
 	// POST test
-	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
+	r := PostRequest("", form, s.APIHandler)
 	if status := r.Code; status != 200 {
 		t.Errorf("handler returned wrong status code: got %v want %v", status, 200)
 	}
@@ -207,9 +208,9 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 	var creds, _ = GenUser()
 
 	form := url.Values{}
-	form.Add("credentials", creds.Value)
+	form.Add("Credentials", creds.Value)
 
-	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
+	r := PostRequest("", form, s.APIHandler)
 	expectedStatus := "You must enter a title!"
 	status := strings.TrimSpace(r.Body.String())
 	if status != expectedStatus {
@@ -220,9 +221,9 @@ func TestAddNotificationWithoutTitle(t *testing.T) {
 func TestAddNotificationWithInvalidCredentials(t *testing.T) {
 	form := url.Values{}
 	form.Add("title", "test")
-	form.Add("credentials", crypt.RandomString(credentialLen))
+	form.Add("Credentials", crypt.RandomString(credentialLen))
 
-	r := PostRequest("", form, http.HandlerFunc(s.APIHandler))
+	r := PostRequest("", form, s.APIHandler)
 	expectedStatus := ""
 	if status := r.Body.String(); status != expectedStatus {
 		t.Errorf("handler returned wrong status code: got '%v' want '%v'", status, expectedStatus)
@@ -331,7 +332,7 @@ func TestWSSResponseCodes(t *testing.T) {
 	}
 }
 
-// if there is no credential_key in the db the client should be able to request new key for same credentials
+// if there is no credential_key in the db the client should be able to request new key for same Credentials
 // and receive a new credential key only
 func TestRemovedCredentialKey(t *testing.T) {
 	var _, f = GenUser() // generate user
@@ -339,28 +340,28 @@ func TestRemovedCredentialKey(t *testing.T) {
 	// remove credential_key
 	removeUserCredKey(s.db, f.Get("UUID"))
 
-	r := PostRequest("", f, http.HandlerFunc(s.CredentialHandler))
+	r := PostRequest("", f, s.CredentialHandler)
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
-		t.Errorf("Error fetching new credentials for user %v. Expected new key", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new key", newCreds)
 	}
 }
 
-// if there is no credentials and credential_key in the db the UUID user should
+// if there is no Credentials and credential_key in the db the UUID user should
 func TestRemovedCredentials(t *testing.T) {
 	var _, f = GenUser() // generate user
 
-	// remove credentials and credential_key
+	// remove Credentials and credential_key
 	removeUserCreds(s.db, f.Get("UUID"))
 
-	r := PostRequest("", f, http.HandlerFunc(s.CredentialHandler))
+	r := PostRequest("", f, s.CredentialHandler)
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 
 	// expects a new credential key to be returned only
 	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
-		t.Errorf("Error fetching new credentials for user %v. Expected new credentials and key", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and key", newCreds)
 	}
 }
 
@@ -368,9 +369,9 @@ var invalidHandlerMethods = []struct {
 	handler       http.HandlerFunc
 	invalidMethod string
 }{
-	{http.HandlerFunc(s.CredentialHandler), "GET"},
-	{http.HandlerFunc(s.APIHandler), "PUT"},
-	{http.HandlerFunc(s.WSHandler), "POST"},
+	{s.CredentialHandler, "GET"},
+	{s.APIHandler, "PUT"},
+	{s.WSHandler, "POST"},
 }
 
 // request handlers with incorrect methods
@@ -392,8 +393,8 @@ var secKeyHandlers = []struct {
 	handler http.HandlerFunc
 	method  string
 }{
-	{http.HandlerFunc(s.CredentialHandler), "POST"},
-	{http.HandlerFunc(s.WSHandler), "GET"},
+	{s.CredentialHandler, "POST"},
+	{s.WSHandler, "GET"},
 }
 
 // test handlers with correct methods but no secret server_key

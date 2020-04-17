@@ -1,28 +1,20 @@
 package main
 
 import (
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/maxisme/notifi-backend/ws"
+
 	"github.com/TV4/graceful"
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
-	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/schema"
 	"github.com/gorilla/websocket"
-	"net/http"
-	"os"
-	"sync"
-	"time"
 )
-
-type Funnel struct {
-	WSConn *websocket.Conn
-	pubSub *redis.PubSub
-}
-type Funnels struct {
-	clients map[credentials]*Funnel
-	sync.RWMutex
-}
 
 var (
 	upgrader = websocket.Upgrader{
@@ -72,7 +64,7 @@ func main() {
 	s := Server{
 		db:      dbConn,
 		redis:   redisConn,
-		funnels: &Funnels{clients: make(map[credentials]*Funnel)},
+		funnels: &ws.Funnels{clients: make(map[credentials]*ws.Funnel)},
 	}
 
 	// init sentry

@@ -4,17 +4,18 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/maxisme/notifi-backend/crypt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/maxisme/notifi-backend/crypt"
 )
 
 // Notification structure
 type Notification struct {
-	credentials credentials
+	Credentials credentials
 	ID          int    `json:"id"`
 	Time        string `json:"time"`
 	Title       string `json:"title"`
@@ -57,18 +58,18 @@ func (n Notification) Store(db *sql.DB) (err error) {
 	_, err = db.Exec(`
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.credentials))
+    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
 	return
 }
 
 // Validate runs validation on n Notification
 func (n Notification) Validate() error {
-	if len(n.credentials) == 0 {
-		return errors.New("You must specify credentials!")
+	if len(n.Credentials) == 0 {
+		return errors.New("You must specify Credentials!")
 	}
 
-	if n.credentials == "<credentials>" {
-		return errors.New("You have not set your personal credentials given to you by the notifi app! You instead used the placeholder '<credentials>'!")
+	if n.Credentials == "<credentials>" {
+		return errors.New("You have not set your personal Credentials given to you by the notifi app! You instead used the placeholder '<Credentials>'!")
 	}
 
 	if len(n.Title) == 0 {
@@ -100,12 +101,12 @@ func (n Notification) Validate() error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Handle(err)
+			Fatal(err)
 			n.Image = "" // remove image reference
 		} else {
 			contentlen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Handle(err)
+				Fatal(err)
 				n.Image = "" // remove image reference
 			}
 
@@ -181,7 +182,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 // DeleteNotificationsWithIDs deletes all comma separated ids
-func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) {
+func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 	// arguments to be passed to the SQL query
 	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
 
@@ -192,34 +193,39 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) {
 			continue
 		}
 		val, err := strconv.Atoi(element)
-		Handle(err)
+		Fatal(err)
 		SQLArgs = append(SQLArgs, val)
 		numIds += 1
 	}
 
-	query := `
+	query := fmt.Sprintf(`
 	DELETE FROM notifications
 	WHERE credentials = ?
-	AND id IN (?` + strings.Repeat(",?", len(SQLArgs)-2) + `)`
+	AND id IN (?%s)`, strings.Repeat(",?", len(SQLArgs)-2))
 
 	res, err := db.Exec(query, SQLArgs...)
-	Handle(err)
+	if err != nil {
+		return err
+	}
 	rowsAffected, err := res.RowsAffected()
-	Handle(err)
+	if err != nil {
+		return err
+	}
 
 	if rowsAffected != numIds {
-		Handle(fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds))
+		return fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds)
 	}
+	return nil
 }
 
-// IncreaseNotificationCnt increases the notification count in the database of the specific credentials from the
+// IncreaseNotificationCnt increases the notification count in the database of the specific Credentials from the
 // Notification
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.credentials))
-	Handle(err)
+	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	Fatal(err)
 	num, err := res.RowsAffected()
-	Handle(err)
+	Fatal(err)
 	if num == 0 {
 		return errors.New("no such user with credentials")
 	}
@@ -230,6 +236,6 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 func FetchNumNotifications(db *sql.DB) int {
 	id := 0
 	row := db.QueryRow("SELECT sum(notification_cnt) from users")
-	Handle(row.Scan(&id))
+	Fatal(row.Scan(&id))
 	return id + 1
 }
