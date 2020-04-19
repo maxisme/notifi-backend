@@ -11,7 +11,7 @@ import (
 	"github.com/getsentry/sentry-go"
 )
 
-// Fatal panics errors and logs them to sentry
+// Fatal panics errors and sends them to sentry
 func Fatal(err error) {
 	if err != nil {
 		// log err to sentry
@@ -71,7 +71,7 @@ func RequiredEnvs(envKeys []string) error {
 	for _, envKey := range envKeys {
 		envValue := os.Getenv(envKey)
 		if envValue == "" {
-			return fmt.Errorf("missing env '%s'", envKey)
+			return fmt.Errorf("missing env variable: '%s'", envKey)
 		}
 	}
 	return nil

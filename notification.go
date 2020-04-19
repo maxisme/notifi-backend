@@ -193,7 +193,7 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 			continue
 		}
 		val, err := strconv.Atoi(element)
-		Fatal(err)
+		LogErr(err)
 		SQLArgs = append(SQLArgs, val)
 		numIds += 1
 	}

@@ -14,6 +14,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/maxisme/notifi-backend/conn"
+
+	"github.com/maxisme/notifi-backend/ws"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -98,13 +102,13 @@ func TestMain(t *testing.M) {
 	TESTDBNAME := "notifi_test"
 
 	// make sure tests have all env variables
-	err := RequiredEnvs([]string{"db", "encryption_key", "server_key"})
+	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
 	if err != nil {
 		panic(err)
 	}
 
 	// create database
-	db, err := dbConn(os.Getenv("db") + "/?multiStatements=True")
+	db, err := conn.DbConn(os.Getenv("db") + "/?multiStatements=True")
 	if err != nil {
 		panic(err)
 	}
@@ -135,11 +139,22 @@ func TestMain(t *testing.M) {
 	}
 
 	// init server db connection
-	db, err = dbConn(dbConnStr)
+	db, err = conn.DbConn(dbConnStr)
 	if err != nil {
 		panic(err)
 	}
-	s = Server{db: db}
+
+	// init server redis connection
+	red, err := conn.RedisConn(os.Getenv("redis"))
+	if err != nil {
+		panic(err)
+	}
+
+	s = Server{
+		db:      db,
+		redis:   red,
+		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+	}
 
 	code := t.Run() // RUN THE TEST
 
@@ -283,12 +298,12 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 
 	// fetch stored notifications on Server that were sent when not connected
 	_ = ws.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
-	_, mess, err := ws.ReadMessage()
+	_, msg, err := ws.ReadMessage()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
+	_ = json.Unmarshal(msg, &notifications)
 
 	if notifications[0].Title != TITLE {
 		t.Error("Incorrect title returned!")
@@ -308,12 +323,12 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	SendNotification(creds.Value, TITLE)
 
 	// read notification over ws
-	_, mess, _ := ws.ReadMessage()
+	_, msg, _ := ws.ReadMessage()
 	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
+	_ = json.Unmarshal(msg, &notifications)
 
 	if notifications[0].Title != TITLE {
-		t.Error("Titles do not match! ? - ?", notifications[0].Title, TITLE)
+		t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
 	}
 }
 
@@ -423,9 +438,9 @@ func TestDeleteNotificationsWithIncorrectIDs(t *testing.T) {
 	sock, _, ws, _ := ConnectWSS(userCreds, form)
 	defer sock.Close()
 	defer ws.Close()
-	_, mess, _ := ws.ReadMessage()
+	_, msg, _ := ws.ReadMessage()
 	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
+	_ = json.Unmarshal(msg, &notifications)
 
 	// fetch ids from notifications
 	var ids string
@@ -463,9 +478,9 @@ func TestDeleteNotification(t *testing.T) {
 	s, _, ws, _ := ConnectWSS(creds, uform)
 
 	// delete notification
-	_, mess, _ := ws.ReadMessage()
+	_, msg, _ := ws.ReadMessage()
 	var notifications []Notification
-	_ = json.Unmarshal(mess, &notifications)
+	_ = json.Unmarshal(msg, &notifications)
 	_ = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
 
 	// disconnect from ws

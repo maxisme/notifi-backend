@@ -77,7 +77,6 @@ jobs:
 
   deploy:
     name: Deploy
-    if: github.ref == 'refs/heads/master'
     needs: publish
     runs-on: ubuntu-latest
     steps:

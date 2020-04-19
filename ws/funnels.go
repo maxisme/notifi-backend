@@ -2,7 +2,6 @@ package ws
 
 import (
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/go-redis/redis/v7"
@@ -19,32 +18,23 @@ type Funnels struct {
 	sync.RWMutex
 }
 
-func (funnel *Funnel) pubSubWSListener(errorHandler func(error)) {
-	for {
-		redisMsg, err := funnel.PubSub.ReceiveMessage()
-		if err != nil {
-			// TODO catch specific err
-			break
-		}
-		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
-		errorHandler(err)
-	}
+var Upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
 }
 
-func (funnels *Funnels) Add(f *Funnel, key string) {
+func (funnels *Funnels) Add(funnel *Funnel, key string, errorHandler func(error)) {
 	funnels.Lock()
-	funnels.Clients[key] = f
+	funnels.Clients[key] = funnel
 	funnels.Unlock()
 
 	// start redis listener
-	go f.pubSubWSListener(func(e error) {
-		log.Println(e.Error())
-	})
+	go funnel.pubSubWSListener(errorHandler)
 }
 
-func (funnels *Funnels) Remove(f *Funnel, key string) error {
+func (funnels *Funnels) Remove(funnel *Funnel, key string) error {
 	// remove client from redis subscription
-	err := f.PubSub.Unsubscribe()
+	err := funnel.PubSub.Unsubscribe()
 	if err != nil {
 		return err
 	}
@@ -62,31 +52,30 @@ func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) err
 	funnels.RLock()
 	funnel, gotFunnel := funnels.Clients[key]
 	funnels.RUnlock()
+
 	if gotFunnel {
-		err := funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
-		if err != nil {
-			return nil
-		}
-		return err
+		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
 	}
 
-	// look to see if there are any subscribers to this redis channel and thus an instance with a ws connection
-	cmd := red.PubSubChannels(key)
-	err := cmd.Err()
-	if err != nil {
-		return err
-	}
-	channels, err := cmd.Result()
-	if err != nil {
-		return err
-	}
-	if len(channels) != 0 {
-		// there is a server with ws connections
-		numSubscribers := red.Publish(key, string(msg))
-		if numSubscribers.Val() != 0 {
-			// sent to a redis subscriber
-			return nil
-		}
+	// send msg blindly to redis pub sub
+	numSubscribers := red.Publish(key, string(msg))
+	if numSubscribers.Val() != 0 {
+		// sent to a redis subscriber
+		return nil
 	}
 	return fmt.Errorf("no redis subscribers for %s", key)
+}
+
+func (funnel *Funnel) pubSubWSListener(errorHandler func(error)) {
+	for {
+		redisMsg, err := funnel.PubSub.ReceiveMessage()
+		if err != nil {
+			// TODO catch specific err
+			break
+		}
+		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
+		if err != nil {
+			fmt.Println("Problem sending socket message though redis: " + err.Error())
+		}
+	}
 }

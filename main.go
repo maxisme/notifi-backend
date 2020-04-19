@@ -1,9 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/go-redis/redis/v7"
+	"github.com/maxisme/notifi-backend/conn"
 
 	"github.com/maxisme/notifi-backend/ws"
 
@@ -13,27 +17,30 @@ import (
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/gorilla/schema"
-	"github.com/gorilla/websocket"
 )
 
+// Server is used for database pooling - sharing the db connection to the web handlers.
+type Server struct {
+	db      *sql.DB
+	redis   *redis.Client
+	funnels *ws.Funnels
+}
+
 var (
-	upgrader = websocket.Upgrader{
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
 	decoder   = schema.NewDecoder()
 	serverKey = os.Getenv("server_key") // has to be passed with every request
 )
 
-// set http request limiter to max 5 requests per second
-var lmt = tollbooth.NewLimiter(5, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-	"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
-})
+const numRequestsPerSecond = 5
 
 // callback function
 var sentryHandler *sentryhttp.Handler
 
 func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handler {
+	lmt := tollbooth.NewLimiter(numRequestsPerSecond,
+		&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
+		"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
+	})
 	if sentryHandler != nil {
 		return sentryHandler.Handle(tollbooth.LimitFuncHandler(lmt, nextFunc))
 	}
@@ -48,14 +55,14 @@ func main() {
 	}
 
 	// connect to db
-	dbConn, err := dbConn(os.Getenv("db"))
+	dbConn, err := conn.DbConn(os.Getenv("db"))
 	if err != nil {
 		panic(err)
 	}
 	defer dbConn.Close()
 
 	// connect to redis
-	redisConn, err := redisConn(os.Getenv("redis"))
+	redisConn, err := conn.RedisConn(os.Getenv("redis"))
 	if err != nil {
 		panic(err)
 	}

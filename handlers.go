@@ -23,7 +23,7 @@ const (
 )
 
 // layout for times Format()
-const timeLayout = "2006-01-02 15:04:05"
+const NotificationTimeLayout = "2006-01-02 15:04:05"
 
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -85,7 +85,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// connect to socket
-	WSConn, err := upgrader.Upgrade(w, r, nil)
+	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
 	Fatal(err)
 
 	// initialise funnel
@@ -94,7 +94,10 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		PubSub: s.redis.Subscribe(user.Credentials.Value),
 	}
 
-	s.funnels.Add(funnel, user.Credentials.Value)
+	s.funnels.Add(funnel, user.Credentials.Value, func(e error) {
+		LogErr(err)
+
+	})
 
 	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
 
@@ -177,10 +180,9 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c, err := json.Marshal(creds)
+	Fatal(err)
 	if err == nil {
 		_, err = w.Write(c)
-		Fatal(err)
-	} else {
 		Fatal(err)
 	}
 }
@@ -216,13 +218,13 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)
-	notification.Time = time.Now().Format(timeLayout)
+	notification.Time = time.Now().Format(NotificationTimeLayout)
 	notificationBytes, err := json.Marshal([]Notification{notification})
 	Fatal(err)
 
 	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
 	if err != nil {
-		LogErr(err)
+		log.Println(err)
 		Fatal(notification.Store(s.db))
 	}
 }
