@@ -174,7 +174,7 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		PubSub: red.Subscribe(key),
 	}
 	funnels1.Add(funnel)
-	time.Sleep(50 * time.Millisecond) // wait for redis subscriber in go routine to initialise
+	time.Sleep(100 * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
 	err := funnels1.Remove(funnel)
 	if err != nil {
