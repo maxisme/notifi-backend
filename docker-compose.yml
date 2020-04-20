@@ -1,4 +1,4 @@
-version: '3.1'
+version: '3.2'
 services:
   db:
     image: mysql:5.6
@@ -7,9 +7,13 @@ services:
       MYSQL_DATABASE: notifi
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
-    container_name: notifi-backend-db
     tty: true
     restart: always
+    networks:
+      - overlay
+
+  redis:
+    image: "redis:alpine"
     networks:
       - overlay
 
@@ -21,6 +25,7 @@ services:
       sentry_dsn: ${sentry_dsn:?err}
       server_key: ${server_key:?err}
       encryption_key: ${encryption_key:?err}
+      redis: "redis:6379"
     deploy:
       mode: global
     tty: true
@@ -30,8 +35,10 @@ services:
       - overlay
     depends_on:
       - db
+      - redis
     links:
       - db
+      - redis
 
   migrate:
     image: migrate/migrate

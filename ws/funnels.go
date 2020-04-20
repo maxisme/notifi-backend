@@ -29,7 +29,7 @@ func (funnels *Funnels) Add(funnel *Funnel) {
 	funnels.Clients[funnel.Key] = funnel
 	funnels.Unlock()
 
-	// start redis listener
+	// start redis subscriber listener
 	go funnel.pubSubWSListener()
 }
 
@@ -49,7 +49,7 @@ func (funnels *Funnels) Remove(funnel *Funnel) error {
 }
 
 func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) error {
-	// check if the websocket connection to this client is on this machine
+	// check if the websocket connection to this client is on this Funnels (machine)
 	funnels.RLock()
 	funnel, gotFunnel := funnels.Clients[key]
 	funnels.RUnlock()
@@ -64,7 +64,7 @@ func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) err
 		// successfully sent to a redis subscriber
 		return nil
 	}
-	return fmt.Errorf("no redis subscribers for %s", key)
+	return fmt.Errorf("no socket or redis subscribers for %s", key)
 }
 
 func (funnel *Funnel) pubSubWSListener() {

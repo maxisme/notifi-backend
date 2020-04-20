@@ -46,11 +46,12 @@ jobs:
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
       - uses: codecov/codecov-action@v1
+        if: github.ref == 'refs/heads/master'
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   publish:
-    name: Publish Docker to GitHub Package Registry
+    name: Publish Docker image to GitHub & Docker Package Registrys
     if: github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
@@ -92,5 +93,4 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
-          script: |
-            ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
+          script: ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
