@@ -6,6 +6,11 @@ jobs:
     name: Test with version
     runs-on: ubuntu-latest
     services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: --entrypoint redis-server
       mysql:
         image: mysql:5.7
         env:
@@ -37,6 +42,7 @@ jobs:
           encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           db: "root:root@"
           server_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
+          redis: "127.0.0.1:6379"
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
       - uses: codecov/codecov-action@v1
