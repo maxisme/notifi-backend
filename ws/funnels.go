@@ -9,6 +9,7 @@ import (
 )
 
 type Funnel struct {
+	Key    string
 	WSConn *websocket.Conn
 	PubSub *redis.PubSub
 }
@@ -23,16 +24,16 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (funnels *Funnels) Add(funnel *Funnel, key string, errorHandler func(error)) {
+func (funnels *Funnels) Add(funnel *Funnel) {
 	funnels.Lock()
-	funnels.Clients[key] = funnel
+	funnels.Clients[funnel.Key] = funnel
 	funnels.Unlock()
 
 	// start redis listener
-	go funnel.pubSubWSListener(errorHandler)
+	go funnel.pubSubWSListener()
 }
 
-func (funnels *Funnels) Remove(funnel *Funnel, key string) error {
+func (funnels *Funnels) Remove(funnel *Funnel) error {
 	// remove client from redis subscription
 	err := funnel.PubSub.Unsubscribe()
 	if err != nil {
@@ -41,7 +42,7 @@ func (funnels *Funnels) Remove(funnel *Funnel, key string) error {
 
 	// remove funnel from map
 	funnels.Lock()
-	delete(funnels.Clients, key)
+	delete(funnels.Clients, funnel.Key)
 	funnels.Unlock()
 
 	return nil
@@ -60,13 +61,13 @@ func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) err
 	// send msg blindly to redis pub sub
 	numSubscribers := red.Publish(key, string(msg))
 	if numSubscribers.Val() != 0 {
-		// sent to a redis subscriber
+		// successfully sent to a redis subscriber
 		return nil
 	}
 	return fmt.Errorf("no redis subscribers for %s", key)
 }
 
-func (funnel *Funnel) pubSubWSListener(errorHandler func(error)) {
+func (funnel *Funnel) pubSubWSListener() {
 	for {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
 		if err != nil {
@@ -75,7 +76,7 @@ func (funnel *Funnel) pubSubWSListener(errorHandler func(error)) {
 		}
 		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 		if err != nil {
-			fmt.Println("Problem sending socket message though redis: " + err.Error())
+			fmt.Println("Problem sending funnel socket message though redis: " + err.Error())
 		}
 	}
 }

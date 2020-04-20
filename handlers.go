@@ -90,14 +90,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// initialise funnel
 	funnel := &ws.Funnel{
+		Key:    user.Credentials.Value,
 		WSConn: WSConn,
 		PubSub: s.redis.Subscribe(user.Credentials.Value),
 	}
 
-	s.funnels.Add(funnel, user.Credentials.Value, func(e error) {
-		LogErr(err)
-
-	})
+	s.funnels.Add(funnel)
 
 	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
 
@@ -123,7 +121,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		go LogErr(user.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
-	LogErr(s.funnels.Remove(funnel, user.Credentials.Value))
+	LogErr(s.funnels.Remove(funnel))
 
 	log.Println("Client Disconnected: ", crypt.Hash(user.Credentials.Value))
 

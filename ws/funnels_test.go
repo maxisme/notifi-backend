@@ -55,9 +55,9 @@ func TestMain(t *testing.M) {
 }
 
 func webSocketHandler(w http.ResponseWriter, r *http.Request) {
-	conn, _ := Upgrader.Upgrade(w, r, nil)
-	_, msg, _ := conn.ReadMessage()
-	_ = conn.WriteMessage(1, msg)
+	c, _ := Upgrader.Upgrade(w, r, nil)
+	_, msg, _ := c.ReadMessage()
+	_ = c.WriteMessage(1, msg)
 }
 
 func createWS(t *testing.T) *websocket.Conn {
@@ -79,12 +79,13 @@ func TestSendBytesToRemovedFunnel(t *testing.T) {
 
 	key := "foo"
 	funnel := &Funnel{
+		Key:    key,
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
 
-	funnels.Add(funnel, key, nil)
-	_ = funnels.Remove(funnel, key)
+	funnels.Add(funnel)
+	_ = funnels.Remove(funnel)
 
 	err := funnels.SendBytes(red, key, []byte("test"))
 	if err == nil {
@@ -100,11 +101,13 @@ func TestSendBytesLocally(t *testing.T) {
 
 	key := "foo"
 	funnel := &Funnel{
+		Key:    key,
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
 
-	funnels.Add(funnel, key, nil)
+	funnels.Add(funnel)
+	defer funnels.Remove(funnel)
 
 	// send message over socket
 	sendMsg := []byte("hello")
@@ -133,9 +136,8 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
-	funnels1.Add(funnel, key, func(e error) {
-		fmt.Println(e.Error())
-	})
+	funnels1.Add(funnel)
+	defer funnels1.Remove(funnel)
 
 	time.Sleep(50 * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
@@ -151,5 +153,37 @@ func TestSendBytesThroughRedis(t *testing.T) {
 	}
 	if string(msg) != string(sendMsg) {
 		t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+	}
+}
+
+func TestFailedSendBytesThroughRedis(t *testing.T) {
+	funnels1 := Funnels{
+		Clients: make(map[string]*Funnel),
+		RWMutex: sync.RWMutex{},
+	}
+
+	funnels2 := Funnels{
+		Clients: make(map[string]*Funnel),
+		RWMutex: sync.RWMutex{},
+	}
+
+	key := "foo3"
+	funnel := &Funnel{
+		Key:    key,
+		WSConn: createWS(t),
+		PubSub: red.Subscribe(key),
+	}
+	funnels1.Add(funnel)
+	time.Sleep(50 * time.Millisecond) // wait for redis subscriber in go routine to initialise
+
+	err := funnels1.Remove(funnel)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	sendMsg := []byte("hello")
+	err = funnels2.SendBytes(red, key, sendMsg)
+	if err == nil {
+		t.Errorf("Should have returned error")
 	}
 }
