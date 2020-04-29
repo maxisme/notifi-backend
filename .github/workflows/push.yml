@@ -51,7 +51,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   publish:
-    name: Publish Docker image to GitHub & Docker Package Registrys
+    name: Publish Docker image
     if: github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
