@@ -1,0 +1,31 @@
+version: '3.1'
+services:
+  app:
+    image: maxisme/notifi-backend:latest
+    restart: always
+    environment:
+      db: notifi:notifi@tcp(db:3306)/notifi
+      sentry_dsn: ${sentry_dsn:?err}
+      server_key: ${server_key:?err}
+      encryption_key: ${encryption_key:?err}
+    deploy:
+      mode: global
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.notifibackend.rule=Host(`s.notifi.it`) || (Host(`notifi.it`) && Path(`/api`))"
+        - "traefik.http.routers.notifibackend.entrypoints=web-secure"
+        - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
+        - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
+    tty: true
+    networks:
+      - traefik
+
+  migrate:
+    image: migrate/migrate
+    volumes:
+      - .sql:/sql
+    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
+
+networks:
+  traefik:
+    external: true

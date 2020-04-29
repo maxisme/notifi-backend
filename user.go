@@ -2,9 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"log"
+
 	"github.com/go-errors/errors"
 	"github.com/maxisme/notifi-backend/crypt"
-	"log"
 )
 
 // User structure
@@ -19,9 +20,10 @@ type User struct {
 }
 
 // Credentials structure
+type credentials = string
 type Credentials struct {
-	Value string `json:"credentials"`
-	Key   string `json:"key"`
+	Value credentials `json:"credentials"`
+	Key   string      `json:"key"`
 }
 
 const (
@@ -29,10 +31,10 @@ const (
 	credentialKeyLen = 100
 )
 
-// Store stores or updates u User with new credentials depending on whether the user passes current credentials
+// Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store
 func (u User) Store(db *sql.DB) (Credentials, error) {
-	// create new credentials
+	// create new Credentials
 	creds := Credentials{
 		crypt.RandomString(credentialLen),
 		crypt.RandomString(credentialKeyLen),
@@ -49,7 +51,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
 			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
-				Handle(err)
+				Fatal(err)
 				return Credentials{}, err
 			}
 			creds.Value = ""
@@ -60,7 +62,7 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
 			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
-				Handle(err)
+				Fatal(err)
 				return Credentials{}, err
 			}
 			return creds, nil
@@ -71,19 +73,19 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
 		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
-			// if client passes current details they are asking for new credentials
+			// if client passes current details they are asking for new Credentials
 
-			// verify the credentials passed are valid
+			// verify the Credentials passed are valid
 			if u.Verify(db) {
 				isNewUser = false
 			} else {
-				log.Println("Lied about credentials") // TODO better logging
+				log.Println("lied about credentials") // TODO better logging
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
 	}
 
-	// update users credentials
+	// update users Credentials
 	query := ""
 	if isNewUser {
 		// create new user
@@ -113,9 +115,9 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
-// Get will return user params based on credentials
+// Get will return user params based on Credentials
 func (u *User) Get(db *sql.DB, credentials string) error {
-	row := db.QueryRow(`
+	var row = db.QueryRow(`
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
@@ -123,10 +125,10 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
-// Verify verifies a u User s credentials
+// Verify verifies a u User s Credentials
 func (u User) Verify(db *sql.DB) bool {
 	var DBUser User
-	err := DBUser.Get(db, u.Credentials.Value)
+	err := DBUser.Get(db, string(u.Credentials.Value))
 	if err != nil {
 		log.Println("No such credentials in db: " + u.Credentials.Value)
 		return false

@@ -78,7 +78,7 @@ func RandomString(n int) string {
 	return string(b)
 }
 
-// Hash hashes a string
+// Hash hashes a string TODO cache
 func Hash(str string) string {
 	return HashWithBytes([]byte(str))
 }

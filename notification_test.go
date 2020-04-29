@@ -1,8 +1,9 @@
 package main
 
 import (
-	"github.com/maxisme/notifi-backend/crypt"
 	"testing"
+
+	"github.com/maxisme/notifi-backend/crypt"
 )
 
 // return error if validation passes
@@ -17,7 +18,6 @@ func TestValidation(t *testing.T) {
 	n := Notification{}
 	validateNotificationTest(t, n)
 
-	n.Credentials = "<credentials>" // invalid
 	validateNotificationTest(t, n)
 	n.Credentials = crypt.RandomString(25) // valid
 

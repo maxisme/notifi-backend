@@ -2,13 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/maxisme/notifi-backend/ws"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 	"github.com/maxisme/notifi-backend/crypt"
-	"log"
-	"net/http"
-	"time"
 )
 
 // custom error codes
@@ -20,7 +23,7 @@ const (
 )
 
 // layout for times Format()
-const timeLayout = "2006-01-02 15:04:05"
+const NotificationTimeLayout = "2006-01-02 15:04:05"
 
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -34,40 +37,40 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := Credentials{
+	credentials := Credentials{
 		Value: r.Header.Get("Credentials"),
 		Key:   r.Header.Get("Credentialkey"),
 	}
-	u := User{
-		Credentials: c,
+	user := User{
+		Credentials: credentials,
 		UUID:        r.Header.Get("Uuid"),
 		AppVersion:  r.Header.Get("Version"),
 	}
 
 	// validate inputs
-	if !IsValidUUID(u.UUID) {
+	if !IsValidUUID(user.UUID) {
 		WriteError(w, r, ErrorCode, "Invalid UUID")
 		return
-	} else if !IsValidVersion(u.AppVersion) {
+	} else if !IsValidVersion(user.AppVersion) {
 		WriteError(w, r, ErrorCode, "Invalid Version")
 		return
-	} else if !IsValidCredentials(u.Credentials.Value) {
+	} else if !IsValidCredentials(user.Credentials.Value) {
 		WriteError(w, r, ErrorCode, "Invalid Credentials")
 		return
 	}
 
 	var errorCode = 0
 	var DBUser User
-	_ = DBUser.GetWithUUID(s.db, u.UUID)
+	_ = DBUser.GetWithUUID(s.db, user.UUID)
 	if len(DBUser.Credentials.Key) == 0 {
 		if len(DBUser.Credentials.Value) == 0 {
-			log.Println("No credentials or key for: " + u.UUID)
+			log.Println("No credentials or key for: " + user.UUID)
 			errorCode = NoUUIDCode
 		} else {
-			log.Println("No credential key for: " + u.UUID)
+			log.Println("No credential key for: " + user.UUID)
 			errorCode = ResetKeyCode
 		}
-	} else if !u.Verify(s.db) {
+	} else if !user.Verify(s.db) {
 		errorCode = InvalidLoginCode
 	}
 	if errorCode != 0 {
@@ -75,53 +78,58 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := u.StoreLogin(s.db); err != nil {
-		Handle(err)
+	if err := user.StoreLogin(s.db); err != nil {
+		Fatal(err)
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
 	// connect to socket
-	WSConn, err := upgrader.Upgrade(w, r, nil)
-	Handle(err)
+	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
+	Fatal(err)
 
-	// add conn to clients
-	clientsWSMutex.Lock()
-	clientsWS[u.Credentials.Value] = WSConn
-	clientsWSMutex.Unlock()
-
-	log.Println("Client Connected:", crypt.Hash(u.Credentials.Value))
-
-	// send all pending notifications in db
-	notifications, err := u.FetchNotifications(s.db)
-	Handle(err)
-	if len(notifications) > 0 {
-		bytes, _ := json.Marshal(notifications)
-		err := WSConn.WriteMessage(websocket.TextMessage, bytes)
-		Handle(err)
+	// initialise funnel
+	funnel := &ws.Funnel{
+		Key:    user.Credentials.Value,
+		WSConn: WSConn,
+		PubSub: s.redis.Subscribe(user.Credentials.Value),
 	}
+
+	s.funnels.Add(funnel)
+
+	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
+
+	// send all stored notifications from db
+	go func() {
+		notifications, err := user.FetchNotifications(s.db)
+		Fatal(err)
+		if len(notifications) > 0 {
+			bytes, _ := json.Marshal(notifications)
+			err := WSConn.WriteMessage(websocket.TextMessage, bytes)
+			Fatal(err)
+		}
+	}()
 
 	// listen for socket messages until disconnected
 	for {
 		_, message, err := WSConn.ReadMessage()
 		if err != nil {
-			break
+			// TODO handle specific err
+			break // disconnected from WS
 		}
 
-		go Handle(u.DeleteNotificationsWithIDs(s.db, string(message)))
+		go LogErr(user.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
-	clientsWSMutex.Lock()
-	delete(clientsWS, u.Credentials.Value)
-	clientsWSMutex.Unlock()
+	LogErr(s.funnels.Remove(funnel))
 
-	log.Println("Client Disconnected:", crypt.Hash(u.Credentials.Value))
+	log.Println("Client Disconnected: ", crypt.Hash(user.Credentials.Value))
 
 	// close connection
-	Handle(u.CloseLogin(s.db))
+	Fatal(user.CloseLogin(s.db))
 }
 
-// CredentialHandler is the http handler for creating and updating credentials
+// CredentialHandler is the http handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
@@ -143,7 +151,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	PostUser := User{
 		UUID: r.Form.Get("UUID"),
 
-		// if asking for new credentials
+		// if asking for new Credentials
 		Credentials: Credentials{
 			Value: r.Form.Get("current_credentials"),
 			Key:   r.Form.Get("current_key"),
@@ -159,21 +167,22 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 		if ok && mysqlErr.Number != 1062 {
-			// log to sentry as a very big issue
+			// log to sentry as a very big issue TODO what is 🤦‍
 			sentry.WithScope(func(scope *sentry.Scope) {
 				scope.SetLevel(sentry.LevelFatal)
 				sentry.CaptureException(err)
 			})
 		}
-		Handle(err)
 		WriteError(w, r, 401, err.Error())
 		return
 	}
 
 	c, err := json.Marshal(creds)
-	Handle(err)
-	_, err = w.Write(c)
-	Handle(err)
+	Fatal(err)
+	if err == nil {
+		_, err = w.Write(c)
+		Fatal(err)
+	}
 }
 
 // APIHandler is the http handler for handling API calls to create notifications
@@ -201,29 +210,19 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	// increase notification count
 	if err := IncreaseNotificationCnt(s.db, notification); err != nil {
-		// no such user with credentials
+		// no such user with Credentials
 		return
 	}
 
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)
+	notification.Time = time.Now().Format(NotificationTimeLayout)
+	notificationBytes, err := json.Marshal([]Notification{notification})
+	Fatal(err)
 
-	// fetch client socket
-	clientsWSMutex.RLock()
-	socket, gotSocket := clientsWS[notification.Credentials]
-	clientsWSMutex.RUnlock()
-
-	if gotSocket {
-		// set notification time to now
-		notification.Time = time.Now().Format(timeLayout)
-
-		bytes, _ := json.Marshal([]Notification{notification}) // pass notification as array
-		if err := socket.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			Handle(err)
-		} else {
-			return // skip storing the notification as already sent to client
-		}
+	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
+	if err != nil {
+		log.Println(err)
+		Fatal(notification.Store(s.db))
 	}
-
-	Handle(notification.Store(s.db))
 }

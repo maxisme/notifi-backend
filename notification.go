@@ -4,18 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/maxisme/notifi-backend/crypt"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/maxisme/notifi-backend/crypt"
 )
 
 // Notification structure
 type Notification struct {
+	Credentials credentials
 	ID          int    `json:"id"`
-	Credentials string `json:"-"`
 	Time        string `json:"time"`
 	Title       string `json:"title"`
 	Message     string `json:"message"`
@@ -34,7 +35,6 @@ var encryptionKey = []byte(os.Getenv("encryption_key"))
 
 // Store will store n Notification in the database after encrypting the content
 func (n Notification) Store(db *sql.DB) (err error) {
-
 	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
@@ -65,11 +65,11 @@ func (n Notification) Store(db *sql.DB) (err error) {
 // Validate runs validation on n Notification
 func (n Notification) Validate() error {
 	if len(n.Credentials) == 0 {
-		return errors.New("You must specify credentials!")
+		return errors.New("You must specify Credentials!")
 	}
 
 	if n.Credentials == "<credentials>" {
-		return errors.New("You have not set your personal credentials given to you by the notifi app! You instead used the placeholder '<credentials>'!")
+		return errors.New("You have not set your personal Credentials given to you by the notifi app! You instead used the placeholder '<Credentials>'!")
 	}
 
 	if len(n.Title) == 0 {
@@ -101,12 +101,12 @@ func (n Notification) Validate() error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Handle(err)
+			Fatal(err)
 			n.Image = "" // remove image reference
 		} else {
 			contentlen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Handle(err)
+				Fatal(err)
 				n.Image = "" // remove image reference
 			}
 
@@ -193,17 +193,15 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 			continue
 		}
 		val, err := strconv.Atoi(element)
-		if err != nil {
-			return err
-		}
+		LogErr(err)
 		SQLArgs = append(SQLArgs, val)
 		numIds += 1
 	}
 
-	query := `
+	query := fmt.Sprintf(`
 	DELETE FROM notifications
 	WHERE credentials = ?
-	AND id IN (?` + strings.Repeat(",?", len(SQLArgs)-2) + `)`
+	AND id IN (?%s)`, strings.Repeat(",?", len(SQLArgs)-2))
 
 	res, err := db.Exec(query, SQLArgs...)
 	if err != nil {
@@ -220,14 +218,14 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 	return nil
 }
 
-// IncreaseNotificationCnt increases the notification count in the database of the specific credentials from the
+// IncreaseNotificationCnt increases the notification count in the database of the specific Credentials from the
 // Notification
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
-	Handle(err)
+	Fatal(err)
 	num, err := res.RowsAffected()
-	Handle(err)
+	Fatal(err)
 	if num == 0 {
 		return errors.New("no such user with credentials")
 	}
@@ -238,6 +236,6 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 func FetchNumNotifications(db *sql.DB) int {
 	id := 0
 	row := db.QueryRow("SELECT sum(notification_cnt) from users")
-	Handle(row.Scan(&id))
+	Fatal(row.Scan(&id))
 	return id + 1
 }

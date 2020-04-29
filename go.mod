@@ -7,6 +7,7 @@ require (
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/getsentry/sentry-go v0.5.1
 	github.com/go-errors/errors v1.0.1
+	github.com/go-redis/redis/v7 v7.2.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/golang-migrate/migrate/v4 v4.8.0
 	github.com/google/uuid v1.1.1
