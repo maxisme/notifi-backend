@@ -14,9 +14,12 @@ import (
 	"github.com/TV4/graceful"
 	"github.com/didip/tollbooth"
 	"github.com/didip/tollbooth/limiter"
+	"github.com/didip/tollbooth_chi"
 	"github.com/getsentry/sentry-go"
 	sentryhttp "github.com/getsentry/sentry-go/http"
+	"github.com/go-chi/chi"
 	"github.com/gorilla/schema"
+	"github.com/joho/godotenv"
 )
 
 // Server is used for database pooling - sharing the db connection to the web handlers.
@@ -33,21 +36,12 @@ var (
 
 const numRequestsPerSecond = 5
 
-// callback function
-var sentryHandler *sentryhttp.Handler
-
-func httpCallback(nextFunc func(http.ResponseWriter, *http.Request)) http.Handler {
-	lmt := tollbooth.NewLimiter(numRequestsPerSecond,
-		&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-		"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
-	})
-	if sentryHandler != nil {
-		return sentryHandler.Handle(tollbooth.LimitFuncHandler(lmt, nextFunc))
-	}
-	return tollbooth.LimitFuncHandler(lmt, nextFunc)
-}
-
 func main() {
+	// load .env
+	if err := godotenv.Load(); err != nil {
+		panic(err)
+	}
+
 	// check all envs are set
 	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
 	if err != nil {
@@ -78,15 +72,24 @@ func main() {
 	sentryDsn := os.Getenv("sentry_dsn")
 	if sentryDsn != "" {
 		if err := sentry.Init(sentry.ClientOptions{Dsn: sentryDsn}); err != nil {
-			panic(err.Error())
+			panic(err)
 		}
-		sentryHandler = sentryhttp.New(sentryhttp.Options{})
 	}
+	sentryMiddleware := sentryhttp.New(sentryhttp.Options{})
+
+	r := chi.NewRouter()
+
+	// middleware
+	var lmt = tollbooth.NewLimiter(numRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
+		"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
+	})
+	r.Use(tollbooth_chi.LimitHandler(lmt))
+	r.Use(sentryMiddleware.Handle)
+	AddLoggingMiddleWare(r)
 
 	// HANDLERS
-	mux := http.NewServeMux()
-	mux.Handle("/ws", httpCallback(s.WSHandler))
-	mux.Handle("/code", httpCallback(s.CredentialHandler))
-	mux.Handle("/api", httpCallback(s.APIHandler))
-	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: mux})
+	r.HandleFunc("/ws", s.WSHandler)
+	r.HandleFunc("/code", s.CredentialHandler)
+	r.HandleFunc("/api", s.APIHandler)
+	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: r})
 }

@@ -63,7 +63,7 @@ func (n Notification) Store(db *sql.DB) (err error) {
 }
 
 // Validate runs validation on n Notification
-func (n Notification) Validate() error {
+func (n Notification) Validate(r *http.Request) error {
 	if len(n.Credentials) == 0 {
 		return errors.New("You must specify Credentials!")
 	}
@@ -101,12 +101,12 @@ func (n Notification) Validate() error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Fatal(err)
+			LogError(r, err)
 			n.Image = "" // remove image reference
 		} else {
 			contentlen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Fatal(err)
+				LogError(r, err)
 				n.Image = "" // remove image reference
 			}
 
@@ -193,7 +193,9 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 			continue
 		}
 		val, err := strconv.Atoi(element)
-		LogErr(err)
+		if err != nil {
+			continue
+		}
 		SQLArgs = append(SQLArgs, val)
 		numIds += 1
 	}
@@ -223,9 +225,13 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	res, err := db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
-	Fatal(err)
+	if err != nil {
+		return err
+	}
 	num, err := res.RowsAffected()
-	Fatal(err)
+	if err != nil {
+		return err
+	}
 	if num == 0 {
 		return errors.New("no such user with credentials")
 	}

@@ -65,8 +65,8 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 
 func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
 	s := httptest.NewServer(http.HandlerFunc(s.WSHandler))
-	ws, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
-	return s, res, ws, err
+	WS, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
+	return s, res, WS, err
 }
 
 func SendNotification(credentials string, title string) *httptest.ResponseRecorder {
@@ -180,7 +180,7 @@ func TestCredentials(t *testing.T) {
 	var nocreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
 	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
-		t.Errorf("Shouldn't have been able to generate new creds for user!")
+		t.Errorf("Shouldn't have been able to generate new creds for user! %v", nocreds)
 	}
 
 	// ask for new Credentials for user
@@ -271,13 +271,13 @@ func TestWSHandler(t *testing.T) {
 
 	for _, tt := range headers {
 		wsheader.Add(tt.key, tt.value)
-		server, _, ws, err := ConnectWSSHeader(wsheader)
+		server, _, WS, err := ConnectWSSHeader(wsheader)
 		if err == nil != tt.out {
 			println(tt.key + " " + tt.value)
 			t.Errorf("got %v, wanted %v", err == nil, tt.out)
 		}
-		if ws != nil {
-			ws.Close()
+		if WS != nil {
+			WS.Close()
 			server.Close()
 		}
 	}
@@ -292,13 +292,16 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	SendNotification(creds.Value, TITLE)
 
 	// connect to ws
-	s, _, ws, _ := ConnectWSS(creds, uform)
+	s, _, WS, err := ConnectWSS(creds, uform)
+	if err != nil {
+		panic(err)
+	}
 	defer s.Close()
-	defer ws.Close()
+	defer WS.Close()
 
 	// fetch stored notifications on Server that were sent when not connected
-	_ = ws.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
-	_, msg, err := ws.ReadMessage()
+	_ = WS.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
+	_, msg, err := WS.ReadMessage()
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -314,16 +317,16 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	var creds, form = GenUser() // generate user
 
 	// connect to ws
-	s, _, ws, _ := ConnectWSS(creds, form)
+	s, _, WS, _ := ConnectWSS(creds, form)
 	defer s.Close()
-	defer ws.Close()
+	defer WS.Close()
 
 	// send notification over http
 	TITLE := crypt.RandomString(10)
 	SendNotification(creds.Value, TITLE)
 
 	// read notification over ws
-	_, msg, _ := ws.ReadMessage()
+	_, msg, _ := WS.ReadMessage()
 	var notifications []Notification
 	_ = json.Unmarshal(msg, &notifications)
 
@@ -332,7 +335,7 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	}
 }
 
-func TestWSSResponseCodes(t *testing.T) {
+func TestWSSResetKey(t *testing.T) {
 	var creds, f = GenUser() // generate user
 	_, res, _, _ := ConnectWSS(creds, f)
 	if res.StatusCode != 101 {
@@ -343,6 +346,22 @@ func TestWSSResponseCodes(t *testing.T) {
 	removeUserCredKey(s.db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
 	if res.StatusCode != ResetKeyCode {
+		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
+	}
+}
+
+// if there is no UUID in the db the client should be able to request new key
+func TestWSSNoUUID(t *testing.T) {
+	var creds, f = GenUser() // generate user
+	_, res, _, _ := ConnectWSS(creds, f)
+	if res.StatusCode != 101 {
+		t.Errorf("expected %v got %v", 101, res.StatusCode)
+	}
+
+	// remove credential_key
+	removeUserCreds(s.db, f.Get("UUID"))
+	_, res, _, _ = ConnectWSS(creds, f)
+	if res.StatusCode != NoUUIDCode {
 		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
 	}
 }
@@ -435,10 +454,10 @@ func TestDeleteNotificationsWithIncorrectIDs(t *testing.T) {
 	SendNotification(userCreds.Value, crypt.RandomString(10))
 
 	// read notifications over ws
-	sock, _, ws, _ := ConnectWSS(userCreds, form)
+	sock, _, WS, _ := ConnectWSS(userCreds, form)
 	defer sock.Close()
-	defer ws.Close()
-	_, msg, _ := ws.ReadMessage()
+	defer WS.Close()
+	_, msg, _ := WS.ReadMessage()
 	var notifications []Notification
 	_ = json.Unmarshal(msg, &notifications)
 
@@ -475,25 +494,25 @@ func TestDeleteNotification(t *testing.T) {
 	SendNotification(creds.Value, crypt.RandomString(10))
 
 	// connect to wss
-	s, _, ws, _ := ConnectWSS(creds, uform)
+	s, _, WS, _ := ConnectWSS(creds, uform)
 
 	// delete notification
-	_, msg, _ := ws.ReadMessage()
+	_, msg, _ := WS.ReadMessage()
 	var notifications []Notification
 	_ = json.Unmarshal(msg, &notifications)
-	_ = ws.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
+	_ = WS.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
 
 	// disconnect from ws
 	s.Close()
-	ws.Close()
+	WS.Close()
 
 	// reconnect to ws
-	_, _, ws, _ = ConnectWSS(creds, uform)
+	_, _, WS, _ = ConnectWSS(creds, uform)
 
 	// expect timeout on read notification
-	_ = ws.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
-	_, _, err := ws.ReadMessage()
-	if err == nil {
+	_ = WS.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	_, p, err := WS.ReadMessage()
+	if err == nil && len(p) == 0 {
 		t.Errorf("Should have had i/o timeout and received nothing")
 	}
 }
