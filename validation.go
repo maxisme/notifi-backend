@@ -1,10 +1,11 @@
 package main
 
 import (
-	uuid "github.com/satori/go.uuid"
 	url2 "net/url"
 	"regexp"
 	"strings"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 // ValidVersionRegex is regex to match a valid version
@@ -25,7 +26,7 @@ func IsValidUUID(str string) bool {
 	return err == nil
 }
 
-// IsValidCredentials checks a string is the length of expected credentials
+// IsValidCredentials checks a string is the length of expected Credentials
 func IsValidCredentials(credentials string) bool {
 	return len(credentials) == credentialLen
 }

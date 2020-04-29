@@ -2,13 +2,16 @@ package main
 
 import (
 	"encoding/json"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/maxisme/notifi-backend/ws"
+
 	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 	"github.com/maxisme/notifi-backend/crypt"
-	"log"
-	"net/http"
-	"time"
 )
 
 // custom error codes
@@ -20,7 +23,7 @@ const (
 )
 
 // layout for times Format()
-const timeLayout = "2006-01-02 15:04:05"
+const NotificationTimeLayout = "2006-01-02 15:04:05"
 
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
@@ -76,33 +79,34 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.StoreLogin(s.db); err != nil {
-		Handle(err)
+		Fatal(err)
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
 	// connect to socket
-	WSConn, err := upgrader.Upgrade(w, r, nil)
-	Handle(err)
-
-	// create redis pubsub subscriber
-	pubSub := s.redis.Subscribe(user.Credentials.Value)
+	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
+	Fatal(err)
 
 	// initialise funnel
-	funnel := &Funnel{WSConn: WSConn, pubSub: pubSub}
+	funnel := &ws.Funnel{
+		Key:    user.Credentials.Value,
+		WSConn: WSConn,
+		PubSub: s.redis.Subscribe(user.Credentials.Value),
+	}
 
-	s.funnels.addFunnel(funnel, user.Credentials.Value)
+	s.funnels.Add(funnel)
 
 	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
 
 	// send all stored notifications from db
 	go func() {
 		notifications, err := user.FetchNotifications(s.db)
-		Handle(err)
+		Fatal(err)
 		if len(notifications) > 0 {
 			bytes, _ := json.Marshal(notifications)
 			err := WSConn.WriteMessage(websocket.TextMessage, bytes)
-			Handle(err)
+			Fatal(err)
 		}
 	}()
 
@@ -114,18 +118,18 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break // disconnected from WS
 		}
 
-		go user.DeleteNotificationsWithIDs(s.db, string(message))
+		go LogErr(user.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
-	s.funnels.removeFunnel(funnel, user.Credentials.Value)
+	LogErr(s.funnels.Remove(funnel))
 
-	log.Println("Client Disconnected:", crypt.Hash(user.Credentials.Value))
+	log.Println("Client Disconnected: ", crypt.Hash(user.Credentials.Value))
 
 	// close connection
-	Handle(user.CloseLogin(s.db))
+	Fatal(user.CloseLogin(s.db))
 }
 
-// CredentialHandler is the http handler for creating and updating credentials
+// CredentialHandler is the http handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
@@ -147,7 +151,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	PostUser := User{
 		UUID: r.Form.Get("UUID"),
 
-		// if asking for new credentials
+		// if asking for new Credentials
 		Credentials: Credentials{
 			Value: r.Form.Get("current_credentials"),
 			Key:   r.Form.Get("current_key"),
@@ -174,11 +178,10 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c, err := json.Marshal(creds)
+	Fatal(err)
 	if err == nil {
 		_, err = w.Write(c)
-		Handle(err)
-	} else {
-		Handle(err)
+		Fatal(err)
 	}
 }
 
@@ -207,42 +210,19 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	// increase notification count
 	if err := IncreaseNotificationCnt(s.db, notification); err != nil {
-		// no such user with credentials
+		// no such user with Credentials
 		return
 	}
 
 	// set notification ID
 	notification.ID = FetchNumNotifications(s.db)
+	notification.Time = time.Now().Format(NotificationTimeLayout)
+	notificationBytes, err := json.Marshal([]Notification{notification})
+	Fatal(err)
 
-	// check if websocket is connected locally
-	s.funnels.RLock()
-	funnel, gotSocket := s.funnels.clients[notification.credentials]
-	s.funnels.RUnlock()
-
-	if gotSocket {
-		notificationBytes, err := json.Marshal([]Notification{notification})
-		Handle(err)
-		Handle(funnel.WSConn.WriteMessage(websocket.TextMessage, notificationBytes))
-	} else {
-		// look to see if there are any subscribers to this redis channel and thus a ws connection
-		cmd := s.redis.PubSubChannels(notification.credentials)
-		Handle(cmd.Err())
-		channels, err := cmd.Result()
-		Handle(err)
-		if len(channels) != 0 { // there is a ws connection
-			notification.Time = time.Now().Format(timeLayout)
-			// convert notification to json and pass as array as that is what the client expects
-			notificationBytes, err := json.Marshal([]Notification{notification})
-			Handle(err)
-			numSubscribers := s.redis.Publish(notification.credentials, string(notificationBytes))
-			if numSubscribers.Val() != 0 {
-				// sent to a redis subscriber
-				return
-			} else {
-				log.Printf("Missing subscribers on channel %s!", notification.credentials)
-			}
-		}
+	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
+	if err != nil {
+		log.Println(err)
+		Fatal(notification.Store(s.db))
 	}
-
-	Handle(notification.Store(s.db))
 }
