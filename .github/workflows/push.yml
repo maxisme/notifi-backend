@@ -57,15 +57,6 @@ jobs:
         uses: anothrNick/github-tag-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish to GitHub Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
-        with:
-          name: ${{ github.repository }}
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-          registry: docker.pkg.github.com
-          context: ${{ github.workspace }}
-          tags: latest,${{ steps.tag.outputs.new_tag }}
       - name: Publish to Docker Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
@@ -74,18 +65,3 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           context: ${{ github.workspace }}
           tags: latest,${{ steps.tag.outputs.new_tag }}
-
-  deploy:
-    name: Deploy
-    if: github.ref == 'refs/heads/master'
-    needs: publish
-    runs-on: ubuntu-latest
-    steps:
-      - name: Deploy
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.KEY }}
-          script: |
-            ${{ secrets.DEPLOY_CMD }} ${{ github.sha }}
