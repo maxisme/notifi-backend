@@ -18,9 +18,11 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     strategy:
       matrix:
         go: ['1.12', '1.13', '1.14']
+
     steps:
       - uses: actions/checkout@v1
 
@@ -37,7 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Test
+      - name: Run Tests
         env:
           encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           db: "root:root@"
@@ -64,7 +66,7 @@ jobs:
         uses: anothrNick/github-tag-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Publish to Docker Registry
+      - name: Publish image to Docker Registry
         uses: elgohr/Publish-Docker-Github-Action@master
         with:
           name: ${{ github.repository }}
