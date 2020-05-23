@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   test:
-    name: Test with version
+    name: Test with Go version -
     runs-on: ubuntu-latest
     services:
       redis:
@@ -63,11 +63,11 @@ jobs:
           fetch-depth: '0'
       - name: Bump version and push tag
         id: tag
-        uses: anothrNick/github-tag-action@master
+        uses: maxisme/github-tag-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish image to Docker Registry
-        uses: elgohr/Publish-Docker-Github-Action@master
+        uses: maxisme/github-docker-action@master
         with:
           name: ${{ github.repository }}
           username: ${{ secrets.DOCKER_USERNAME }}
