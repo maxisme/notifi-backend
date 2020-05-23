@@ -15,9 +15,7 @@
   @type copy
   <store>
     @type elasticsearch
-    host host.docker.internal
-    user elastic
-    password changeme
+    host elasticsearch
     ssl_verify false
     port 9200
     logstash_format true
