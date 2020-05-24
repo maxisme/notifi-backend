@@ -66,7 +66,9 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
 	s := httptest.NewServer(http.HandlerFunc(s.WSHandler))
 	WS, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
-	_ = WS.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
+	if err == nil {
+		_ = WS.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
+	}
 	return s, res, WS, err
 }
 
