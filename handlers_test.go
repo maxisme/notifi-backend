@@ -66,6 +66,7 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
 	s := httptest.NewServer(http.HandlerFunc(s.WSHandler))
 	WS, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
+	_ = WS.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
 	return s, res, WS, err
 }
 
@@ -300,7 +301,6 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	defer WS.Close()
 
 	// fetch stored notifications on Server that were sent when not connected
-	_ = WS.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
 	_, msg, err := WS.ReadMessage()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -510,7 +510,6 @@ func TestDeleteNotification(t *testing.T) {
 	_, _, WS, _ = ConnectWSS(creds, uform)
 
 	// expect timeout on read notification
-	_ = WS.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
 	_, p, err := WS.ReadMessage()
 	if err == nil && len(p) == 0 {
 		t.Errorf("Should have had i/o timeout and received nothing")

@@ -70,7 +70,7 @@ func createWS(t *testing.T) *websocket.Conn {
 	if err != nil {
 		t.Fatalf("could not open a ws connection on %s %v", wsURL, err)
 	}
-	_ = ws.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
+	_ = ws.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
 	return ws
 }
 
