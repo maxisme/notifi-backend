@@ -509,11 +509,13 @@ func TestDeleteNotification(t *testing.T) {
 	WS.Close()
 
 	// reconnect to ws
-	_, _, WS, _ = ConnectWSS(creds, uform)
+	_, _, WS, err := ConnectWSS(creds, uform)
 
-	// expect timeout on read notification
-	_, p, err := WS.ReadMessage()
-	if err == nil && len(p) == 0 {
-		t.Errorf("Should have had i/o timeout and received nothing")
+	if err == nil {
+		// expect timeout on read notification
+		_, p, err := WS.ReadMessage()
+		if err == nil && len(p) == 0 {
+			t.Errorf("Should have had i/o timeout and received nothing")
+		}
 	}
 }
