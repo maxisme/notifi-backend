@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -101,7 +102,7 @@ func TestSendBytesLocally(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo"
+	key := RandStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
@@ -133,7 +134,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo2"
+	key := RandStringBytes(10)
 	funnel := &Funnel{
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
@@ -168,7 +169,7 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo3"
+	key := RandStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
@@ -189,4 +190,14 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func RandStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
