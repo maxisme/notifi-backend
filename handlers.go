@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"time"
 
@@ -64,13 +63,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	_ = DBUser.GetWithUUID(s.db, user.UUID)
 	if len(DBUser.Credentials.Key) == 0 {
 		if len(DBUser.Credentials.Value) == 0 {
-			log.Println("No credentials or key for: " + user.UUID)
+			LogInfo(r, "No credentials or key for: "+user.UUID)
 			errorCode = NoUUIDCode
 		} else {
-			log.Println("No credential key for: " + user.UUID)
+			LogInfo(r, "No credential key for: "+user.UUID)
 			errorCode = ResetKeyCode
 		}
-	} else if !user.Verify(s.db) {
+	} else if !user.Verify(r, s.db) {
 		errorCode = InvalidLoginCode
 	}
 	if errorCode != 0 {
@@ -79,7 +78,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.StoreLogin(s.db); err != nil {
-		Fatal(err)
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
@@ -97,7 +95,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.funnels.Add(funnel)
 
-	log.Printf("Client Connected %s", crypt.Hash(user.Credentials.Value))
+	LogInfo(r, "Client Connected: "+crypt.Hash(user.Credentials.Value))
 
 	// send all stored notifications from db
 	go func() {
@@ -118,18 +116,18 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break // disconnected from WS
 		}
 
-		go LogErr(user.DeleteNotificationsWithIDs(s.db, string(message)))
+		go LogError(r, user.DeleteNotificationsWithIDs(s.db, string(message)))
 	}
 
-	LogErr(s.funnels.Remove(funnel))
+	LogError(r, s.funnels.Remove(funnel))
 
-	log.Println("Client Disconnected: ", crypt.Hash(user.Credentials.Value))
+	LogInfo(r, "Client Disconnected: "+crypt.Hash(user.Credentials.Value))
 
 	// close connection
 	Fatal(user.CloseLogin(s.db))
 }
 
-// CredentialHandler is the http handler for creating and updating Credentials
+// CredentialHandler is the handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
@@ -163,7 +161,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creds, err := PostUser.Store(s.db)
+	creds, err := PostUser.Store(r, s.db)
 	if err != nil {
 		mysqlErr, ok := err.(*mysql.MySQLError)
 		if ok && mysqlErr.Number != 1062 {
@@ -187,7 +185,6 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 // APIHandler is the http handler for handling API calls to create notifications
 func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
-	var notification Notification
 	if r.Method != "POST" && r.Method != "GET" {
 		WriteError(w, r, ErrorCode, "Method not allowed")
 		return
@@ -198,12 +195,13 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var notification Notification
 	if err := decoder.Decode(&notification, r.Form); err != nil {
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
-	if err := notification.Validate(); err != nil {
+	if err := notification.Validate(r); err != nil {
 		http.Error(w, err.Error(), ErrorCode)
 		return
 	}
@@ -222,7 +220,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
 	if err != nil {
-		log.Println(err)
+		LogError(r, err)
 		Fatal(notification.Store(s.db))
 	}
 }

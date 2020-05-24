@@ -8,7 +8,7 @@ import (
 
 // return error if validation passes
 func validateNotificationTest(t *testing.T, n Notification) {
-	err := n.Validate()
+	err := n.Validate(nil)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}

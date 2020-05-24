@@ -2,10 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"log"
-
 	"github.com/go-errors/errors"
 	"github.com/maxisme/notifi-backend/crypt"
+	"net/http"
 )
 
 // User structure
@@ -33,8 +32,9 @@ const (
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store
-func (u User) Store(db *sql.DB) (Credentials, error) {
-	// create new Credentials
+
+func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
+	// create new credentials
 	creds := Credentials{
 		crypt.RandomString(credentialLen),
 		crypt.RandomString(credentialKeyLen),
@@ -43,26 +43,26 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 	var DBUser User
 	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
 	if len(DBUser.UUID) > 0 {
-		log.Println(DBUser.UUID + " has an account already")
+		LogInfo(r, DBUser.UUID+" has an account already")
 
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-			log.Println("Credential key reset for: " + crypt.Hash(u.UUID))
+			LogInfo(r, "Credential key reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
 			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
-				Fatal(err)
+				Handle(r, err)
 				return Credentials{}, err
 			}
 			creds.Value = ""
 			return creds, nil
 		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
-			log.Println("Account reset for: " + crypt.Hash(u.UUID))
+			LogInfo(r, "Account reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
 			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
-				Fatal(err)
+				Handle(r, err)
 				return Credentials{}, err
 			}
 			return creds, nil
@@ -76,10 +76,10 @@ func (u User) Store(db *sql.DB) (Credentials, error) {
 			// if client passes current details they are asking for new Credentials
 
 			// verify the Credentials passed are valid
-			if u.Verify(db) {
+			if u.Verify(r, db) {
 				isNewUser = false
 			} else {
-				log.Println("lied about credentials") // TODO better logging
+				LogInfo(r, "Client lied about credentials") // TODO better logging
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
@@ -125,12 +125,12 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
-// Verify verifies a u User s Credentials
-func (u User) Verify(db *sql.DB) bool {
+// Verify verifies a u User s credentials
+func (u User) Verify(r *http.Request, db *sql.DB) bool {
 	var DBUser User
 	err := DBUser.Get(db, string(u.Credentials.Value))
 	if err != nil {
-		log.Println("No such credentials in db: " + u.Credentials.Value)
+		LogInfo(r, "No such credentials in db: "+u.Credentials.Value)
 		return false
 	}
 
@@ -145,16 +145,14 @@ func (u User) Verify(db *sql.DB) bool {
 // StoreLogin stores the current timestamp that the user has connected to the web socket as well as the app version
 // the client is using and the public key to encrypt messages on the Server with
 func (u User) StoreLogin(db *sql.DB) error {
-	_, err := db.Exec(`UPDATE users
+	return UpdateErr(db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1
-	WHERE credentials = ? AND UUID = ?`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID))
-	return err
+	WHERE credentials = ? AND UUID = ?`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }
 
 // CloseLogin marks a user as no longer connected to web socket in db
 func (u User) CloseLogin(db *sql.DB) error {
-	_, err := db.Exec(`UPDATE users
+	return UpdateErr(db.Exec(`UPDATE users
 	SET is_connected = 0
-	WHERE credentials = ? AND UUID = ?`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID))
-	return err
+	WHERE credentials = ? AND UUID = ?`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }

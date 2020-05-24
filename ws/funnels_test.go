@@ -2,6 +2,7 @@ package ws
 
 import (
 	"fmt"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -19,6 +20,8 @@ import (
 
 var funnels Funnels
 var red *redis.Client
+
+const redisSleep = 100
 
 func TestMain(t *testing.M) {
 	var err error
@@ -67,7 +70,7 @@ func createWS(t *testing.T) *websocket.Conn {
 	if err != nil {
 		t.Fatalf("could not open a ws connection on %s %v", wsURL, err)
 	}
-	_ = ws.SetReadDeadline(time.Now().Add(200 * time.Millisecond)) // add timeout
+	_ = ws.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
 	return ws
 }
 
@@ -99,7 +102,7 @@ func TestSendBytesLocally(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo"
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
@@ -131,7 +134,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo2"
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
@@ -139,7 +142,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 	funnels1.Add(funnel)
 	defer funnels1.Remove(funnel)
 
-	time.Sleep(50 * time.Millisecond) // wait for redis subscriber in go routine to initialise
+	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
 	sendMsg := []byte("hello")
 	err := funnels2.SendBytes(red, key, sendMsg)
@@ -150,8 +153,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 	_, msg, err := funnel.WSConn.ReadMessage()
 	if err != nil {
 		t.Errorf(err.Error())
-	}
-	if string(msg) != string(sendMsg) {
+	} else if string(msg) != string(sendMsg) {
 		t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
 	}
 }
@@ -167,25 +169,35 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo3"
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
 	funnels1.Add(funnel)
-	time.Sleep(50 * time.Millisecond) // wait for redis subscriber in go routine to initialise
+	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
 	err := funnels1.Remove(funnel)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	time.Sleep(50 * time.Millisecond) // wait for redis unsubscribe
+	time.Sleep(redisSleep * time.Millisecond) // wait for redis unsubscribe
 
 	sendMsg := []byte("hello")
 	err = funnels2.SendBytes(red, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}
+}
+
+const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func randStringBytes(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
