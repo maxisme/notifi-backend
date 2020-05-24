@@ -21,7 +21,7 @@ import (
 var funnels Funnels
 var red *redis.Client
 
-const redisSleep = 150
+const redisSleep = 10
 
 func TestMain(t *testing.M) {
 	var err error

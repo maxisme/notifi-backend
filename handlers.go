@@ -78,7 +78,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.StoreLogin(s.db); err != nil {
-		Fatal(err)
 		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
