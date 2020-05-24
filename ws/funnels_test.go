@@ -21,7 +21,7 @@ import (
 var funnels Funnels
 var red *redis.Client
 
-const redisSleep = 10
+const redisSleep = 100
 
 func TestMain(t *testing.M) {
 	var err error
@@ -102,7 +102,7 @@ func TestSendBytesLocally(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := RandStringBytes(10)
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
@@ -134,7 +134,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := RandStringBytes(10)
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
@@ -169,7 +169,7 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := RandStringBytes(10)
+	key := randStringBytes(10)
 	funnel := &Funnel{
 		Key:    key,
 		WSConn: createWS(t),
@@ -194,7 +194,7 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func RandStringBytes(n int) string {
+func randStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
