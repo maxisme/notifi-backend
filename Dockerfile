@@ -1,11 +1,11 @@
-FROM golang:1.13-alpine
-
-RUN apk update
-RUN apk add git
-RUN apk add gcc
-RUN apk add libc-dev
-
-ADD . /app/
+FROM golang:alpine AS builder
+COPY . /app/
 WORKDIR /app
-RUN go build -o notifi .
-CMD ["/app/notifi"]
+RUN go build -o app
+
+
+FROM alpine
+COPY . /app/
+COPY --from=builder /app/app /app/app
+HEALTHCHECK CMD curl --fail http://localhost:8080/ || exit 1
+CMD ["/app/app"]
