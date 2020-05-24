@@ -1,6 +1,6 @@
 module github.com/maxisme/notifi-backend
 
-go 1.13
+        go 1.14
 
 require (
 	github.com/TV4/graceful v0.3.4
