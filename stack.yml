@@ -2,11 +2,8 @@ version: '3.8'
 services:
   app:
     image: maxisme/notifi-backend:latest
-    environment:
-      db: notifi:notifi@tcp(db:3306)/notifi
-      sentry_dsn: ${sentry_dsn:?err}
-      server_key: ${server_key:?err}
-      encryption_key: ${encryption_key:?err}
+    env_file:
+      - ".env"
     deploy:
       mode: global
       labels:
