@@ -23,6 +23,9 @@ services:
     volumes:
       - ./sql:/sql
     command: ["-path", "/sql", "-database", "mysql://${db}", "up"]
+    deploy:
+      placement:
+        constraints: [node.role == manager]
 
 networks:
   traefik:
