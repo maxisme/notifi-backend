@@ -91,5 +91,6 @@ func main() {
 	r.HandleFunc("/ws", s.WSHandler)
 	r.HandleFunc("/code", s.CredentialHandler)
 	r.HandleFunc("/api", s.APIHandler)
+	r.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {})
 	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: r})
 }

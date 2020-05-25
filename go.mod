@@ -1,6 +1,6 @@
 module github.com/maxisme/notifi-backend
 
-        go 1.14
+		go 1.14
 
 require (
 	github.com/TV4/graceful v0.3.4
@@ -21,6 +21,7 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v0.0.5
+		github.com/zenazn/goji v0.9.0
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
 )
