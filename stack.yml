@@ -2,7 +2,6 @@ version: '3.8'
 services:
   app:
     image: maxisme/notifi-backend:latest
-    restart: always
     environment:
       db: notifi:notifi@tcp(db:3306)/notifi
       sentry_dsn: ${sentry_dsn:?err}
@@ -16,11 +15,6 @@ services:
         - "traefik.http.routers.notifibackend.entrypoints=web-secure"
         - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
         - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
-    logging:
-      driver: fluentd
-      options:
-        tag: docker.notifi.backend
-        fluentd-async-connect: "true"
     networks:
       - traefik
 
