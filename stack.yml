@@ -14,13 +14,18 @@ services:
         - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
     networks:
       - traefik
+      - db
 
   migrate:
     image: migrate/migrate
+    networks:
+      - db
     volumes:
       - ./sql:/sql
     command: ["-path", "/sql", "-database", "mysql://${db}", "up"]
 
 networks:
   traefik:
+    external: true
+  db:
     external: true
