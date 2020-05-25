@@ -68,3 +68,12 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
           tag_with_ref: true
           tag_with_sha: true
+      - name: Update Swarm
+        if: github.ref == 'refs/heads/master'
+        run: |
+          curl -f -X POST ${{ secrets.SWARM_HOOK }} \
+          -H 'Content-Type: application/x-www-form-urlencoded' \
+          -d 'service=notifi-backend_app' \
+          -d "repo=${{ github.repository }}" \
+          -d "sha=${{ github.sha }}" \
+          -d "token=${{ secrets.HOOK_TOKEN }}"

@@ -38,9 +38,7 @@ const numRequestsPerSecond = 5
 
 func main() {
 	// load .env
-	if err := godotenv.Load(); err != nil {
-		panic(err)
-	}
+	_ = godotenv.Load()
 
 	// check all envs are set
 	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
