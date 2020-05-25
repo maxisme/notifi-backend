@@ -17,7 +17,9 @@ services:
 
   migrate:
     image: migrate/migrate
-    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
+    volumes:
+      - ./sql:/sql
+    command: ["-path", "/sql", "-database", "mysql://${db}", "up"]
 
 networks:
   traefik:
