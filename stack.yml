@@ -26,6 +26,9 @@ services:
     deploy:
       placement:
         constraints: [node.role == manager]
+      restart_policy:
+        condition: on-failure
+        max-attempts: 2
 
 networks:
   traefik:
