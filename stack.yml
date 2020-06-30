@@ -24,7 +24,7 @@ services:
       mode: global
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.notifibackend.rule=Host(`s.notifi.it`) || (Host(`notifi.it`) && Path(`/api`))"
+        - "traefik.http.routers.notifibackend.rule=Host(`s.dev.notifi.it`) || (Host(`dev.notifi.it`) && Path(`/api`))"
         - "traefik.http.routers.notifibackend.entrypoints=web-secure"
         - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
         - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
