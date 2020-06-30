@@ -78,7 +78,7 @@ jobs:
           export sha="${{ github.sha }}"
           curl -f -X POST ${{ secrets.SWARM_HOOK }} \
           -H 'Content-Type: application/x-www-form-urlencoded' \
-          -d 'service=notifi-backend_develop' \
+          -d 'service=notifi-backend_dev' \
           -d "image=${{ github.repository }}" \
           -d "tag=sha-${sha:0:7}" \
           -d "token=${{ secrets.HOOK_TOKEN }}"
