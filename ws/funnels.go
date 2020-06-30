@@ -94,7 +94,6 @@ func (funnels *Funnels) SendBytes(RDB *redis.Client, key string, msg []byte) err
 		return nil
 	}
 
-	Log("storing")
 	// there is no client connected to any of the servers so store the message
 	if err := StoreMessage(RDB, key, uuid.New().String(), msg); err != nil {
 		return err
