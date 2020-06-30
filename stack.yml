@@ -1,20 +1,21 @@
 version: '3.8'
 services:
-  #  app:
-  #    image: maxisme/notifi-backend:latest
-  #    env_file:
-  #      - ".env"
-  #    deploy:
-  #      mode: global
-  #      labels:
-  #        - "traefik.enable=true"
-  #        - "traefik.http.routers.notifibackend.rule=Host(`s.notifi.it`) || (Host(`notifi.it`) && Path(`/api`))"
-  #        - "traefik.http.routers.notifibackend.entrypoints=web-secure"
-  #        - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
-  #        - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
-  #    networks:
-  #      - traefik
-  #      - db
+  #    app:
+  #      image: maxisme/notifi-backend:latest
+  #      env_file:
+  #        - ".env"
+  #      deploy:
+  #        mode: global
+  #        labels:
+  #          - "traefik.enable=true"
+  #          - "traefik.http.routers.notifibackend.rule=Host(`s.notifi.it`) || (Host(`notifi.it`) && Path(`/api`))"
+  #          - "traefik.http.routers.notifibackend.entrypoints=web-secure"
+  #          - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
+  #          - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
+  #          - "traefik.http.routers.notifibackend.middlewares=404"
+  #      networks:
+  #        - traefik
+  #        - db
 
   dev:
     image: maxisme/notifi-backend:develop
@@ -24,10 +25,11 @@ services:
       mode: global
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.notifibackend.rule=Host(`s.dev.notifi.it`) || (Host(`dev.notifi.it`) && Path(`/api`))"
-        - "traefik.http.routers.notifibackend.entrypoints=web-secure"
-        - "traefik.http.routers.notifibackend.tls.certresolver=letsencrypt"
-        - "traefik.http.services.notifibackend.loadbalancer.server.port=8080"
+        - "traefik.http.routers.notifibackend-dev.rule=Host(`s.dev.notifi.it`) || (Host(`dev.notifi.it`) && Path(`/api`))"
+        - "traefik.http.routers.notifibackend-dev.entrypoints=web-secure"
+        - "traefik.http.routers.notifibackend-dev.tls.certresolver=letsencrypt"
+        - "traefik.http.services.notifibackend-dev.loadbalancer.server.port=8080"
+        - "traefik.http.routers.notifibackend-dev.middlewares=404"
     networks:
       - traefik
       - db
