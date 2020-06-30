@@ -2,7 +2,6 @@ package ws
 
 import (
 	"fmt"
-	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,38 +17,19 @@ import (
 	"github.com/maxisme/notifi-backend/conn"
 )
 
-var funnels Funnels
-var red *redis.Client
+var (
+	RDB *redis.Client
+)
 
 const redisSleep = 100
 
 func TestMain(t *testing.M) {
 	var err error
-	red, err = conn.RedisConn(os.Getenv("redis"))
+	RDB, err = conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))
 	if err != nil {
 		fmt.Println("Make sure to run $ redis-server")
 		panic(err)
 	}
-	funnels = Funnels{
-		Clients: make(map[string]*Funnel),
-		RWMutex: sync.RWMutex{},
-	}
-
-	// create funnels
-	//wg := sync.WaitGroup{}
-	//for i := 1; i < 200; i++ {
-	//	wg.Add(1)
-	//	go func() {
-	//		defer wg.Done()
-	//		key := strconv.Itoa(i)
-	//		funnels.Add(&Funnel{
-	//			WSConn: nil,
-	//			PubSub: red.Subscribe(key),
-	//		}, key, nil)
-	//	}()
-	//}
-
-	//wg.Wait()
 
 	code := t.Run() // RUN THE TEST
 
@@ -59,11 +39,11 @@ func TestMain(t *testing.M) {
 
 func webSocketHandler(w http.ResponseWriter, r *http.Request) {
 	c, _ := Upgrader.Upgrade(w, r, nil)
-	_, msg, _ := c.ReadMessage()
-	_ = c.WriteMessage(1, msg)
+	messageType, msg, _ := c.ReadMessage()
+	_ = c.WriteMessage(messageType, msg)
 }
 
-func createWS(t *testing.T) *websocket.Conn {
+func CreateWS(t *testing.T) *websocket.Conn {
 	server := httptest.NewServer(http.HandlerFunc(webSocketHandler))
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "/ws"
 	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
@@ -74,25 +54,91 @@ func createWS(t *testing.T) *websocket.Conn {
 	return ws
 }
 
+func TestSendBytesWithoutAcknowledgement(t *testing.T) {
+	funnels := Funnels{
+		Clients: make(map[string]*Funnel),
+		RWMutex: sync.RWMutex{},
+	}
+
+	key := randString(10)
+	funnel := &Funnel{
+		Key:    key,
+		WSConn: CreateWS(t),
+		RDB:    RDB,
+	}
+
+	funnels.Add(funnel)
+
+	sendMsg := []byte(randString(100))
+	err := funnels.SendBytes(RDB, key, sendMsg)
+	if err != nil {
+		t.Errorf("Should not have returned error!" + err.Error())
+	}
+
+	time.Sleep(AckTimeout * 2)
+
+	_ = funnels.Remove(funnel)
+	funnel2 := &Funnel{
+		Key:    key,
+		WSConn: CreateWS(t),
+		RDB:    RDB,
+	}
+	funnels.Add(funnel2)
+
+	err = funnel2.Run(func(messageType int, msg []byte, err error) error {
+		if err != nil {
+			return err
+		}
+		if string(msg) != string(sendMsg) {
+			t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+		}
+		return nil
+	}, true)
+
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+}
+
 func TestSendBytesToRemovedFunnel(t *testing.T) {
 	funnels := Funnels{
 		Clients: make(map[string]*Funnel),
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := "foo"
-	funnel := &Funnel{
+	key := randString(10)
+	funnel := Funnel{
 		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		WSConn: CreateWS(t),
+		RDB:    RDB,
 	}
 
-	funnels.Add(funnel)
-	_ = funnels.Remove(funnel)
+	funnels.Add(&funnel)
+	// remove funnel
+	_ = funnels.Remove(&funnel)
 
-	err := funnels.SendBytes(red, key, []byte("test"))
+	sendMsg := []byte(randString(10))
+	err := funnels.SendBytes(RDB, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error!")
+	}
+
+	// recreate same funnel and get stored message
+	funnel2 := Funnel{
+		Key:    key,
+		WSConn: CreateWS(t),
+		RDB:    RDB,
+	}
+	funnels.Add(&funnel2)
+	err = funnel2.Run(func(messageType int, msg []byte, err error) error {
+		if string(msg) != string(sendMsg) {
+			t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+		}
+		return nil
+	}, true)
+
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 }
 
@@ -102,11 +148,11 @@ func TestSendBytesLocally(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := randStringBytes(10)
+	key := randString(10)
 	funnel := &Funnel{
 		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		WSConn: CreateWS(t),
+		RDB:    RDB,
 	}
 
 	funnels.Add(funnel)
@@ -114,12 +160,21 @@ func TestSendBytesLocally(t *testing.T) {
 
 	// send message over socket
 	sendMsg := []byte("hello")
-	_ = funnels.SendBytes(red, key, sendMsg)
+	err := funnels.SendBytes(RDB, key, sendMsg)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
 
 	// read message over socket
-	_, msg, _ := funnel.WSConn.ReadMessage()
-	if string(msg) != string(sendMsg) {
-		t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+	err = funnel.Run(func(messageType int, msg []byte, err error) error {
+		if string(msg) != string(sendMsg) {
+			t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+		}
+		return nil
+	}, true)
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 }
 
@@ -134,27 +189,30 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := randStringBytes(10)
+	key := randString(10)
 	funnel := &Funnel{
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Key:    key,
+		WSConn: CreateWS(t),
+		RDB:    RDB,
 	}
 	funnels1.Add(funnel)
 	defer funnels1.Remove(funnel)
 
-	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
-
 	sendMsg := []byte("hello")
-	err := funnels2.SendBytes(red, key, sendMsg)
+	err := funnels2.SendBytes(RDB, key, sendMsg)
 	if err != nil {
 		t.Errorf(err.Error())
+		return
 	}
 
-	_, msg, err := funnel.WSConn.ReadMessage()
+	err = funnel.Run(func(messageType int, msg []byte, err error) error {
+		if string(msg) != string(sendMsg) {
+			t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+		}
+		return nil
+	}, true)
 	if err != nil {
 		t.Errorf(err.Error())
-	} else if string(msg) != string(sendMsg) {
-		t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
 	}
 }
 
@@ -169,35 +227,22 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		RWMutex: sync.RWMutex{},
 	}
 
-	key := randStringBytes(10)
+	key := randString(10)
 	funnel := &Funnel{
 		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		WSConn: CreateWS(t),
+		RDB:    RDB,
 	}
 	funnels1.Add(funnel)
-	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
 	err := funnels1.Remove(funnel)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
 
-	time.Sleep(redisSleep * time.Millisecond) // wait for redis unsubscribe
-
 	sendMsg := []byte("hello")
-	err = funnels2.SendBytes(red, key, sendMsg)
+	err = funnels2.SendBytes(RDB, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}
-}
-
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
-func randStringBytes(n int) string {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
 }

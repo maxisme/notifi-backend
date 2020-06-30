@@ -9,7 +9,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
-	"github.com/gorilla/websocket"
 	"github.com/maxisme/notifi-backend/crypt"
 )
 
@@ -90,34 +89,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	funnel := &ws.Funnel{
 		Key:    user.Credentials.Value,
 		WSConn: WSConn,
-		PubSub: s.redis.Subscribe(user.Credentials.Value),
+		RDB:    s.redis,
 	}
-
 	s.funnels.Add(funnel)
 
 	LogInfo(r, "Client Connected: "+crypt.Hash(user.Credentials.Value))
 
-	// send all stored notifications from db
-	go func() {
-		notifications, err := user.FetchNotifications(s.db)
-		Fatal(err)
-		if len(notifications) > 0 {
-			bytes, _ := json.Marshal(notifications)
-			err := WSConn.WriteMessage(websocket.TextMessage, bytes)
-			Fatal(err)
-		}
-	}()
-
-	// listen for socket messages until disconnected
-	for {
-		_, message, err := WSConn.ReadMessage()
-		if err != nil {
-			// TODO handle specific err
-			break // disconnected from WS
-		}
-
-		go LogError(r, user.DeleteNotificationsWithIDs(s.db, string(message)))
-	}
+	LogError(r, funnel.Run(nil, false))
 
 	LogError(r, s.funnels.Remove(funnel))
 

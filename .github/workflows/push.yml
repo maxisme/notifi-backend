@@ -31,20 +31,14 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: Fetch cached dependencies
-        uses: actions/cache@v1
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
       - name: Run Tests
         env:
           encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           db: "root:root@"
+          dbsource: "root:root@/notifi"
           server_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           redis: "127.0.0.1:6379"
+          redis_db: 1
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
       - uses: codecov/codecov-action@v1
@@ -71,9 +65,20 @@ jobs:
       - name: Update Swarm
         if: github.ref == 'refs/heads/master'
         run: |
+          export sha="${{ github.sha }}"
           curl -f -X POST ${{ secrets.SWARM_HOOK }} \
           -H 'Content-Type: application/x-www-form-urlencoded' \
           -d 'service=notifi-backend_app' \
-          -d "repo=${{ github.repository }}" \
-          -d "sha=${{ github.sha }}" \
+          -d "image=${{ github.repository }}" \
+          -d "tag=sha-${sha:0:7}" \
+          -d "token=${{ secrets.HOOK_TOKEN }}"
+      - name: Update Swarm
+        if: github.ref == 'refs/heads/develop'
+        run: |
+          export sha="${{ github.sha }}"
+          curl -f -X POST ${{ secrets.SWARM_HOOK }} \
+          -H 'Content-Type: application/x-www-form-urlencoded' \
+          -d 'service=notifi-backend_develop' \
+          -d "image=${{ github.repository }}" \
+          -d "tag=sha-${sha:0:7}" \
           -d "token=${{ secrets.HOOK_TOKEN }}"

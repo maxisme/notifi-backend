@@ -47,14 +47,14 @@ func main() {
 	}
 
 	// connect to db
-	dbConn, err := conn.DbConn(os.Getenv("db"))
+	dbConn, err := conn.MysqlConn(os.Getenv("db"))
 	if err != nil {
 		panic(err)
 	}
 	defer dbConn.Close()
 
 	// connect to redis
-	redisConn, err := conn.RedisConn(os.Getenv("redis"))
+	redisConn, err := conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))
 	if err != nil {
 		panic(err)
 	}

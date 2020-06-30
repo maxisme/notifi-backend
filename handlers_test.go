@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -111,7 +111,7 @@ func TestMain(t *testing.M) {
 	}
 
 	// create database
-	db, err := conn.DbConn(os.Getenv("db") + "/?multiStatements=True")
+	db, err := conn.MysqlConn(os.Getenv("db") + "/?multiStatements=True")
 	if err != nil {
 		panic(err)
 	}
@@ -142,13 +142,13 @@ func TestMain(t *testing.M) {
 	}
 
 	// init server db connection
-	db, err = conn.DbConn(dbConnStr)
+	db, err = conn.MysqlConn(dbConnStr)
 	if err != nil {
 		panic(err)
 	}
 
 	// init server redis connection
-	red, err := conn.RedisConn(os.Getenv("redis"))
+	red, err := conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))
 	if err != nil {
 		panic(err)
 	}
@@ -295,23 +295,33 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	SendNotification(creds.Value, TITLE)
 
 	// connect to ws
-	s, _, WS, err := ConnectWSS(creds, uform)
-	if err != nil {
-		panic(err)
-	}
-	defer s.Close()
+	_, _, WS, _ := ConnectWSS(creds, uform)
 	defer WS.Close()
 
-	// fetch stored notifications on Server that were sent when not connected
-	_, msg, err := WS.ReadMessage()
-	if err != nil {
-		t.Fatalf(err.Error())
+	funnels := ws.Funnels{
+		Clients: make(map[string]*ws.Funnel),
+		RWMutex: sync.RWMutex{},
 	}
-	var notifications []Notification
-	_ = json.Unmarshal(msg, &notifications)
 
-	if notifications[0].Title != TITLE {
-		t.Error("Incorrect title returned!")
+	funnel := &ws.Funnel{
+		Key:    creds.Value,
+		WSConn: WS,
+		RDB:    s.redis,
+	}
+	funnels.Add(funnel)
+
+	// fetch stored notifications on Server that were sent when not connected
+	err := funnel.Run(func(messageType int, p []byte, err error) error {
+		var notifications []Notification
+		_ = json.Unmarshal(p, &notifications)
+
+		if notifications[0].Title != TITLE {
+			t.Error("Incorrect title returned!")
+		}
+		return nil
+	}, true)
+	if err != nil {
+		t.Error(err)
 	}
 }
 
@@ -319,21 +329,42 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	var creds, form = GenUser() // generate user
 
 	// connect to ws
-	s, _, WS, _ := ConnectWSS(creds, form)
-	defer s.Close()
+	_, _, WS, _ := ConnectWSS(creds, form)
 	defer WS.Close()
+
+	funnels := ws.Funnels{
+		Clients: make(map[string]*ws.Funnel),
+		RWMutex: sync.RWMutex{},
+	}
+
+	funnel := &ws.Funnel{
+		Key:    creds.Value,
+		WSConn: WS,
+		RDB:    s.redis,
+	}
+
+	funnels.Add(funnel)
 
 	// send notification over http
 	TITLE := crypt.RandomString(10)
 	SendNotification(creds.Value, TITLE)
 
 	// read notification over ws
-	_, msg, _ := WS.ReadMessage()
-	var notifications []Notification
-	_ = json.Unmarshal(msg, &notifications)
+	err := funnel.Run(func(messageType int, p []byte, err error) error {
+		var notifications []Notification
+		err = json.Unmarshal(p, &notifications)
+		if err != nil {
+			t.Errorf(err.Error())
+			return err
+		}
 
-	if notifications[0].Title != TITLE {
-		t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
+		if notifications[0].Title != TITLE {
+			t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
+		}
+		return nil
+	}, true)
+	if err != nil {
+		t.Errorf(err.Error())
 	}
 }
 
@@ -444,78 +475,5 @@ func TestMissingSecKeyHandlers(t *testing.T) {
 				t.Errorf("Should have responded with error code %d not %d", ErrorCode, rr.Code)
 			}
 		})
-	}
-}
-
-func TestDeleteNotificationsWithIncorrectIDs(t *testing.T) {
-	var userCreds, form = GenUser() // generate user
-
-	// send 3 notifications to user
-	SendNotification(userCreds.Value, crypt.RandomString(10))
-	SendNotification(userCreds.Value, crypt.RandomString(10))
-	SendNotification(userCreds.Value, crypt.RandomString(10))
-
-	// read notifications over ws
-	sock, _, WS, _ := ConnectWSS(userCreds, form)
-	defer sock.Close()
-	defer WS.Close()
-	_, msg, _ := WS.ReadMessage()
-	var notifications []Notification
-	_ = json.Unmarshal(msg, &notifications)
-
-	// fetch ids from notifications
-	var ids string
-	for _, notification := range notifications {
-		ids = fmt.Sprintf("%s%d,", ids, notification.ID)
-	}
-
-	u := User{Credentials: Credentials{Value: userCreds.Value}}
-
-	err := u.DeleteNotificationsWithIDs(s.db, ids) // correct ids
-	if err != nil {
-		t.Errorf("Expected no error got: %v", err)
-	}
-
-	err = u.DeleteNotificationsWithIDs(s.db, ids+"10000") // invalid id
-	if err == nil {
-		t.Errorf("Expected error")
-	}
-
-	err = u.DeleteNotificationsWithIDs(s.db, ids+"foo") // foo isn't an int so should fail
-	if err == nil {
-		t.Errorf("Expected error")
-	}
-}
-
-// send notification while offline, connect to websocket to receive said notification
-// tell Server to delete notification, reconnect to websocket and service should not receive a message
-func TestDeleteNotification(t *testing.T) {
-	var creds, uform = GenUser() // generate user
-
-	// send notification to not connected user
-	SendNotification(creds.Value, crypt.RandomString(10))
-
-	// connect to wss
-	s, _, WS, _ := ConnectWSS(creds, uform)
-
-	// delete notification
-	_, msg, _ := WS.ReadMessage()
-	var notifications []Notification
-	_ = json.Unmarshal(msg, &notifications)
-	_ = WS.WriteMessage(websocket.TextMessage, []byte(strconv.Itoa(notifications[0].ID)))
-
-	// disconnect from ws
-	s.Close()
-	WS.Close()
-
-	// reconnect to ws
-	_, _, WS, err := ConnectWSS(creds, uform)
-
-	if err == nil {
-		// expect timeout on read notification
-		_, p, err := WS.ReadMessage()
-		if err == nil && len(p) == 0 {
-			t.Errorf("Should have had i/o timeout and received nothing")
-		}
 	}
 }
