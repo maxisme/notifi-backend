@@ -17,7 +17,7 @@ services:
   #      - db
 
   dev:
-    image: maxisme/notifi-backend:latest
+    image: maxisme/notifi-backend:develop
     env_file:
       - ".env"
     deploy:
