@@ -21,7 +21,7 @@ func StoreMessage(RDB *redis.Client, key1, key2 string, val []byte) error {
 	return nil
 }
 
-func DeleteMessage(RDB *redis.Client, key1, key2 string) error {
+func deleteMessage(RDB *redis.Client, key1, key2 string) error {
 	err := RDB.Del(key2).Err()
 	if err != nil {
 		return err // TODO handle when already deleted

@@ -56,7 +56,7 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 	wsheader := http.Header{}
 	wsheader.Add("Sec-Key", os.Getenv("server_key"))
 	wsheader.Add("Credentials", creds.Value)
-	wsheader.Add("Credentialkey", creds.Key)
+	wsheader.Add("UUIDKey", creds.UUIDKey)
 	wsheader.Add("Uuid", form.Get("UUID"))
 	wsheader.Add("Version", "1.0")
 
@@ -174,7 +174,7 @@ func TestCredentials(t *testing.T) {
 
 	// create new creds
 	var creds, form = GenUser()
-	if len(creds.Key) == 0 || len(creds.Value) == 0 {
+	if len(creds.UUIDKey) == 0 || len(creds.Value) == 0 {
 		t.Errorf("Error getting new user credentials")
 	}
 
@@ -182,13 +182,13 @@ func TestCredentials(t *testing.T) {
 	r := PostRequest("", form, s.CredentialHandler)
 	var nocreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
-	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
+	if len(nocreds.Value) != 0 || len(nocreds.UUIDKey) != 0 {
 		t.Errorf("Shouldn't have been able to generate new creds for user! %v", nocreds)
 	}
 
 	// ask for new Credentials for user
 	form.Add("current_credentials", creds.Value)
-	form.Add("current_key", creds.Key)
+	form.Add("current_key", creds.UUIDKey)
 	r = PostRequest("", form, s.CredentialHandler)
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
@@ -267,7 +267,7 @@ func TestWSHandler(t *testing.T) {
 		{"", "", false},
 		{"Sec-Key", os.Getenv("server_key"), false},
 		{"Credentials", creds.Value, false},
-		{"Credentialkey", creds.Key, false},
+		{"UUIDKey", creds.UUIDKey, false},
 		{"Uuid", form.Get("UUID"), false},
 		{"Version", "1.0.1", true},
 	}
@@ -378,8 +378,8 @@ func TestWSSResetKey(t *testing.T) {
 	// remove credential_key
 	removeUserCredKey(s.db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
-	if res.StatusCode != ResetKeyCode {
-		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
+	if res.StatusCode != RequestNewUserCode {
+		t.Errorf("expected %v got %v", RequestNewUserCode, res.StatusCode)
 	}
 }
 
@@ -394,14 +394,14 @@ func TestWSSNoUUID(t *testing.T) {
 	// remove credential_key
 	removeUserCreds(s.db, f.Get("UUID"))
 	_, res, _, _ = ConnectWSS(creds, f)
-	if res.StatusCode != NoUUIDCode {
-		t.Errorf("expected %v got %v", ResetKeyCode, res.StatusCode)
+	if res.StatusCode != RequestNewUserCode {
+		t.Errorf("expected %v got %v", RequestNewUserCode, res.StatusCode)
 	}
 }
 
 // if there is no credential_key in the db the client should be able to request new key for same Credentials
 // and receive a new credential key only
-func TestRemovedCredentialKey(t *testing.T) {
+func TestRemovedUUIDKey(t *testing.T) {
 	var _, f = GenUser() // generate user
 
 	// remove credential_key
@@ -410,7 +410,7 @@ func TestRemovedCredentialKey(t *testing.T) {
 	r := PostRequest("", f, s.CredentialHandler)
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
-	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
+	if len(newCreds.UUIDKey) == 0 || len(newCreds.Value) != 0 {
 		t.Errorf("Error fetching new Credentials for user %v. Expected new key", newCreds)
 	}
 }
@@ -427,7 +427,7 @@ func TestRemovedCredentials(t *testing.T) {
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 
 	// expects a new credential key to be returned only
-	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
+	if len(newCreds.UUIDKey) == 0 || len(newCreds.Value) == 0 {
 		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and key", newCreds)
 	}
 }
@@ -449,8 +449,8 @@ func TestInvalidHandlerMethods(t *testing.T) {
 
 			rr := httptest.NewRecorder()
 			tt.handler.ServeHTTP(rr, req)
-			if rr.Code != ErrorCode {
-				t.Errorf("Should have responded with error code %d not %d", ErrorCode, rr.Code)
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("Should have responded with error code %d not %d", http.StatusBadRequest, rr.Code)
 			}
 		})
 	}
@@ -471,8 +471,8 @@ func TestMissingSecKeyHandlers(t *testing.T) {
 			req, _ := http.NewRequest(tt.method, "", nil)
 			rr := httptest.NewRecorder()
 			tt.handler.ServeHTTP(rr, req)
-			if rr.Code != ErrorCode {
-				t.Errorf("Should have responded with error code %d not %d", ErrorCode, rr.Code)
+			if rr.Code != http.StatusBadRequest {
+				t.Errorf("Should have responded with error code %d not %d", http.StatusBadRequest, rr.Code)
 			}
 		})
 	}

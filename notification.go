@@ -237,11 +237,3 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
 	}
 	return nil
 }
-
-// FetchNumNotifications fetches the total number of notifications sent on notifi
-func FetchNumNotifications(db *sql.DB) int {
-	id := 0
-	row := db.QueryRow("SELECT sum(notification_cnt) from users")
-	Fatal(row.Scan(&id))
-	return id + 1
-}

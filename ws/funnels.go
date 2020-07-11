@@ -12,9 +12,10 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type IncomingWSFunc func(messageType int, p []byte, err error) error
+type WSMessageHandler func(messageType int, p []byte, err error) error
 
 type FunnelKey = string
+type FunnelRef = string
 type Funnel struct {
 	Key    string
 	WSConn *websocket.Conn
@@ -31,7 +32,7 @@ type Funnels struct {
 
 type Message struct {
 	key FunnelKey `json:"-"`
-	Ref string    `json:"ref"`
+	Ref FunnelRef `json:"ref"`
 	Msg []byte    `json:"msg"`
 }
 
@@ -115,14 +116,15 @@ func (funnel *Funnel) pubSubListener() error {
 	}
 }
 
-func (funnel *Funnel) Acknowledge(message Message) {
-	err := DeleteMessage(funnel.RDB, funnel.Key, message.Ref)
+func (funnel *Funnel) Acknowledge(ref FunnelRef) error {
+	err := deleteMessage(funnel.RDB, funnel.Key, ref)
 	if err != nil {
-		Log("funnels: no matching message pending ack... Very strange.")
+		Log("no matching message pending ack... Very strange.")
 	}
+	return err
 }
 
-func (funnel *Funnel) Run(wsFunc IncomingWSFunc, once bool) error {
+func (funnel *Funnel) Run(messageHandler WSMessageHandler, once bool) error {
 	for {
 		messageType, msg, err := funnel.WSConn.ReadMessage()
 		if err != nil {
@@ -132,14 +134,16 @@ func (funnel *Funnel) Run(wsFunc IncomingWSFunc, once bool) error {
 		var message Message
 		err = json.Unmarshal(msg, &message)
 		if err != nil {
-			Log("problem unmarshalling message: %v '%v'", err, string(msg))
+			Log("problem with json unmarshal: %v '%v'", err, string(msg))
+			// now ignore socket message
+			continue
 		}
 
-		go funnel.Acknowledge(message)
+		go funnel.Acknowledge(message.Ref)
 
-		if wsFunc != nil {
-			if err := wsFunc(messageType, message.Msg, err); err != nil {
-				return err //TODO perhaps allow for custom handler
+		if messageHandler != nil {
+			if err := messageHandler(messageType, message.Msg, err); err != nil {
+				return err // TODO perhaps allow for custom handler
 			}
 		}
 
@@ -185,7 +189,6 @@ func (funnel *Funnel) writeMessage(key string, msg []byte) error {
 
 	// write message over socket
 	funnel.Lock()
-	fmt.Printf("Wrote: %s\n", string(jsonMsg))
 	err = funnel.WSConn.WriteMessage(websocket.TextMessage, jsonMsg)
 	funnel.Unlock()
 	if err != nil {

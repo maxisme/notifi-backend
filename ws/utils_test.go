@@ -29,7 +29,7 @@ func TestGetStoredMessages(t *testing.T) {
 			}
 
 			// delete message
-			if err := DeleteMessage(RDB, key1, key2); err != nil {
+			if err := deleteMessage(RDB, key1, key2); err != nil {
 				t.Errorf(err.Error())
 				return
 			}

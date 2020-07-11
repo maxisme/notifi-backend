@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -14,10 +15,7 @@ import (
 
 // custom error codes
 const (
-	ErrorCode        = 400
-	ResetKeyCode     = 401
-	NoUUIDCode       = 402
-	InvalidLoginCode = 403
+	RequestNewUserCode = 551
 )
 
 // layout for times Format()
@@ -26,18 +24,18 @@ const NotificationTimeLayout = "2006-01-02 15:04:05"
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		WriteError(w, r, ErrorCode, "Method not allowed")
+		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
 		return
 	}
 
 	if r.Header.Get("Sec-Key") != serverKey {
-		WriteError(w, r, ErrorCode, "Method not allowed")
+		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
 
 	credentials := Credentials{
-		Value: r.Header.Get("Credentials"),
-		Key:   r.Header.Get("Credentialkey"),
+		Value:   r.Header.Get("Credentials"),
+		UUIDKey: r.Header.Get("UUIDKey"),
 	}
 	user := User{
 		Credentials: credentials,
@@ -45,39 +43,41 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		AppVersion:  r.Header.Get("Version"),
 	}
 
+	fmt.Printf("%v", r.Header)
+
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		WriteError(w, r, ErrorCode, "Invalid UUID")
+		WriteError(w, r, http.StatusBadRequest, "Invalid UUID")
 		return
 	} else if !IsValidVersion(user.AppVersion) {
-		WriteError(w, r, ErrorCode, "Invalid Version")
+		WriteError(w, r, http.StatusBadRequest, "Invalid Version")
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
-		WriteError(w, r, ErrorCode, "Invalid Credentials")
+		WriteError(w, r, http.StatusBadRequest, "Invalid Credentials")
 		return
 	}
 
 	var errorCode = 0
 	var DBUser User
 	_ = DBUser.GetWithUUID(s.db, user.UUID)
-	if len(DBUser.Credentials.Key) == 0 {
+	if len(DBUser.Credentials.UUIDKey) == 0 {
+		errorCode = RequestNewUserCode
 		if len(DBUser.Credentials.Value) == 0 {
 			LogInfo(r, "No credentials or key for: "+user.UUID)
-			errorCode = NoUUIDCode
 		} else {
 			LogInfo(r, "No credential key for: "+user.UUID)
-			errorCode = ResetKeyCode
 		}
 	} else if !user.Verify(r, s.db) {
-		errorCode = InvalidLoginCode
+		errorCode = http.StatusForbidden
 	}
+
 	if errorCode != 0 {
 		WriteError(w, r, errorCode, "Invalid login")
 		return
 	}
 
 	if err := user.StoreLogin(s.db); err != nil {
-		WriteError(w, r, ErrorCode, err.Error())
+		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -85,7 +85,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
 	Fatal(err)
 
-	// initialise funnel
+	// initialise WS funnel
 	funnel := &ws.Funnel{
 		Key:    user.Credentials.Value,
 		WSConn: WSConn,
@@ -108,34 +108,36 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 // CredentialHandler is the handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		WriteError(w, r, ErrorCode, "Method not allowed")
+		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
 		return
 	}
 
 	if r.Header.Get("Sec-Key") != serverKey {
-		WriteError(w, r, ErrorCode, "Method not allowed")
+		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
 
 	err := r.ParseForm()
 	if err != nil {
-		WriteError(w, r, ErrorCode, err.Error())
+		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
+	fmt.Printf("%v", r.Form)
 
-	// convert form data to struct
+	// create PostUser struct
 	PostUser := User{
 		UUID: r.Form.Get("UUID"),
 
 		// if asking for new Credentials
 		Credentials: Credentials{
-			Value: r.Form.Get("current_credentials"),
-			Key:   r.Form.Get("current_key"),
+			Value:   r.Form.Get("current_credentials"),
+			UUIDKey: r.Form.Get("current_UUIDKey"),
 		},
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		WriteError(w, r, ErrorCode, "Invalid form data")
+		LogInfo(r, "Invalid UUID:"+PostUser.UUID)
+		WriteError(w, r, http.StatusBadRequest, "Invalid form data")
 		return
 	}
 
@@ -164,23 +166,23 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 // APIHandler is the http handler for handling API calls to create notifications
 func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" && r.Method != "GET" {
-		WriteError(w, r, ErrorCode, "Method not allowed")
+		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		WriteError(w, r, ErrorCode, err.Error())
+		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var notification Notification
 	if err := decoder.Decode(&notification, r.Form); err != nil {
-		WriteError(w, r, ErrorCode, err.Error())
+		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := notification.Validate(r); err != nil {
-		http.Error(w, err.Error(), ErrorCode)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -191,14 +193,12 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// set notification ID
-	notification.ID = FetchNumNotifications(s.db)
 	notification.Time = time.Now().Format(NotificationTimeLayout)
 	notificationBytes, err := json.Marshal([]Notification{notification})
 	Fatal(err)
 
 	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
 	if err != nil {
-		LogError(r, err)
-		Fatal(notification.Store(s.db))
+		LogInfo(r, err.Error())
 	}
 }

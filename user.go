@@ -2,9 +2,10 @@ package main
 
 import (
 	"database/sql"
+	"net/http"
+
 	"github.com/go-errors/errors"
 	"github.com/maxisme/notifi-backend/crypt"
-	"net/http"
 )
 
 // User structure
@@ -21,13 +22,13 @@ type User struct {
 // Credentials structure
 type credentials = string
 type Credentials struct {
-	Value credentials `json:"credentials"`
-	Key   string      `json:"key"`
+	Value   credentials `json:"credentials"`
+	UUIDKey string      `json:"UUIDKey"`
 }
 
 const (
-	credentialLen    = 25
-	credentialKeyLen = 100
+	credentialLen = 25
+	UUIDKeyLen    = 100
 )
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
@@ -37,7 +38,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
 		crypt.RandomString(credentialLen),
-		crypt.RandomString(credentialKeyLen),
+		crypt.RandomString(UUIDKeyLen),
 	}
 
 	var DBUser User
@@ -45,22 +46,22 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	if len(DBUser.UUID) > 0 {
 		LogInfo(r, DBUser.UUID+" has an account already")
 
-		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
+		if len(DBUser.Credentials.UUIDKey) == 0 && len(DBUser.Credentials.Value) > 0 {
 			LogInfo(r, "Credential key reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.UUIDKey), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(r, err)
 				return Credentials{}, err
 			}
 			creds.Value = ""
 			return creds, nil
-		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
+		} else if len(DBUser.Credentials.UUIDKey) == 0 && len(DBUser.Credentials.Value) == 0 {
 			LogInfo(r, "Account reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.UUIDKey), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(r, err)
 				return Credentials{}, err
@@ -72,7 +73,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	isNewUser := true
 	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
-		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
+		if len(u.Credentials.UUIDKey) > 0 && len(u.Credentials.Value) > 0 {
 			// if client passes current details they are asking for new Credentials
 
 			// verify the Credentials passed are valid
@@ -98,7 +99,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		WHERE UUID = ?`
 	}
 
-	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.UUIDKey), crypt.Hash(u.UUID))
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -112,7 +113,7 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	FROM users
 	WHERE UUID = ?
 	`, crypt.Hash(UUID))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.UUIDKey)
 }
 
 // Get will return user params based on Credentials
@@ -122,7 +123,7 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	FROM users
 	WHERE credentials = ?
 	`, crypt.Hash(credentials))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.UUIDKey)
 }
 
 // Verify verifies a u User s credentials
@@ -134,7 +135,7 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 		return false
 	}
 
-	isValidKey := crypt.VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
+	isValidKey := crypt.VerifyPassHash(DBUser.Credentials.UUIDKey, u.Credentials.UUIDKey)
 	isValidUUID := DBUser.UUID == crypt.Hash(u.UUID)
 	if isValidKey && isValidUUID {
 		return true

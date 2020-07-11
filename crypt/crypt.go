@@ -6,10 +6,12 @@ import (
 	r "crypto/rand"
 	"crypto/sha256"
 	b64 "encoding/base64"
-	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log"
 	"math/rand"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 // EncryptAES encrypts a string using AES with a key
@@ -69,6 +71,8 @@ func DecryptAES(str string, key []byte) (string, error) {
 
 // RandomString generates a random string
 func RandomString(n int) string {
+	rand.Seed(time.Now().UnixNano())
+
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
