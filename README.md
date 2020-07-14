@@ -20,3 +20,12 @@ To create new migrations run:
 ```
 $ migrate create -ext sql -dir sql/ -seq "description"
 ```
+
+
+## Running locally
+For testing simply run:
+```bash
+$ docker-compose up -d db
+$ docker-compose up -d redis
+$ go run .
+```
