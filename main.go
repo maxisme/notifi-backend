@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -38,6 +39,8 @@ var (
 const numRequestsPerSecond = 5
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	// load .env
 	_ = godotenv.Load()
 

@@ -32,7 +32,7 @@ func AddLoggingMiddleWare(r *chi.Mux) {
 	)
 	r.Use(hlog.AccessHandler(func(r *http.Request, status, size int, duration time.Duration) {
 		hlog.FromRequest(r).Info().
-			Str("method", r.Method).
+			Str("wrongMethod", r.Method).
 			Str("url", r.URL.String()).
 			Int("status", status).
 			Int("size", size).

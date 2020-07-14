@@ -21,8 +21,6 @@ var (
 	RDB *redis.Client
 )
 
-const redisSleep = 100
-
 func TestMain(t *testing.M) {
 	var err error
 	RDB, err = conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))

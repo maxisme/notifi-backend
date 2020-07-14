@@ -12,7 +12,7 @@ func TestEncrypt(t *testing.T) {
 	encryptedstr, _ := EncryptAES(testStr, testKey)
 	decryptedstr, _ := DecryptAES(encryptedstr, testKey)
 	if decryptedstr != testStr {
-		t.Errorf("Encryption did not work! You probably did not set env variable - encryption_key")
+		t.Errorf("Encryption did not work! You probably did not set env variable - encryption_key = steal from github actions ;) ")
 	}
 }
 

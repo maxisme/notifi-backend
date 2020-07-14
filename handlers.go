@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -34,16 +33,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	credentials := Credentials{
-		Value:   r.Header.Get("Credentials"),
-		UUIDKey: r.Header.Get("UUIDKey"),
+		Value: r.Header.Get("Credentials"),
+		Key:   r.Header.Get("Key"),
 	}
 	user := User{
 		Credentials: credentials,
 		UUID:        r.Header.Get("Uuid"),
 		AppVersion:  r.Header.Get("Version"),
 	}
-
-	fmt.Printf("%v", r.Header)
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
@@ -60,7 +57,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	var errorCode = 0
 	var DBUser User
 	_ = DBUser.GetWithUUID(s.db, user.UUID)
-	if len(DBUser.Credentials.UUIDKey) == 0 {
+	if len(DBUser.Credentials.Key) == 0 {
 		errorCode = RequestNewUserCode
 		if len(DBUser.Credentials.Value) == 0 {
 			LogInfo(r, "No credentials or key for: "+user.UUID)
@@ -122,7 +119,6 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
-	fmt.Printf("%v", r.Form)
 
 	// create PostUser struct
 	PostUser := User{
@@ -130,8 +126,8 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 		// if asking for new Credentials
 		Credentials: Credentials{
-			Value:   r.Form.Get("current_credentials"),
-			UUIDKey: r.Form.Get("current_UUIDKey"),
+			Value: r.Form.Get("current_credentials"),
+			Key:   r.Form.Get("current_credential_key"),
 		},
 	}
 

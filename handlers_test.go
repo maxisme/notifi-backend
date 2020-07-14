@@ -56,7 +56,7 @@ func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Res
 	wsheader := http.Header{}
 	wsheader.Add("Sec-Key", os.Getenv("server_key"))
 	wsheader.Add("Credentials", creds.Value)
-	wsheader.Add("UUIDKey", creds.UUIDKey)
+	wsheader.Add("Key", creds.Key)
 	wsheader.Add("Uuid", form.Get("UUID"))
 	wsheader.Add("Version", "1.0")
 
@@ -157,6 +157,7 @@ func TestMain(t *testing.M) {
 		db:      db,
 		redis:   red,
 		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		key:     os.Getenv("server_key"),
 	}
 
 	code := t.Run() // RUN THE TEST
@@ -174,26 +175,28 @@ func TestCredentials(t *testing.T) {
 
 	// create new creds
 	var creds, form = GenUser()
-	if len(creds.UUIDKey) == 0 || len(creds.Value) == 0 {
+	if len(creds.Key) == 0 || len(creds.Value) == 0 {
 		t.Errorf("Error getting new user credentials")
+		return
 	}
 
 	// try create a new user without specifying current credentials
 	r := PostRequest("", form, s.CredentialHandler)
 	var nocreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
-	if len(nocreds.Value) != 0 || len(nocreds.UUIDKey) != 0 {
+	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
 		t.Errorf("Shouldn't have been able to generate new creds for user! %v", nocreds)
+		return
 	}
 
 	// ask for new Credentials for user
 	form.Add("current_credentials", creds.Value)
-	form.Add("current_key", creds.UUIDKey)
+	form.Add("current_credential_key", creds.Key)
 	r = PostRequest("", form, s.CredentialHandler)
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Value) == 0 || creds.Value == newcreds.Value {
-		t.Errorf("Error fetching new credentials for user")
+		t.Errorf("Error creating new credentials for user")
 	}
 }
 
@@ -267,7 +270,7 @@ func TestWSHandler(t *testing.T) {
 		{"", "", false},
 		{"Sec-Key", os.Getenv("server_key"), false},
 		{"Credentials", creds.Value, false},
-		{"UUIDKey", creds.UUIDKey, false},
+		{"Key", creds.Key, false},
 		{"Uuid", form.Get("UUID"), false},
 		{"Version", "1.0.1", true},
 	}
@@ -410,7 +413,7 @@ func TestRemovedUUIDKey(t *testing.T) {
 	r := PostRequest("", f, s.CredentialHandler)
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
-	if len(newCreds.UUIDKey) == 0 || len(newCreds.Value) != 0 {
+	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
 		t.Errorf("Error fetching new Credentials for user %v. Expected new key", newCreds)
 	}
 }
@@ -427,7 +430,7 @@ func TestRemovedCredentials(t *testing.T) {
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 
 	// expects a new credential key to be returned only
-	if len(newCreds.UUIDKey) == 0 || len(newCreds.Value) == 0 {
+	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
 		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and key", newCreds)
 	}
 }
@@ -457,18 +460,18 @@ func TestInvalidHandlerMethods(t *testing.T) {
 }
 
 var secKeyHandlers = []struct {
-	handler http.HandlerFunc
-	method  string
+	handler     http.HandlerFunc
+	wrongMethod string
 }{
-	{s.CredentialHandler, "POST"},
-	{s.WSHandler, "GET"},
+	{s.CredentialHandler, "GET"},
+	{s.WSHandler, "POST"},
 }
 
 // test handlers with correct methods but no secret server_key
 func TestMissingSecKeyHandlers(t *testing.T) {
 	for i, tt := range secKeyHandlers {
 		t.Run(string(i), func(t *testing.T) {
-			req, _ := http.NewRequest(tt.method, "", nil)
+			req, _ := http.NewRequest(tt.wrongMethod, "", nil)
 			rr := httptest.NewRecorder()
 			tt.handler.ServeHTTP(rr, req)
 			if rr.Code != http.StatusBadRequest {

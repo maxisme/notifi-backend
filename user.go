@@ -22,8 +22,8 @@ type User struct {
 // Credentials structure
 type credentials = string
 type Credentials struct {
-	Value   credentials `json:"credentials"`
-	UUIDKey string      `json:"UUIDKey"`
+	Value credentials `json:"credentials"`
+	Key   string      `json:"credential_key"`
 }
 
 const (
@@ -46,22 +46,22 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	if len(DBUser.UUID) > 0 {
 		LogInfo(r, DBUser.UUID+" has an account already")
 
-		if len(DBUser.Credentials.UUIDKey) == 0 && len(DBUser.Credentials.Value) > 0 {
+		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
 			LogInfo(r, "Credential key reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.UUIDKey), crypt.Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(r, err)
 				return Credentials{}, err
 			}
 			creds.Value = ""
 			return creds, nil
-		} else if len(DBUser.Credentials.UUIDKey) == 0 && len(DBUser.Credentials.Value) == 0 {
+		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
 			LogInfo(r, "Account reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.UUIDKey), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
 				Handle(r, err)
 				return Credentials{}, err
@@ -73,7 +73,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	isNewUser := true
 	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
-		if len(u.Credentials.UUIDKey) > 0 && len(u.Credentials.Value) > 0 {
+		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
 			// if client passes current details they are asking for new Credentials
 
 			// verify the Credentials passed are valid
@@ -99,7 +99,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		WHERE UUID = ?`
 	}
 
-	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.UUIDKey), crypt.Hash(u.UUID))
+	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -113,7 +113,7 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 	FROM users
 	WHERE UUID = ?
 	`, crypt.Hash(UUID))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.UUIDKey)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 // Get will return user params based on Credentials
@@ -123,7 +123,7 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 	FROM users
 	WHERE credentials = ?
 	`, crypt.Hash(credentials))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.UUIDKey)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 // Verify verifies a u User s credentials
@@ -135,7 +135,7 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 		return false
 	}
 
-	isValidKey := crypt.VerifyPassHash(DBUser.Credentials.UUIDKey, u.Credentials.UUIDKey)
+	isValidKey := crypt.VerifyPassHash(DBUser.Credentials.Key, u.Credentials.Key)
 	isValidUUID := DBUser.UUID == crypt.Hash(u.UUID)
 	if isValidKey && isValidUUID {
 		return true

@@ -3,15 +3,13 @@ package crypt
 import (
 	"crypto/aes"
 	"crypto/cipher"
-	r "crypto/rand"
+	"crypto/rand"
 	"crypto/sha256"
 	b64 "encoding/base64"
+	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log"
-	"math/rand"
-	"time"
-
-	"golang.org/x/crypto/bcrypt"
+	"math/big"
 )
 
 // EncryptAES encrypts a string using AES with a key
@@ -31,7 +29,7 @@ func EncryptAES(str string, key []byte) (string, error) {
 	}
 
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err = io.ReadFull(r.Reader, nonce); err != nil {
+	if _, err = io.ReadFull(rand.Reader, nonce); err != nil {
 		return "", err
 	}
 
@@ -71,13 +69,15 @@ func DecryptAES(str string, key []byte) (string, error) {
 
 // RandomString generates a random string
 func RandomString(n int) string {
-	rand.Seed(time.Now().UnixNano())
-
 	var letter = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 	b := make([]rune, n)
 	for i := range b {
-		b[i] = letter[rand.Intn(len(letter))]
+		randNumber, err := rand.Int(rand.Reader, big.NewInt(int64(len(letter))))
+		if err != nil {
+			panic(err)
+		}
+		b[i] = letter[randNumber.Int64()]
 	}
 	return string(b)
 }
