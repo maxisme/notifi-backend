@@ -2,18 +2,23 @@ version: '3.2'
 services:
   db:
     image: mysql:5.6
+    expose:
+      - "3306"
+    ports:
+      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: notifi
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
     tty: true
-    restart: always
     networks:
       - overlay
 
   redis:
     image: "redis:alpine"
+    ports:
+      - "127.0.0.1:6379:6379"
     networks:
       - overlay
 
@@ -22,12 +27,10 @@ services:
     restart: always
     environment:
       db: notifi:notifi@tcp(db:3306)/notifi
-      sentry_dsn: ${sentry_dsn:?err}
-      server_key: ${server_key:?err}
-      encryption_key: ${encryption_key:?err}
+      sentry_dsn: ${sentry_dsn}
+      server_key: ${server_key}
+      encryption_key: ${encryption_key}
       redis: "redis:6379"
-    deploy:
-      mode: global
     tty: true
     ports:
       - "9081:8080"
@@ -43,11 +46,10 @@ services:
   # helpers
   migrate:
     image: migrate/migrate
+    network_mode: "host"
     volumes:
-      - .sql:/sql
-    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
-    links:
-      - db
+      - ./sql:/migrations/
+    command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(127.0.0.1:3306)/notifi", "up"]
 
 networks:
   overlay:
