@@ -28,7 +28,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != serverKey {
+	if r.Header.Get("Sec-Key") != s.key {
 		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
@@ -112,7 +112,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != serverKey {
+	if r.Header.Get("Sec-Key") != s.key {
 		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}

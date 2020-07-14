@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -27,11 +28,11 @@ type Server struct {
 	db      *sql.DB
 	redis   *redis.Client
 	funnels *ws.Funnels
+	key     string
 }
 
 var (
-	decoder   = schema.NewDecoder()
-	serverKey = os.Getenv("server_key") // has to be passed with every request
+	decoder = schema.NewDecoder()
 )
 
 const numRequestsPerSecond = 5
@@ -47,7 +48,7 @@ func main() {
 	}
 
 	// connect to db
-	dbConn, err := conn.MysqlConn(os.Getenv("db"))
+	dbConn, err := conn.MysqlConn(os.Getenv("dbsource"))
 	if err != nil {
 		panic(err)
 	}
@@ -64,6 +65,7 @@ func main() {
 		db:      dbConn,
 		redis:   redisConn,
 		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		key:     os.Getenv("server_key"),
 	}
 
 	// init sentry
@@ -90,5 +92,6 @@ func main() {
 	r.HandleFunc("/code", s.CredentialHandler)
 	r.HandleFunc("/api", s.APIHandler)
 	r.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {})
+	fmt.Println("Running: http://127.0.0.1:8080")
 	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: r})
 }
