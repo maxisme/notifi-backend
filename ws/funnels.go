@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -46,6 +47,16 @@ func (funnels *Funnels) Remove(funnel *Funnel) error {
 	funnels.Unlock()
 
 	return nil
+}
+
+func (funnels *Funnels) Send(red *redis.Client, key string, msg interface{}) error {
+	// json encode msg
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	return funnels.SendBytes(red, key, bytes)
 }
 
 func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) error {
