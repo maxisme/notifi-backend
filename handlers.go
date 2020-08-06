@@ -93,7 +93,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		PubSub: s.redis.Subscribe(user.Credentials.Value),
 	}
 
-	s.funnels.Add(funnel)
+	s.funnels.Add(s.redis, funnel)
 
 	LogInfo(r, "Client Connected: "+crypt.Hash(user.Credentials.Value))
 
@@ -202,7 +202,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := notification.Validate(r); err != nil {
-		http.Error(w, err.Error(), ErrorCode)
+		WriteError(w, r, ErrorCode, err.Error())
 		return
 	}
 
@@ -220,7 +220,6 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
 	if err != nil {
-		LogError(r, err)
 		Fatal(notification.Store(s.db))
 	}
 }

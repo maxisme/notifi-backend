@@ -87,7 +87,7 @@ func TestSendBytesToRemovedFunnel(t *testing.T) {
 		PubSub: red.Subscribe(key),
 	}
 
-	funnels.Add(funnel)
+	funnels.Add(nil, funnel)
 	_ = funnels.Remove(funnel)
 
 	err := funnels.SendBytes(red, key, []byte("test"))
@@ -109,7 +109,7 @@ func TestSendBytesLocally(t *testing.T) {
 		PubSub: red.Subscribe(key),
 	}
 
-	funnels.Add(funnel)
+	funnels.Add(nil, funnel)
 	defer funnels.Remove(funnel)
 
 	// send message over socket
@@ -139,7 +139,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
-	funnels1.Add(funnel)
+	funnels1.Add(nil, funnel)
 	defer funnels1.Remove(funnel)
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
@@ -175,7 +175,7 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 		WSConn: createWS(t),
 		PubSub: red.Subscribe(key),
 	}
-	funnels1.Add(funnel)
+	funnels1.Add(nil, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
 	err := funnels1.Remove(funnel)
@@ -189,6 +189,51 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 	err = funnels2.SendBytes(red, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error")
+	}
+}
+
+func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
+	funnels1 := Funnels{
+		Clients:        make(map[string]*Funnel),
+		StoreOnFailure: true,
+		RWMutex:        sync.RWMutex{},
+	}
+
+	funnels2 := Funnels{
+		Clients:        make(map[string]*Funnel),
+		StoreOnFailure: true,
+		RWMutex:        sync.RWMutex{},
+	}
+
+	key := randStringBytes(10)
+	funnel := &Funnel{
+		Key:    key,
+		WSConn: createWS(t),
+		PubSub: red.Subscribe(key),
+	}
+	funnels1.Add(red, funnel)
+	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
+
+	err := funnels1.Remove(funnel)
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+
+	time.Sleep(redisSleep * time.Millisecond) // wait for redis unsubscribe
+
+	sendMsg := []byte("hello")
+	err = funnels2.SendBytes(red, key, sendMsg)
+	if err == nil {
+		t.Errorf("Should have returned error")
+	}
+
+	// add initial funnel back which should send all pending messages
+	funnels1.Add(red, funnel)
+	_, msg, err := funnel.WSConn.ReadMessage()
+	if err != nil {
+		t.Errorf(err.Error())
+	} else if string(msg) != string(sendMsg) {
+		t.Errorf("Expected f%v got %v", string(sendMsg), string(msg))
 	}
 }
 

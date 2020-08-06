@@ -16,7 +16,8 @@ type Funnel struct {
 }
 
 type Funnels struct {
-	Clients map[string]*Funnel
+	Clients        map[string]*Funnel
+	StoreOnFailure bool
 	sync.RWMutex
 }
 
@@ -25,10 +26,23 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (funnels *Funnels) Add(funnel *Funnel) {
+func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
 	funnels.Lock()
 	funnels.Clients[funnel.Key] = funnel
 	funnels.Unlock()
+
+	if funnels.StoreOnFailure {
+		// read and write all temporary stored socket messages
+		for {
+			msg := red.LPop(funnel.Key)
+			if msg.Err() != nil || len(msg.Val()) == 0 {
+				break
+			}
+			if err := funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(msg.Val())); err != nil {
+				fmt.Println("problem writing pending messages: " + err.Error())
+			}
+		}
+	}
 
 	// start redis subscriber listener
 	go funnel.pubSubWSListener()
@@ -75,6 +89,14 @@ func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) err
 		// successfully sent to a redis subscriber
 		return nil
 	}
+
+	if funnels.StoreOnFailure {
+		// store message in redis list due to being unable to send
+		if err := red.LPush(key, string(msg)).Err(); err != nil {
+			return fmt.Errorf("unable to store message in redis map")
+		}
+	}
+
 	return fmt.Errorf("no socket or redis subscribers for %s", key)
 }
 
@@ -87,7 +109,7 @@ func (funnel *Funnel) pubSubWSListener() {
 		}
 		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 		if err != nil {
-			fmt.Println("Problem sending funnel socket message though redis: " + err.Error())
+			fmt.Println("problem sending funnel socket message though redis: " + err.Error())
 		}
 	}
 }
