@@ -4,36 +4,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
-
-	"github.com/google/uuid"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/websocket"
 )
 
-type WSMessageHandler func(messageType int, p []byte, err error) error
-
-type FunnelKey = string
-type FunnelRef = string
 type Funnel struct {
 	Key    string
 	WSConn *websocket.Conn
-	RDB    *redis.Client
-
-	pubSub *redis.PubSub
-	sync.RWMutex
+	PubSub *redis.PubSub
 }
 
 type Funnels struct {
-	Clients map[FunnelKey]*Funnel
+	Clients        map[string]*Funnel
+	StoreOnFailure bool
 	sync.RWMutex
-}
-
-type Message struct {
-	key FunnelKey `json:"-"`
-	Ref FunnelRef `json:"ref"`
-	Msg []byte    `json:"msg"`
 }
 
 var Upgrader = websocket.Upgrader{
@@ -41,163 +26,90 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-const AckTimeout = 1 * time.Second
-const WSMessageExpiration = 24 * 7 * time.Hour // 1 week
-
-func (funnels *Funnels) Add(funnel *Funnel) {
-	if err := funnel.SendStoredMessages(); err != nil {
-		Log("error sending stored messages: %v", err)
-	}
-
-	// create pubsub
-	funnel.pubSub = funnel.RDB.Subscribe(funnel.Key)
-
-	// add funnel client
+func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
 	funnels.Lock()
 	funnels.Clients[funnel.Key] = funnel
 	funnels.Unlock()
 
-	// start pub sub listener
-	go func() {
-		Log("error with pub sub: %v", funnel.pubSubListener())
-	}()
+	if funnels.StoreOnFailure {
+		// read and write all temporary stored socket messages
+		for {
+			msg := red.LPop(funnel.Key)
+			if msg.Err() != nil || len(msg.Val()) == 0 {
+				break
+			}
+			if err := funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(msg.Val())); err != nil {
+				fmt.Println("problem writing pending messages: " + err.Error())
+			}
+		}
+	}
+
+	// start redis subscriber listener
+	go funnel.pubSubWSListener()
 }
 
 func (funnels *Funnels) Remove(funnel *Funnel) error {
 	// remove client from redis subscription
-	funnel.Lock()
-	err := funnel.pubSub.Unsubscribe()
-	funnel.Unlock()
+	err := funnel.PubSub.Unsubscribe()
+	if err != nil {
+		return err
+	}
 
 	// remove funnel from map
 	funnels.Lock()
 	delete(funnels.Clients, funnel.Key)
 	funnels.Unlock()
-	funnel = nil
-	return err
+
+	return nil
 }
 
-func (funnels *Funnels) SendBytes(RDB *redis.Client, key string, msg []byte) error {
+func (funnels *Funnels) Send(red *redis.Client, key string, msg interface{}) error {
+	// json encode msg
+	bytes, err := json.Marshal(msg)
+	if err != nil {
+		return err
+	}
+
+	return funnels.SendBytes(red, key, bytes)
+}
+
+func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) error {
 	// check if the websocket connection to this client is on this Funnels (machine)
 	funnels.RLock()
 	funnel, gotFunnel := funnels.Clients[key]
 	funnels.RUnlock()
 
 	if gotFunnel {
-		return funnel.writeMessage(key, msg)
+		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
 	}
 
 	// send msg blindly to redis pub sub
-	// TODO worried about problem between subscriber and receiving message where message will be lost 4ever
-	numSubscribers := RDB.Publish(key, string(msg))
+	numSubscribers := red.Publish(key, string(msg))
 	if numSubscribers.Val() != 0 {
 		// successfully sent to a redis subscriber
 		return nil
 	}
 
-	// there is no client connected to any of the servers so store the message
-	if err := StoreMessage(RDB, key, uuid.New().String(), msg); err != nil {
-		return err
+	if funnels.StoreOnFailure {
+		// store message in redis list due to being unable to send
+		if err := red.LPush(key, string(msg)).Err(); err != nil {
+			return fmt.Errorf("unable to store message in redis map")
+		}
 	}
+
 	return fmt.Errorf("no socket or redis subscribers for %s", key)
 }
 
-func (funnel *Funnel) pubSubListener() error {
+func (funnel *Funnel) pubSubWSListener() {
 	for {
-		msg, err := funnel.pubSub.ReceiveMessage()
+		redisMsg, err := funnel.PubSub.ReceiveMessage()
 		if err != nil {
-			return err
+			// TODO catch specific err
+			break
 		}
-
-		err = funnel.writeMessage(funnel.Key, []byte(msg.Payload))
+		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 		if err != nil {
-			return err
+			fmt.Println("problem sending funnel socket message though redis: " + err.Error())
 		}
 	}
-}
-
-func (funnel *Funnel) Acknowledge(ref FunnelRef) error {
-	err := deleteMessage(funnel.RDB, funnel.Key, ref)
-	if err != nil {
-		Log("no matching message pending ack... Very strange.")
-	}
-	return err
-}
-
-func (funnel *Funnel) Run(messageHandler WSMessageHandler, once bool) error {
-	for {
-		messageType, msg, err := funnel.WSConn.ReadMessage()
-		if err != nil {
-			return err
-		}
-
-		var message Message
-		err = json.Unmarshal(msg, &message)
-		if err != nil {
-			Log("problem with json unmarshal: %v '%v'", err, string(msg))
-			// now ignore socket message
-			continue
-		}
-
-		go funnel.Acknowledge(message.Ref)
-
-		if messageHandler != nil {
-			if err := messageHandler(messageType, message.Msg, err); err != nil {
-				return err // TODO perhaps allow for custom handler
-			}
-		}
-
-		if once || messageType == websocket.CloseMessage {
-			return nil
-		}
-	}
-}
-
-// SendStoredMessages writes all stored messages to client
-func (funnel *Funnel) SendStoredMessages() error {
-	messages, err := GetStoredMessages(funnel.RDB, funnel.Key)
-	if err != nil {
-		return err
-	}
-
-	for _, val := range messages {
-		if err := funnel.writeMessage(funnel.Key, []byte(val)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func createMessage(key string, msg []byte) (ref string, jsonMessage []byte, err error) {
-	ref = uuid.New().String()
-	jsonMessage, err = json.Marshal(Message{
-		key,
-		ref,
-		msg,
-	})
-	if err != nil {
-		return
-	}
-	return
-}
-
-func (funnel *Funnel) writeMessage(key string, msg []byte) error {
-	ref, jsonMsg, err := createMessage(key, msg)
-	if err != nil {
-		return err
-	}
-
-	// write message over socket
-	funnel.Lock()
-	err = funnel.WSConn.WriteMessage(websocket.TextMessage, jsonMsg)
-	funnel.Unlock()
-	if err != nil {
-		// store message on failure // TODO not sure if I should do this :/
-		if err := StoreMessage(funnel.RDB, funnel.Key, ref, msg); err != nil {
-			Log("problem storing message: %v", err)
-		}
-		return err
-	}
-
-	return StoreMessage(funnel.RDB, funnel.Key, ref, msg)
 }
