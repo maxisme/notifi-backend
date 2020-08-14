@@ -31,7 +31,7 @@ const (
 	maxImageBytes = 100000
 )
 
-var encryptionKey = []byte(os.Getenv("encryption_key"))
+var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 
 // Store will store n Notification in the database after encrypting the content
 func (n Notification) Store(db *sql.DB) (err error) {

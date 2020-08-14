@@ -34,7 +34,7 @@ var s Server
 func PostRequest(url string, form url.Values, handler http.HandlerFunc) *httptest.ResponseRecorder {
 	req, _ := http.NewRequest("POST", url, strings.NewReader(form.Encode()))
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Sec-Key", os.Getenv("server_key"))
+	req.Header.Add("Sec-Key", os.Getenv("SERVER_KEY"))
 
 	rr := httptest.NewRecorder()
 	handler.ServeHTTP(rr, req)
@@ -54,7 +54,7 @@ func GenUser() (Credentials, url.Values) {
 
 func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Response, *websocket.Conn, error) {
 	wsheader := http.Header{}
-	wsheader.Add("Sec-Key", os.Getenv("server_key"))
+	wsheader.Add("Sec-Key", os.Getenv("SERVER_KEY"))
 	wsheader.Add("Credentials", creds.Value)
 	wsheader.Add("Key", creds.Key)
 	wsheader.Add("Uuid", form.Get("UUID"))
@@ -105,7 +105,7 @@ func TestMain(t *testing.M) {
 	TESTDBNAME := "notifi_test"
 
 	// make sure tests have all env variables
-	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
+	err := RequiredEnvs([]string{"db", "redis", "ENCRYPTION_KEY", "SERVER_KEY"})
 	if err != nil {
 		panic(err)
 	}
@@ -148,7 +148,7 @@ func TestMain(t *testing.M) {
 	}
 
 	// init server redis connection
-	red, err := conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))
+	red, err := conn.RedisConn(os.Getenv("redis"))
 	if err != nil {
 		panic(err)
 	}
@@ -157,7 +157,7 @@ func TestMain(t *testing.M) {
 		db:        db,
 		redis:     red,
 		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		serverkey: os.Getenv("server_key"),
+		serverkey: os.Getenv("SERVER_KEY"),
 	}
 
 	code := t.Run() // RUN THE TEST
@@ -268,7 +268,7 @@ func TestWSHandler(t *testing.T) {
 		out   bool
 	}{
 		{"", "", false},
-		{"Sec-Key", os.Getenv("server_key"), false},
+		{"Sec-Key", os.Getenv("SERVER_KEY"), false},
 		{"Credentials", creds.Value, false},
 		{"Key", creds.Key, false},
 		{"Uuid", form.Get("UUID"), false},

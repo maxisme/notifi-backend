@@ -11,8 +11,8 @@
 
 Add `.env` to project:
 ```
-server_key=
-encryption_key=
+SERVER_KEY=
+ENCRYPTION_KEY=
 sentry_dsn=
 ```
 

@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-var testKey = []byte(os.Getenv("encryption_key"))
+var testKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 var testStr = RandomString(10)
 
 func TestEncrypt(t *testing.T) {
 	encryptedstr, _ := EncryptAES(testStr, testKey)
 	decryptedstr, _ := DecryptAES(encryptedstr, testKey)
 	if decryptedstr != testStr {
-		t.Errorf("Encryption did not work! You probably did not set env variable - encryption_key = steal from github actions ;) ")
+		t.Errorf("Encryption did not work! You probably did not set env variable - ENCRYPTION_KEY = steal from github actions ;) ")
 	}
 }
 

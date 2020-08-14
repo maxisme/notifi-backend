@@ -58,7 +58,7 @@ func main() {
 	defer dbConn.Close()
 
 	// connect to redis
-	redisConn, err := conn.RedisConn(os.Getenv("REDIS_HOST"), "0")
+	redisConn, err := conn.RedisConn(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		panic(err)
 	}
@@ -68,7 +68,7 @@ func main() {
 		db:        dbConn,
 		redis:     redisConn,
 		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		serverkey: os.Getenv("server_key"),
+		serverkey: os.Getenv("SERVER_KEY"),
 	}
 
 	// init sentry

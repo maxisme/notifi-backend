@@ -13,7 +13,7 @@ services:
       MYSQL_PASSWORD: notifi
     tty: true
 
-  redis:
+  REDIS_HOST:
     image: "redis:alpine"
     ports:
       - "127.0.0.1:6379:6379"
@@ -24,8 +24,8 @@ services:
 #    environment:
 #      db: notifi:notifi@tcp(db:3306)/notifi
 #      sentry_dsn: ${sentry_dsn}
-#      server_key: ${server_key}
-#      encryption_key: ${encryption_key}
+#      SERVER_KEY: ${SERVER_KEY}
+#      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
 #      redis: "redis:6379"
 #    tty: true
 #    ports:

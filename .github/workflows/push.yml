@@ -33,11 +33,11 @@ jobs:
 
       - name: Run Tests
         env:
-          encryption_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
+          ENCRYPTION_KEY: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
           db: "root:root@"
           dbsource: "root:root@/notifi"
-          server_key: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
-          redis: "127.0.0.1:6379"
+          SERVER_KEY: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
+          REDIS_HOST: "127.0.0.1:6379"
           redis_db: 1
         run: go test ./... -v -covermode=count -coverprofile=coverage.out
 
