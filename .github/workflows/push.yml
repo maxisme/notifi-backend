@@ -57,6 +57,7 @@ jobs:
       - name: Publish to Docker Registry
         uses: docker/build-push-action@v1
         with:
+          cache_froms:
           repository: ${{ github.repository }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}

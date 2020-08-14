@@ -12,36 +12,30 @@ services:
       MYSQL_USER: notifi
       MYSQL_PASSWORD: notifi
     tty: true
-    networks:
-      - overlay
 
   redis:
     image: "redis:alpine"
     ports:
       - "127.0.0.1:6379:6379"
-    networks:
-      - overlay
 
-  app:
-    image: maxisme/notifi-backend:latest
-    restart: always
-    environment:
-      db: notifi:notifi@tcp(db:3306)/notifi
-      sentry_dsn: ${sentry_dsn}
-      server_key: ${server_key}
-      encryption_key: ${encryption_key}
-      redis: "redis:6379"
-    tty: true
-    ports:
-      - "9081:8080"
-    networks:
-      - overlay
-    depends_on:
-      - db
-      - redis
-    links:
-      - db
-      - redis
+#  app:
+#    image: maxisme/notifi-backend:latest
+#    restart: always
+#    environment:
+#      db: notifi:notifi@tcp(db:3306)/notifi
+#      sentry_dsn: ${sentry_dsn}
+#      server_key: ${server_key}
+#      encryption_key: ${encryption_key}
+#      redis: "redis:6379"
+#    tty: true
+#    ports:
+#      - "9081:8080"
+#    depends_on:
+#      - db
+#      - redis
+#    links:
+#      - db
+#      - redis
 
   # helpers
   migrate:
@@ -50,6 +44,3 @@ services:
     volumes:
       - ./sql:/migrations/
     command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(127.0.0.1:3306)/notifi", "up"]
-
-networks:
-  overlay:

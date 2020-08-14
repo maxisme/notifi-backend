@@ -27,8 +27,8 @@ type Credentials struct {
 }
 
 const (
-	credentialLen = 25
-	UUIDKeyLen    = 100
+	credentialLen    = 25
+	credentialKeyLen = 100
 )
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
@@ -38,7 +38,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
 		crypt.RandomString(credentialLen),
-		crypt.RandomString(UUIDKeyLen),
+		crypt.RandomString(credentialKeyLen),
 	}
 
 	var DBUser User
@@ -47,7 +47,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		LogInfo(r, DBUser.UUID+" has an account already")
 
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-			LogInfo(r, "Credential key reset for: "+crypt.Hash(u.UUID))
+			LogInfo(r, "Credential serverkey reset for: "+crypt.Hash(u.UUID))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
 			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
@@ -144,7 +144,7 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 }
 
 // StoreLogin stores the current timestamp that the user has connected to the web socket as well as the app version
-// the client is using and the public key to encrypt messages on the Server with
+// the client is using and the public serverkey to encrypt messages on the Server with
 func (u User) StoreLogin(db *sql.DB) error {
 	return UpdateErr(db.Exec(`UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1

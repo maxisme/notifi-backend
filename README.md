@@ -26,6 +26,7 @@ $ migrate create -ext sql -dir sql/ -seq "description"
 For testing simply run:
 ```bash
 $ docker-compose up -d db
+$ docker-compose up migrate
 $ docker-compose up -d redis
 $ go run .
 ```

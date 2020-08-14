@@ -15,8 +15,7 @@ create table if not exists users
         unique (UUID),
     constraint credentials
         unique (credentials)
-)
-    charset = latin1;
+);
 
 create table if not exists notifications
 (
@@ -30,6 +29,5 @@ create table if not exists notifications
     link        varchar(4000)                       not null,
     constraint credentials
         foreign key (credentials) references users (credentials)
-)
-    charset = latin1;
+);
 

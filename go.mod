@@ -1,8 +1,9 @@
 module github.com/maxisme/notifi-backend
 
-		go 1.14
+go 1.14
 
 require (
+	firebase.google.com/go v3.13.0+incompatible
 	github.com/TV4/graceful v0.3.4
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
@@ -21,7 +22,8 @@ require (
 	github.com/rs/zerolog v1.18.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v0.0.5
-		github.com/zenazn/goji v0.9.0
 	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
+	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
+	google.golang.org/api v0.4.0
 )

@@ -26,17 +26,17 @@ import (
 
 // Server is used for database pooling - sharing the db connection to the web handlers.
 type Server struct {
-	db      *sql.DB
-	redis   *redis.Client
-	funnels *ws.Funnels
-	key     string
+	db        *sql.DB
+	redis     *redis.Client
+	funnels   *ws.Funnels
+	serverkey string
 }
 
 var (
 	decoder = schema.NewDecoder()
 )
 
-const numRequestsPerSecond = 5
+const maxRequestsPerSecond = 5
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -45,30 +45,30 @@ func main() {
 	_ = godotenv.Load()
 
 	// check all envs are set
-	err := RequiredEnvs([]string{"db", "redis", "encryption_key", "server_key"})
+	err := RequiredEnvs([]string{"DB_SOURCE", "REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
 	if err != nil {
 		panic(err)
 	}
 
 	// connect to db
-	dbConn, err := conn.MysqlConn(os.Getenv("dbsource"))
+	dbConn, err := conn.MysqlConn(os.Getenv("DB_SOURCE"))
 	if err != nil {
 		panic(err)
 	}
 	defer dbConn.Close()
 
 	// connect to redis
-	redisConn, err := conn.RedisConn(os.Getenv("redis"), os.Getenv("redis_db"))
+	redisConn, err := conn.RedisConn(os.Getenv("REDIS_HOST"), "0")
 	if err != nil {
 		panic(err)
 	}
 	defer redisConn.Close()
 
 	s := Server{
-		db:      dbConn,
-		redis:   redisConn,
-		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		key:     os.Getenv("server_key"),
+		db:        dbConn,
+		redis:     redisConn,
+		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		serverkey: os.Getenv("server_key"),
 	}
 
 	// init sentry
@@ -83,8 +83,8 @@ func main() {
 	r := chi.NewRouter()
 
 	// middleware
-	var lmt = tollbooth.NewLimiter(numRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-		"RemoteAddr", "X-Forwarded-For", "X-Real-IP",
+	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
+		"X-Forwarded-For", "X-Real-IP",
 	})
 	r.Use(tollbooth_chi.LimitHandler(lmt))
 	r.Use(sentryMiddleware.Handle)

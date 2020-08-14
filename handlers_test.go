@@ -154,10 +154,10 @@ func TestMain(t *testing.M) {
 	}
 
 	s = Server{
-		db:      db,
-		redis:   red,
-		funnels: &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		key:     os.Getenv("server_key"),
+		db:        db,
+		redis:     red,
+		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		serverkey: os.Getenv("server_key"),
 	}
 
 	code := t.Run() // RUN THE TEST
@@ -386,7 +386,7 @@ func TestWSSResetKey(t *testing.T) {
 	}
 }
 
-// if there is no UUID in the db the client should be able to request new key
+// if there is no UUID in the db the client should be able to request new serverkey
 func TestWSSNoUUID(t *testing.T) {
 	var creds, f = GenUser() // generate user
 	_, res, _, _ := ConnectWSS(creds, f)
@@ -402,9 +402,9 @@ func TestWSSNoUUID(t *testing.T) {
 	}
 }
 
-// if there is no credential_key in the db the client should be able to request new key for same Credentials
-// and receive a new credential key only
-func TestRemovedUUIDKey(t *testing.T) {
+// if there is no credential_key in the db the client should be able to request new serverkey for same Credentials
+// and receive a new credential serverkey only
+func TestRemovedCredentialKey(t *testing.T) {
 	var _, f = GenUser() // generate user
 
 	// remove credential_key
@@ -414,7 +414,7 @@ func TestRemovedUUIDKey(t *testing.T) {
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
-		t.Errorf("Error fetching new Credentials for user %v. Expected new key", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new serverkey", newCreds)
 	}
 }
 
@@ -429,9 +429,9 @@ func TestRemovedCredentials(t *testing.T) {
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 
-	// expects a new credential key to be returned only
+	// expects a new credential serverkey to be returned only
 	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
-		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and key", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and serverkey", newCreds)
 	}
 }
 

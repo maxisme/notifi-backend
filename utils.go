@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
+	firebase "firebase.google.com/go"
 	"fmt"
+	"google.golang.org/api/option"
 	"os"
 	"runtime"
 	"time"
@@ -50,4 +53,13 @@ func UpdateErr(res sql.Result, err error) error {
 		return errors.New("no rows effected")
 	}
 	return err
+}
+
+func initFirebaseApp() (*firebase.App, error) {
+	opt := option.WithCredentialsFile(os.Getenv("firebase_sa_path"))
+	app, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing app: %v", err)
+	}
+	return app, nil
 }

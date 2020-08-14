@@ -23,11 +23,12 @@ const NotificationTimeLayout = "2006-01-02 15:04:05"
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
+		print(r.Method)
+		WriteError(w, r, http.StatusNotAcceptable, "Method not allowed "+r.Method)
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != s.key {
+	if r.Header.Get("Sec-Key") != s.serverkey {
 		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
@@ -44,13 +45,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		WriteError(w, r, http.StatusBadRequest, "Invalid UUID")
+		WriteError(w, r, http.StatusUnauthorized, "Invalid UUID")
 		return
 	} else if !IsValidVersion(user.AppVersion) {
-		WriteError(w, r, http.StatusBadRequest, "Invalid Version")
+		WriteError(w, r, http.StatusUnauthorized, "Invalid Version")
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
-		WriteError(w, r, http.StatusBadRequest, "Invalid Credentials")
+		WriteError(w, r, http.StatusUnauthorized, "Invalid Credentials")
 		return
 	}
 
@@ -60,9 +61,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if len(DBUser.Credentials.Key) == 0 {
 		errorCode = RequestNewUserCode
 		if len(DBUser.Credentials.Value) == 0 {
-			LogInfo(r, "No credentials or key for: "+user.UUID)
+			LogInfo(r, "No credentials or serverkey for: "+user.UUID)
 		} else {
-			LogInfo(r, "No credential key for: "+user.UUID)
+			LogInfo(r, "No credential serverkey for: "+user.UUID)
 		}
 	} else if !user.Verify(r, s.db) {
 		errorCode = http.StatusForbidden
@@ -74,8 +75,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := user.StoreLogin(s.db); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
-		return
+		LogInfo(r, err.Error())
 	}
 
 	// connect to socket
@@ -99,7 +99,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	LogInfo(r, "Client Disconnected: "+crypt.Hash(user.Credentials.Value))
 
 	// close connection
-	Fatal(user.CloseLogin(s.db))
+	LogError(r, user.CloseLogin(s.db))
 }
 
 // CredentialHandler is the handler for creating and updating Credentials
@@ -109,7 +109,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Header.Get("Sec-Key") != s.key {
+	if r.Header.Get("Sec-Key") != s.serverkey {
 		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}

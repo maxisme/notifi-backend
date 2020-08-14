@@ -144,7 +144,7 @@ func (n *Notification) Decrypt() error {
 }
 
 // FetchNotifications Fetches all notifications belonging to user.
-// Will only decrypt if the user has no public key and thus the messages were encrypted on the Server with AES.
+// Will only decrypt if the user has no public serverkey and thus the messages were encrypted on the Server with AES.
 func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	query := `
 	SELECT
@@ -170,7 +170,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 			return nil, err
 		}
 
-		// if there is no public key decrypt using AES notification
+		// if there is no public serverkey decrypt using AES notification
 		err = n.Decrypt()
 		if err == nil {
 			notifications = append(notifications, n)
