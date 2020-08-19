@@ -4,14 +4,22 @@ import (
 	"testing"
 )
 
-var testKey = []byte("lKmxnmQ[ATrrj4eE$WHUnBotIwSy8be6oe")
+var testKey = []byte("lKmxnmQ[ATrrj4eE$WHUnBotIwSy8boe")
 var testStr = RandomString(10)
 
 func TestEncrypt(t *testing.T) {
-	encryptedstr, _ := EncryptAES(testStr, testKey)
-	decryptedstr, _ := DecryptAES(encryptedstr, testKey)
+	encryptedstr, err := EncryptAES(testStr, testKey)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	decryptedstr, err := DecryptAES(encryptedstr, testKey)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
 	if decryptedstr != testStr {
-		t.Errorf("Encryption did not work! You probably did not set env variable - ENCRYPTION_KEY = steal from github actions ;) ")
+		t.Errorf("%s does not equal %s", decryptedstr, testStr)
 	}
 }
 

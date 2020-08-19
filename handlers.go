@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/gorilla/websocket"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"time"
 
@@ -26,11 +28,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		print(r.Method)
 		WriteError(w, r, http.StatusNotAcceptable, "Method not allowed "+r.Method)
-		return
-	}
-
-	if r.Header.Get("Sec-Key") != s.serverkey {
-		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
 
@@ -58,13 +55,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	var errorCode = 0
 	var DBUser User
-	_ = DBUser.GetWithUUID(s.db, user.UUID)
+	_ = DBUser.GetWithUUID(r, s.db, user.UUID)
 	if len(DBUser.Credentials.Key) == 0 {
 		errorCode = RequestNewUserCode
 		if len(DBUser.Credentials.Value) == 0 {
-			LogInfo(r, "No credentials or serverkey for: "+user.UUID)
+			Log(r, log.WarnLevel, "No credentials or key for: "+user.UUID)
 		} else {
-			LogInfo(r, "No credential serverkey for: "+user.UUID)
+			Log(r, log.WarnLevel, "No credential key for: "+user.UUID)
 		}
 	} else if !user.Verify(r, s.db) {
 		errorCode = http.StatusForbidden
@@ -75,8 +72,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := user.StoreLogin(s.db); err != nil {
-		LogInfo(r, err.Error())
+	if err := user.StoreLogin(r, s.db); err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	// connect to socket
@@ -95,7 +93,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.funnels.Add(s.redis, funnel)
 
-	LogInfo(r, "Client Connected: "+hashedCredentials)
+	Log(r, log.InfoLevel, "Client Connected: "+hashedCredentials)
 
 	// send all stored notifications from db
 	notifications, err := user.FetchNotifications(s.db)
@@ -106,8 +104,10 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	if len(notifications) > 0 {
 		bytes, _ := json.Marshal(notifications)
-		err := WSConn.WriteMessage(websocket.TextMessage, bytes)
-		Fatal(err)
+		if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
+			WriteError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 
 	// incoming socket messages
@@ -116,26 +116,29 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		go LogError(r, user.DeleteNotificationsWithIDs(s.db, string(message)))
+		go func() {
+			if err := user.DeleteNotificationsWithIDs(r, s.db, fmt.Sprint(message)); err != nil {
+				Log(r, log.WarnLevel, err)
+			}
+		}()
 	}
 
-	s.funnels.Remove(funnel)
+	if err := s.funnels.Remove(funnel); err != nil {
+		Log(r, log.WarnLevel, err)
+	}
 
-	LogInfo(r, "Client Disconnected: "+hashedCredentials)
+	Log(r, log.InfoLevel, "Client Disconnected: "+hashedCredentials)
 
 	// close connection
-	LogError(r, user.CloseLogin(s.db))
+	if err := user.CloseLogin(r, s.db); err != nil {
+		Log(r, log.WarnLevel, err)
+	}
 }
 
 // CredentialHandler is the handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
 		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
-		return
-	}
-
-	if r.Header.Get("Sec-Key") != s.serverkey {
-		WriteError(w, r, http.StatusForbidden, "Invalid Sec-Key")
 		return
 	}
 
@@ -157,8 +160,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		LogInfo(r, "Invalid UUID:"+PostUser.UUID)
-		WriteError(w, r, http.StatusBadRequest, "Invalid form data")
+		WriteError(w, r, http.StatusBadRequest, "Invalid UUID")
 		return
 	}
 
@@ -177,10 +179,14 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c, err := json.Marshal(creds)
-	Fatal(err)
-	if err == nil {
-		_, err = w.Write(c)
-		Fatal(err)
+	if err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	_, err = w.Write(c)
+	if err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
 	}
 }
 
@@ -208,7 +214,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	if err := IncreaseNotificationCnt(s.db, notification); err != nil {
+	if err := IncreaseNotificationCnt(r, s.db, notification); err != nil {
 		// no such user with Credentials
 		return
 	}
@@ -216,10 +222,19 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	// set notification ID
 	notification.Time = time.Now().Format(NotificationTimeLayout)
 	notificationBytes, err := json.Marshal([]Notification{notification})
-	Fatal(err)
-
-	err = s.funnels.SendBytes(s.redis, notification.Credentials, notificationBytes)
 	if err != nil {
-		LogInfo(r, err.Error())
+		WriteError(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// ignore error as don't want to return if their isn't a connected client
+	fmt.Println("sending to " + crypt.Hash(notification.Credentials))
+	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationBytes)
+	if err != nil {
+		// store as user is not online
+		if err := notification.Store(r, s.db); err != nil {
+			WriteError(w, r, http.StatusInternalServerError, err.Error())
+			return
+		}
 	}
 }

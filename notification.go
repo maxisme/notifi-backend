@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	tdb "github.com/maxisme/notifi-backend/tracer/db"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"strconv"
@@ -34,7 +36,7 @@ const (
 var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 
 // Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(db *sql.DB) (err error) {
+func (n Notification) Store(r *http.Request, db *sql.DB) (err error) {
 	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
@@ -55,7 +57,7 @@ func (n Notification) Store(db *sql.DB) (err error) {
 		return
 	}
 
-	_, err = db.Exec(`
+	_, err = tdb.Exec(r, db, `
 	INSERT INTO notifications 
     (id, title, message, image, link, credentials) 
     VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
@@ -95,23 +97,23 @@ func (n Notification) Validate(r *http.Request) error {
 			return errors.New("Image host must use https!")
 		}
 
-		timeout := time.Duration(300 * time.Millisecond)
+		timeout := 300 * time.Millisecond
 		client := http.Client{
 			Timeout: timeout,
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			LogError(r, err)
+			Log(r, log.WarnLevel, err)
 			n.Image = "" // remove image reference
 		} else {
-			contentlen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
+			contentLen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				LogError(r, err)
+				Log(r, log.WarnLevel, err)
 				n.Image = "" // remove image reference
 			}
 
-			if contentlen > maxImageBytes {
-				return errors.New("Image too large (" + string(contentlen) + ") should be less than " + string(maxImageBytes))
+			if contentLen > maxImageBytes {
+				return errors.New(fmt.Sprintf("Image too large (%d) should be less than %d", contentLen, maxImageBytes))
 			}
 		}
 	}
@@ -144,7 +146,7 @@ func (n *Notification) Decrypt() error {
 }
 
 // FetchNotifications Fetches all notifications belonging to user.
-// Will only decrypt if the user has no public serverkey and thus the messages were encrypted on the Server with AES.
+// Will only decrypt if the user has no public serverKey and thus the messages were encrypted on the Server with AES.
 func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	query := `
 	SELECT
@@ -170,7 +172,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 			return nil, err
 		}
 
-		// if there is no public serverkey decrypt using AES notification
+		// if there is no public serverKey decrypt using AES notification
 		err = n.Decrypt()
 		if err == nil {
 			notifications = append(notifications, n)
@@ -182,7 +184,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 // DeleteNotificationsWithIDs deletes all comma separated ids
-func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
+func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string) error {
 	// arguments to be passed to the SQL query
 	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
 
@@ -200,30 +202,24 @@ func (u User) DeleteNotificationsWithIDs(db *sql.DB, ids string) error {
 		numIds += 1
 	}
 
-	query := fmt.Sprintf(`
-	DELETE FROM notifications
-	WHERE credentials = ?
-	AND id IN (?%s)`, strings.Repeat(",?", len(SQLArgs)-2))
+	if len(SQLArgs)-2 > 0 {
+		query := fmt.Sprintf(`
+		DELETE FROM notifications
+		WHERE credentials = ?
+		AND id IN (?%s)`, strings.Repeat(",?", len(SQLArgs)-2))
 
-	res, err := db.Exec(query, SQLArgs...)
-	if err != nil {
-		return err
-	}
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected != numIds {
-		return fmt.Errorf("not all rows passed have been deleted: %d != %d", rowsAffected, numIds)
+		_, err := tdb.Exec(r, db, query, SQLArgs...)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // IncreaseNotificationCnt increases the notification count in the database of the specific Credentials from the
 // Notification
-func IncreaseNotificationCnt(db *sql.DB, n Notification) error {
-	res, err := db.Exec(`UPDATE users 
+func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
+	res, err := tdb.Exec(r, db, `UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
 	if err != nil {
 		return err

@@ -3,6 +3,7 @@ module github.com/maxisme/notifi-backend
 go 1.14
 
 require (
+	cloud.google.com/go/firestore v1.3.0 // indirect
 	firebase.google.com/go v3.13.0+incompatible
 	github.com/TV4/graceful v0.3.4
 	github.com/didip/tollbooth v4.0.2+incompatible
@@ -21,9 +22,12 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rs/zerolog v1.18.0
 	github.com/satori/go.uuid v1.2.0
+	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v0.0.5
-	golang.org/x/crypto v0.0.0-20200204104054-c9f3fb736b72
-	golang.org/x/net v0.0.0-20190923162816-aa69164e4478
+	go.opentelemetry.io/otel v0.10.0
+	go.opentelemetry.io/otel/exporters/trace/jaeger v0.10.0
+	go.opentelemetry.io/otel/sdk v0.10.0
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/time v0.0.0-20191024005414-555d28b269f0 // indirect
-	google.golang.org/api v0.4.0
+	google.golang.org/api v0.29.0
 )

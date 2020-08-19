@@ -118,8 +118,8 @@ func TestSendBytesLocally(t *testing.T) {
 
 	// read message over socket
 	_, msg, _ := funnel.WSConn.ReadMessage()
-	if string(msg) != string(sendMsg) {
-		t.Errorf("Expected %v got %v", string(sendMsg), string(msg))
+	if fmt.Sprint(msg) != fmt.Sprint(sendMsg) {
+		t.Errorf("Expected %v got %v", fmt.Sprint(sendMsg), fmt.Sprint(msg))
 	}
 }
 
@@ -229,11 +229,12 @@ func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
 
 	// add initial funnel back which should send all pending messages
 	funnels1.Add(red, funnel)
+
 	_, msg, err := funnel.WSConn.ReadMessage()
 	if err != nil {
 		t.Errorf(err.Error())
 	} else if string(msg) != string(sendMsg) {
-		t.Errorf("Expected f%v got %v", string(sendMsg), string(msg))
+		t.Errorf("Expected %s got %s", sendMsg, msg)
 	}
 }
 
@@ -244,5 +245,5 @@ func randStringBytes(n int) string {
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
-	return string(b)
+	return fmt.Sprint(b)
 }

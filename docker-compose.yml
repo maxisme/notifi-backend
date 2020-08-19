@@ -4,8 +4,6 @@ services:
     image: mysql:5.6
     expose:
       - "3306"
-    ports:
-      - "127.0.0.1:3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: notifi
@@ -13,31 +11,64 @@ services:
       MYSQL_PASSWORD: notifi
     tty: true
 
-  REDIS_HOST:
+  redis:
     image: "redis:alpine"
+
+  app:
+    image: maxisme/notifi-backend:latest
+    restart: always
+    environment:
+      DB_HOST: notifi:notifi@tcp(db:3306)/notifi
+      SERVER_KEY: ${SERVER_KEY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      REDIS_HOST: "redis:6379"
+    tty: true
     ports:
-      - "127.0.0.1:6379:6379"
+      - "9081:8080"
+    depends_on:
+      - db
+      - redis
+    links:
+      - db
+      - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notifi.rule=Host(`localhost`)"
+      - "traefik.http.routers.notifi.entrypoints=web"
+      - "traefik.http.services.notifi.loadbalancer.server.port=8080"
 
-#  app:
-#    image: maxisme/notifi-backend:latest
-#    restart: always
-#    environment:
-#      db: notifi:notifi@tcp(db:3306)/notifi
-#      sentry_dsn: ${sentry_dsn}
-#      SERVER_KEY: ${SERVER_KEY}
-#      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-#      redis: "redis:6379"
-#    tty: true
-#    ports:
-#      - "9081:8080"
-#    depends_on:
-#      - db
-#      - redis
-#    links:
-#      - db
-#      - redis
+  traefik:
+    image: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--tracing=true"
+      - "--tracing.serviceName=traefik"
+      - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
+      - "--tracing.jaeger.collector.endpoint=http://jaeger:14268/api/traces?format=zipkin.thrift"
+      - "--tracing.jaeger.gen128Bit"
+      - "--tracing.jaeger.propagation=b3"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    depends_on:
+      - jaeger
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
-  # helpers
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "127.0.0.1:16686:16686"
+    environment:
+      JAEGER_REPORTER_LOG_SPANS: "true"
+    command:
+      - "--log-level=debug"
+
+
   migrate:
     image: migrate/migrate
     network_mode: "host"

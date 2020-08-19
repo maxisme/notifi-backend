@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/maxisme/notifi-backend/conn"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -14,11 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/maxisme/notifi-backend/conn"
-
 	"github.com/maxisme/notifi-backend/ws"
 
-	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
@@ -27,6 +26,66 @@ import (
 )
 
 var s Server
+
+// applied to every test
+func TestMain(t *testing.M) {
+	TESTDBNAME := "notifi_test"
+
+	// create database
+	db, err := conn.MysqlConn("root:root@tcp(127.0.0.1:3306)/?multiStatements=True")
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = db.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS %[1]v; 
+	CREATE DATABASE %[1]v;`, TESTDBNAME))
+	if err != nil {
+		panic(err)
+	}
+	db.Close()
+
+	// apply patches
+	dbConnStr := "root:root@tcp(127.0.0.1:3306)" + "/" + TESTDBNAME
+	m, err := migrate.New("file://sql/", "mysql://"+dbConnStr)
+	if err != nil {
+		panic(err)
+	}
+
+	// test up and down commands work
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
+	if err := m.Down(); err != nil {
+		panic(err)
+	}
+	if err := m.Up(); err != nil {
+		panic(err)
+	}
+
+	// init server db connection
+	db, err = conn.MysqlConn(dbConnStr)
+	if err != nil {
+		panic(err)
+	}
+
+	// init server redis connection
+	red, err := conn.RedisConn("127.0.0.1:6379")
+	if err != nil {
+		panic(err)
+	}
+
+	s = Server{
+		db:        db,
+		redis:     red,
+		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		serverKey: "rps2P8irs0mT5uCgicv8m5PMq9a6WyzbxL7HWeRK",
+	}
+
+	code := t.Run() // RUN THE TEST
+
+	// after individual test
+	os.Exit(code)
+}
 
 /////////////
 // helpers //
@@ -73,10 +132,10 @@ func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *
 }
 
 func SendNotification(credentials string, title string) *httptest.ResponseRecorder {
-	nform := url.Values{}
-	nform.Add("Credentials", credentials)
-	nform.Add("title", title)
-	req, _ := http.NewRequest("GET", "/api?"+nform.Encode(), nil)
+	form := url.Values{}
+	form.Add("Credentials", credentials)
+	form.Add("title", title)
+	req, _ := http.NewRequest("GET", "/api?"+form.Encode(), nil)
 	rr := httptest.NewRecorder()
 	http.HandlerFunc(s.APIHandler).ServeHTTP(rr, req)
 	return rr
@@ -98,72 +157,6 @@ func removeUserCreds(db *sql.DB, UUID string) {
 	if err != nil {
 		panic(err)
 	}
-}
-
-// applied to every test
-func TestMain(t *testing.M) {
-	TESTDBNAME := "notifi_test"
-
-	// make sure tests have all env variables
-	err := RequiredEnvs([]string{"db", "redis", "ENCRYPTION_KEY", "SERVER_KEY"})
-	if err != nil {
-		panic(err)
-	}
-
-	// create database
-	db, err := conn.MysqlConn(os.Getenv("db") + "/?multiStatements=True")
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = db.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS %[1]v; 
-	CREATE DATABASE %[1]v;`, TESTDBNAME))
-	if err != nil {
-		panic(err)
-	}
-	db.Close()
-
-	// apply patches
-	dbConnStr := os.Getenv("db") + "/" + TESTDBNAME
-	m, err := migrate.New("file://sql/", "mysql://"+dbConnStr)
-	if err != nil {
-		panic(err)
-	}
-
-	// test up and down commands work
-	if err := m.Up(); err != nil {
-		panic(err)
-	}
-	if err := m.Down(); err != nil {
-		panic(err)
-	}
-	if err := m.Up(); err != nil {
-		panic(err)
-	}
-
-	// init server db connection
-	db, err = conn.MysqlConn(dbConnStr)
-	if err != nil {
-		panic(err)
-	}
-
-	// init server redis connection
-	red, err := conn.RedisConn(os.Getenv("redis"))
-	if err != nil {
-		panic(err)
-	}
-
-	s = Server{
-		db:        db,
-		redis:     red,
-		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		serverkey: os.Getenv("SERVER_KEY"),
-	}
-
-	code := t.Run() // RUN THE TEST
-
-	// after individual test
-	os.Exit(code)
 }
 
 ////////////////////
@@ -209,8 +202,8 @@ func TestAddNotification(t *testing.T) {
 
 	// POST test
 	r := PostRequest("", form, s.APIHandler)
-	if status := r.Code; status != 200 {
-		t.Errorf("handler returned wrong status code: got %v want %v", status, 200)
+	if r.Code != 200 {
+		t.Errorf("handler returned wrong status code: got %d want %d", r.Code, 200)
 	}
 
 	// GET test
@@ -300,32 +293,33 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	// connect to ws
 	_, _, WS, _ := ConnectWSS(creds, uform)
 	defer WS.Close()
-
 	funnels := ws.Funnels{
 		Clients: make(map[string]*ws.Funnel),
 		RWMutex: sync.RWMutex{},
 	}
-
 	funnel := &ws.Funnel{
 		Key:    creds.Value,
 		WSConn: WS,
-		RDB:    s.redis,
+		PubSub: s.redis.Subscribe(creds.Value),
 	}
-	funnels.Add(funnel)
+	funnels.Add(s.redis, funnel)
 
-	// fetch stored notifications on Server that were sent when not connected
-	err := funnel.Run(func(messageType int, p []byte, err error) error {
-		var notifications []Notification
-		_ = json.Unmarshal(p, &notifications)
+	// verify message was sent now connected
+	notifications := readNotifications(WS)
+	if notifications[0].Title != TITLE {
+		t.Error("Incorrect title returned!")
+	}
+}
 
-		if notifications[0].Title != TITLE {
-			t.Error("Incorrect title returned!")
-		}
-		return nil
-	}, true)
+func readNotifications(ws *websocket.Conn) (notifications []Notification) {
+	_, mess, err := ws.ReadMessage()
 	if err != nil {
-		t.Error(err)
+		fmt.Println(err.Error())
+		return
 	}
+
+	_ = json.Unmarshal(mess, &notifications)
+	return
 }
 
 func TestReceivingNotificationWSOnline(t *testing.T) {
@@ -335,39 +329,27 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	_, _, WS, _ := ConnectWSS(creds, form)
 	defer WS.Close()
 
-	funnels := ws.Funnels{
-		Clients: make(map[string]*ws.Funnel),
-		RWMutex: sync.RWMutex{},
-	}
-
 	funnel := &ws.Funnel{
-		Key:    creds.Value,
+		Key:    crypt.Hash(creds.Value),
 		WSConn: WS,
-		RDB:    s.redis,
+		PubSub: s.redis.Subscribe(creds.Value),
 	}
 
-	funnels.Add(funnel)
+	s.funnels.Add(s.redis, funnel)
 
 	// send notification over http
 	TITLE := crypt.RandomString(10)
 	SendNotification(creds.Value, TITLE)
 
+	time.Sleep(1 * time.Second)
 	// read notification over ws
-	err := funnel.Run(func(messageType int, p []byte, err error) error {
-		var notifications []Notification
-		err = json.Unmarshal(p, &notifications)
-		if err != nil {
-			t.Errorf(err.Error())
-			return err
-		}
-
-		if notifications[0].Title != TITLE {
-			t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
-		}
-		return nil
-	}, true)
-	if err != nil {
-		t.Errorf(err.Error())
+	notifications := readNotifications(WS)
+	if notifications == nil {
+		t.Errorf("No notifications!")
+		return
+	}
+	if notifications[0].Title != TITLE {
+		t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
 	}
 }
 
@@ -386,7 +368,7 @@ func TestWSSResetKey(t *testing.T) {
 	}
 }
 
-// if there is no UUID in the db the client should be able to request new serverkey
+// if there is no UUID in the db the client should be able to request new serverKey
 func TestWSSNoUUID(t *testing.T) {
 	var creds, f = GenUser() // generate user
 	_, res, _, _ := ConnectWSS(creds, f)
@@ -402,8 +384,8 @@ func TestWSSNoUUID(t *testing.T) {
 	}
 }
 
-// if there is no credential_key in the db the client should be able to request new serverkey for same Credentials
-// and receive a new credential serverkey only
+// if there is no credential_key in the db the client should be able to request new serverKey for same Credentials
+// and receive a new credential serverKey only
 func TestRemovedCredentialKey(t *testing.T) {
 	var _, f = GenUser() // generate user
 
@@ -414,7 +396,7 @@ func TestRemovedCredentialKey(t *testing.T) {
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 	if len(newCreds.Key) == 0 || len(newCreds.Value) != 0 {
-		t.Errorf("Error fetching new Credentials for user %v. Expected new serverkey", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new serverKey", newCreds)
 	}
 }
 
@@ -429,9 +411,9 @@ func TestRemovedCredentials(t *testing.T) {
 	var newCreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newCreds)
 
-	// expects a new credential serverkey to be returned only
+	// expects a new credential serverKey to be returned only
 	if len(newCreds.Key) == 0 || len(newCreds.Value) == 0 {
-		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and serverkey", newCreds)
+		t.Errorf("Error fetching new Credentials for user %v. Expected new Credentials and serverKey", newCreds)
 	}
 }
 
@@ -447,7 +429,7 @@ var invalidHandlerMethods = []struct {
 // request handlers with incorrect methods
 func TestInvalidHandlerMethods(t *testing.T) {
 	for i, tt := range invalidHandlerMethods {
-		t.Run(string(i), func(t *testing.T) {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			req, _ := http.NewRequest(tt.invalidMethod, "", nil)
 
 			rr := httptest.NewRecorder()
@@ -470,7 +452,7 @@ var secKeyHandlers = []struct {
 // test handlers with correct methods but no secret server_key
 func TestMissingSecKeyHandlers(t *testing.T) {
 	for i, tt := range secKeyHandlers {
-		t.Run(string(i), func(t *testing.T) {
+		t.Run(fmt.Sprint(i), func(t *testing.T) {
 			req, _ := http.NewRequest(tt.wrongMethod, "", nil)
 			rr := httptest.NewRecorder()
 			tt.handler.ServeHTTP(rr, req)

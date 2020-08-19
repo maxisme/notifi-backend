@@ -2,10 +2,13 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 
 	"github.com/go-errors/errors"
 	"github.com/maxisme/notifi-backend/crypt"
+	tdb "github.com/maxisme/notifi-backend/tracer/db"
 )
 
 // User structure
@@ -42,28 +45,26 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	}
 
 	var DBUser User
-	_ = DBUser.GetWithUUID(db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
+	_ = DBUser.GetWithUUID(r, db, u.UUID) // doesn't matter if error just means there is no previous user with UUID
 	if len(DBUser.UUID) > 0 {
-		LogInfo(r, DBUser.UUID+" has an account already")
-
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-			LogInfo(r, "Credential serverkey reset for: "+crypt.Hash(u.UUID))
+			Log(r, log.InfoLevel, fmt.Sprintf("Credential reset for: %s", crypt.Hash(u.UUID)))
 
 			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
-				Handle(r, err)
+				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err
 			}
 			creds.Value = ""
 			return creds, nil
 		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
-			LogInfo(r, "Account reset for: "+crypt.Hash(u.UUID))
+			Log(r, log.InfoLevel, fmt.Sprintf("Account reset for: %s", crypt.Hash(u.UUID)))
 
 			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
+			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
-				Handle(r, err)
+				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err
 			}
 			return creds, nil
@@ -80,7 +81,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 			if u.Verify(r, db) {
 				isNewUser = false
 			} else {
-				LogInfo(r, "Client lied about credentials") // TODO better logging
+				Log(r, log.WarnLevel, fmt.Sprintf("Client passed credentials that were invalid"))
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
@@ -99,7 +100,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		WHERE UUID = ?`
 	}
 
-	_, err := db.Exec(query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -107,8 +108,8 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 }
 
 // GetWithUUID will return user params based on a UUID
-func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
-	row := db.QueryRow(`
+func (u *User) GetWithUUID(r *http.Request, db *sql.DB, UUID string) error {
+	row := tdb.QueryRow(r, db, `
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE UUID = ?
@@ -117,8 +118,8 @@ func (u *User) GetWithUUID(db *sql.DB, UUID string) error {
 }
 
 // Get will return user params based on Credentials
-func (u *User) Get(db *sql.DB, credentials string) error {
-	var row = db.QueryRow(`
+func (u *User) Get(r *http.Request, db *sql.DB, credentials string) error {
+	var row = tdb.QueryRow(r, db, `
 	SELECT UUID, credentials, credential_key 
 	FROM users
 	WHERE credentials = ?
@@ -129,9 +130,8 @@ func (u *User) Get(db *sql.DB, credentials string) error {
 // Verify verifies a u User s credentials
 func (u User) Verify(r *http.Request, db *sql.DB) bool {
 	var DBUser User
-	err := DBUser.Get(db, string(u.Credentials.Value))
+	err := DBUser.Get(r, db, fmt.Sprint(u.Credentials.Value))
 	if err != nil {
-		LogInfo(r, "No such credentials in db: "+u.Credentials.Value)
 		return false
 	}
 
@@ -144,16 +144,16 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 }
 
 // StoreLogin stores the current timestamp that the user has connected to the web socket as well as the app version
-// the client is using and the public serverkey to encrypt messages on the Server with
-func (u User) StoreLogin(db *sql.DB) error {
-	return UpdateErr(db.Exec(`UPDATE users
+// the client is using and the public serverKey to encrypt messages on the Server with
+func (u User) StoreLogin(r *http.Request, db *sql.DB) error {
+	return UpdateErr(tdb.Exec(r, db, `UPDATE users
 	SET last_login = NOW(), app_version = ?, is_connected = 1
 	WHERE credentials = ? AND UUID = ?`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }
 
 // CloseLogin marks a user as no longer connected to web socket in db
-func (u User) CloseLogin(db *sql.DB) error {
-	return UpdateErr(db.Exec(`UPDATE users
+func (u User) CloseLogin(r *http.Request, db *sql.DB) error {
+	return UpdateErr(tdb.Exec(r, db, `UPDATE users
 	SET is_connected = 0
 	WHERE credentials = ? AND UUID = ?`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }

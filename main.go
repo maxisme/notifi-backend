@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/go-chi/chi/middleware"
+	"github.com/maxisme/notifi-backend/tracer"
 	"math/rand"
 	"net/http"
 	"os"
@@ -29,7 +31,7 @@ type Server struct {
 	db        *sql.DB
 	redis     *redis.Client
 	funnels   *ws.Funnels
-	serverkey string
+	serverKey string
 }
 
 var (
@@ -38,6 +40,18 @@ var (
 
 const maxRequestsPerSecond = 5
 
+// ServerKeyMiddleware middleware makes sure the Sec-Key header matches the SERVER_KEY environment variable as
+// well as rate limiting requests
+func ServerKeyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Sec-Key") != os.Getenv("SERVER_KEY") {
+			WriteError(w, r, http.StatusForbidden, "Invalid server key")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
@@ -45,13 +59,14 @@ func main() {
 	_ = godotenv.Load()
 
 	// check all envs are set
-	err := RequiredEnvs([]string{"DB_SOURCE", "REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
+	err := RequiredEnvs([]string{"DB_HOST", "REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
 	if err != nil {
 		panic(err)
 	}
 
 	// connect to db
-	dbConn, err := conn.MysqlConn(os.Getenv("DB_SOURCE"))
+	time.Sleep(2 * time.Second)
+	dbConn, err := conn.MysqlConn(os.Getenv("DB_HOST"))
 	if err != nil {
 		panic(err)
 	}
@@ -64,11 +79,21 @@ func main() {
 	}
 	defer redisConn.Close()
 
+	// tracing
+	if os.Getenv("COLLECTOR_HOSTNAME") != "" {
+		// start tracer
+		fn, err := tracer.InitJaegerExporter("notifi", os.Getenv("COLLECTOR_HOSTNAME"))
+		if err != nil {
+			panic(err)
+		}
+		defer fn()
+	}
+
 	s := Server{
 		db:        dbConn,
 		redis:     redisConn,
 		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		serverkey: os.Getenv("SERVER_KEY"),
+		serverKey: os.Getenv("SERVER_KEY"),
 	}
 
 	// init sentry
@@ -86,14 +111,25 @@ func main() {
 	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
 		"X-Forwarded-For", "X-Real-IP",
 	})
-	r.Use(tollbooth_chi.LimitHandler(lmt))
-	r.Use(sentryMiddleware.Handle)
-	AddLoggingMiddleWare(r)
 
 	// HANDLERS
-	r.HandleFunc("/ws", s.WSHandler)
-	r.HandleFunc("/code", s.CredentialHandler)
-	r.HandleFunc("/api", s.APIHandler)
+	r.Group(func(traceR chi.Router) {
+		traceR.Use(tracer.Middleware)
+		traceR.Use(middleware.RealIP)
+		traceR.Use(middleware.Recoverer)
+		traceR.Use(sentryMiddleware.Handle)
+		traceR.Use(tollbooth_chi.LimitHandler(lmt))
+
+		traceR.Group(func(secureR chi.Router) {
+			r.Use(ServerKeyMiddleware)
+
+			secureR.HandleFunc("/ws", s.WSHandler)
+			secureR.HandleFunc("/code", s.CredentialHandler)
+		})
+
+		r.HandleFunc("/api", s.APIHandler)
+	})
+
 	r.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {})
 	fmt.Println("Running: http://127.0.0.1:8080")
 	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: r})
