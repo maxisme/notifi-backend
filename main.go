@@ -72,7 +72,7 @@ func main() {
 	}
 
 	// init sentry
-	sentryDsn := os.Getenv("sentry_dsn")
+	sentryDsn := os.Getenv("SENTRY_DSN")
 	if sentryDsn != "" {
 		if err := sentry.Init(sentry.ClientOptions{Dsn: sentryDsn}); err != nil {
 			panic(err)

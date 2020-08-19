@@ -1,11 +1,10 @@
 package crypt
 
 import (
-	"os"
 	"testing"
 )
 
-var testKey = []byte(os.Getenv("ENCRYPTION_KEY"))
+var testKey = []byte("lKmxnmQ[ATrrj4eE$WHUnBotIwSy8be6oe")
 var testStr = RandomString(10)
 
 func TestEncrypt(t *testing.T) {

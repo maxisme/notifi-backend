@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"github.com/gorilla/websocket"
 	"net/http"
 	"time"
 
@@ -80,23 +81,47 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// connect to socket
 	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
-	Fatal(err)
+	if err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	// initialise WS funnel
+	hashedCredentials := crypt.Hash(user.Credentials.Value)
 	funnel := &ws.Funnel{
-		Key:    user.Credentials.Value,
+		Key:    hashedCredentials,
 		WSConn: WSConn,
-		RDB:    s.redis,
+		PubSub: s.redis.Subscribe(hashedCredentials),
 	}
-	s.funnels.Add(funnel)
+	s.funnels.Add(s.redis, funnel)
 
-	LogInfo(r, "Client Connected: "+crypt.Hash(user.Credentials.Value))
+	LogInfo(r, "Client Connected: "+hashedCredentials)
 
-	LogError(r, funnel.Run(nil, false))
+	// send all stored notifications from db
+	notifications, err := user.FetchNotifications(s.db)
+	if err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 
-	LogError(r, s.funnels.Remove(funnel))
+	if len(notifications) > 0 {
+		bytes, _ := json.Marshal(notifications)
+		err := WSConn.WriteMessage(websocket.TextMessage, bytes)
+		Fatal(err)
+	}
 
-	LogInfo(r, "Client Disconnected: "+crypt.Hash(user.Credentials.Value))
+	// incoming socket messages
+	for {
+		_, message, err := WSConn.ReadMessage()
+		if err != nil {
+			break
+		}
+		go LogError(r, user.DeleteNotificationsWithIDs(s.db, string(message)))
+	}
+
+	s.funnels.Remove(funnel)
+
+	LogInfo(r, "Client Disconnected: "+hashedCredentials)
 
 	// close connection
 	LogError(r, user.CloseLogin(s.db))
