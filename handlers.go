@@ -27,7 +27,7 @@ const NotificationTimeLayout = "2006-01-02 15:04:05"
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
 		print(r.Method)
-		WriteError(w, r, http.StatusNotAcceptable, "Method not allowed "+r.Method)
+		WriteError(w, r, http.StatusBadRequest, "Method not allowed "+r.Method)
 		return
 	}
 

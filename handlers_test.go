@@ -12,7 +12,6 @@ import (
 	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -111,24 +110,24 @@ func GenUser() (Credentials, url.Values) {
 	return creds, form
 }
 
-func ConnectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Response, *websocket.Conn, error) {
+func connectWSS(creds Credentials, form url.Values) (*httptest.Server, *http.Response, *websocket.Conn, error) {
 	wsheader := http.Header{}
-	wsheader.Add("Sec-Key", os.Getenv("SERVER_KEY"))
 	wsheader.Add("Credentials", creds.Value)
 	wsheader.Add("Key", creds.Key)
 	wsheader.Add("Uuid", form.Get("UUID"))
 	wsheader.Add("Version", "1.0")
 
-	return ConnectWSSHeader(wsheader)
+	return connectWSSHeader(wsheader)
 }
 
-func ConnectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
-	s := httptest.NewServer(http.HandlerFunc(s.WSHandler))
-	WS, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(s.URL, "http"), wsheader)
+func connectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *websocket.Conn, error) {
+	server := httptest.NewServer(http.HandlerFunc(s.WSHandler))
+	ws, res, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(server.URL, "http"), wsheader)
 	if err == nil {
-		_ = WS.SetReadDeadline(time.Now().Add(1 * time.Second)) // add timeout
+		// add ws read timeout
+		_ = ws.SetReadDeadline(time.Now().Add(5 * time.Second))
 	}
-	return s, res, WS, err
+	return server, res, ws, err
 }
 
 func SendNotification(credentials string, title string) *httptest.ResponseRecorder {
@@ -270,7 +269,7 @@ func TestWSHandler(t *testing.T) {
 
 	for _, tt := range headers {
 		wsheader.Add(tt.key, tt.value)
-		server, _, WS, err := ConnectWSSHeader(wsheader)
+		server, _, WS, err := connectWSSHeader(wsheader)
 		if err == nil != tt.out {
 			println(tt.key + " " + tt.value)
 			t.Errorf("got %v, wanted %v", err == nil, tt.out)
@@ -291,18 +290,8 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	SendNotification(creds.Value, TITLE)
 
 	// connect to ws
-	_, _, WS, _ := ConnectWSS(creds, uform)
+	_, _, WS, _ := connectWSS(creds, uform)
 	defer WS.Close()
-	funnels := ws.Funnels{
-		Clients: make(map[string]*ws.Funnel),
-		RWMutex: sync.RWMutex{},
-	}
-	funnel := &ws.Funnel{
-		Key:    creds.Value,
-		WSConn: WS,
-		PubSub: s.redis.Subscribe(creds.Value),
-	}
-	funnels.Add(s.redis, funnel)
 
 	// verify message was sent now connected
 	notifications := readNotifications(WS)
@@ -318,7 +307,11 @@ func readNotifications(ws *websocket.Conn) (notifications []Notification) {
 		return
 	}
 
-	_ = json.Unmarshal(mess, &notifications)
+	err = json.Unmarshal(mess, &notifications)
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 	return
 }
 
@@ -326,22 +319,13 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	var creds, form = GenUser() // generate user
 
 	// connect to ws
-	_, _, WS, _ := ConnectWSS(creds, form)
+	_, _, WS, _ := connectWSS(creds, form)
 	defer WS.Close()
-
-	funnel := &ws.Funnel{
-		Key:    crypt.Hash(creds.Value),
-		WSConn: WS,
-		PubSub: s.redis.Subscribe(creds.Value),
-	}
-
-	s.funnels.Add(s.redis, funnel)
 
 	// send notification over http
 	TITLE := crypt.RandomString(10)
 	SendNotification(creds.Value, TITLE)
 
-	time.Sleep(1 * time.Second)
 	// read notification over ws
 	notifications := readNotifications(WS)
 	if notifications == nil {
@@ -355,14 +339,14 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 
 func TestWSSResetKey(t *testing.T) {
 	var creds, f = GenUser() // generate user
-	_, res, _, _ := ConnectWSS(creds, f)
+	_, res, _, _ := connectWSS(creds, f)
 	if res.StatusCode != 101 {
 		t.Errorf("expected %v got %v", 101, res.StatusCode)
 	}
 
 	// remove credential_key
 	removeUserCredKey(s.db, f.Get("UUID"))
-	_, res, _, _ = ConnectWSS(creds, f)
+	_, res, _, _ = connectWSS(creds, f)
 	if res.StatusCode != RequestNewUserCode {
 		t.Errorf("expected %v got %v", RequestNewUserCode, res.StatusCode)
 	}
@@ -371,14 +355,14 @@ func TestWSSResetKey(t *testing.T) {
 // if there is no UUID in the db the client should be able to request new serverKey
 func TestWSSNoUUID(t *testing.T) {
 	var creds, f = GenUser() // generate user
-	_, res, _, _ := ConnectWSS(creds, f)
+	_, res, _, _ := connectWSS(creds, f)
 	if res.StatusCode != 101 {
 		t.Errorf("expected %v got %v", 101, res.StatusCode)
 	}
 
 	// remove credential_key
 	removeUserCreds(s.db, f.Get("UUID"))
-	_, res, _, _ = ConnectWSS(creds, f)
+	_, res, _, _ = connectWSS(creds, f)
 	if res.StatusCode != RequestNewUserCode {
 		t.Errorf("expected %v got %v", RequestNewUserCode, res.StatusCode)
 	}
