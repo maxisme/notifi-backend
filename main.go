@@ -121,13 +121,13 @@ func main() {
 		traceR.Use(tollbooth_chi.LimitHandler(lmt))
 
 		traceR.Group(func(secureR chi.Router) {
-			r.Use(ServerKeyMiddleware)
+			secureR.Use(ServerKeyMiddleware)
 
 			secureR.HandleFunc("/ws", s.WSHandler)
 			secureR.HandleFunc("/code", s.CredentialHandler)
 		})
 
-		r.HandleFunc("/api", s.APIHandler)
+		traceR.HandleFunc("/api", s.APIHandler)
 	})
 
 	r.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {})
