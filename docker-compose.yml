@@ -1,7 +1,7 @@
 version: '3.2'
 services:
   db:
-    image: mysql:5.6
+    image: mysql:5.7
     expose:
       - "3306"
     environment:
@@ -20,12 +20,10 @@ services:
     restart: always
     environment:
       DB_HOST: notifi:notifi@tcp(db:3306)/notifi
-      SERVER_KEY: "EY3acdX#DrTKu1+GK_r0)~:]^/cD[gZH"
-      ENCRYPTION_KEY: "Jf4N#mHGKYk[he2]dIFfHCqg}27ex}%1#DrTKu1+GK_r0)~:]^/cD[gZH"
+      SERVER_KEY: Hu2J7b7xA8MndeNS
+      ENCRYPTION_KEY: "Jf4N#mHGKYk[he2]dIFfHCqg}27ex}%3"
       REDIS_HOST: "redis:6379"
     tty: true
-    ports:
-      - "9081:8080"
     depends_on:
       - db
       - redis
@@ -72,7 +70,6 @@ services:
 
   migrate:
     image: migrate/migrate
-    network_mode: "host"
     volumes:
       - ./sql:/migrations/
-    command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(127.0.0.1:3306)/notifi", "up"]
+    command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]

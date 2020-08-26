@@ -66,6 +66,7 @@ func main() {
 
 	// connect to db
 	time.Sleep(2 * time.Second)
+	fmt.Println(os.Getenv("DB_HOST"))
 	dbConn, err := conn.MysqlConn(os.Getenv("DB_HOST"))
 	if err != nil {
 		panic(err)
