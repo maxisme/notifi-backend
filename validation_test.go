@@ -26,12 +26,13 @@ var versionTests = []struct {
 }{
 	{"", false},
 	{" ", false},
-	{"1", true},
 	{"a", false},
+	{"1", true},
 	{"1.", true},
 	{"1.2", true},
-	{"1.2aa2.3a", false},
-	{"1.a.3", false},
+	{"1.2aa2.3a", true},
+	{"1.a.3", true},
+	{"1.2.3", true},
 }
 
 func TestVersionValidity(t *testing.T) {

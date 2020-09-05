@@ -46,7 +46,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, http.StatusUnauthorized, "Invalid UUID")
 		return
 	} else if !IsValidVersion(user.AppVersion) {
-		WriteError(w, r, http.StatusUnauthorized, "Invalid Version")
+		WriteError(w, r, http.StatusUnauthorized, fmt.Sprintf("Invalid Version %v", user.AppVersion))
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
 		WriteError(w, r, http.StatusUnauthorized, "Invalid Credentials")
@@ -227,7 +227,6 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ignore error as don't want to return if their isn't a connected client
 	fmt.Println("sending to " + crypt.Hash(notification.Credentials))
 	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationBytes)
 	if err != nil {

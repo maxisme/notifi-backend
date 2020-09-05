@@ -219,6 +219,7 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string
 // IncreaseNotificationCnt increases the notification count in the database of the specific Credentials from the
 // Notification
 func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
+	// language=MySQL
 	res, err := tdb.Exec(r, db, `UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
 	if err != nil {

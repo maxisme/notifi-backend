@@ -9,7 +9,7 @@ import (
 )
 
 // ValidVersionRegex is regex to match a valid version
-var ValidVersionRegex = regexp.MustCompile(`^[\d\.]*$`)
+var ValidVersionRegex = regexp.MustCompile(`v?([0-9]+)(\.[0-9]+)?(\.[0-9]+)?`)
 
 // IsValidVersion checks if a string is in the format of a valid version
 func IsValidVersion(version string) bool {
