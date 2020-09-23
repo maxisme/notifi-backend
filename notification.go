@@ -19,6 +19,7 @@ import (
 type Notification struct {
 	Credentials credentials
 	ID          int    `json:"id"`
+	UUID        string `json:"UUID"`
 	Time        string `json:"time"`
 	Title       string `json:"title"`
 	Message     string `json:"message"`
@@ -59,8 +60,8 @@ func (n Notification) Store(r *http.Request, db *sql.DB) (err error) {
 
 	_, err = tdb.Exec(r, db, `
 	INSERT INTO notifications 
-    (id, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.ID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
+    (UUID, title, message, image, link, credentials) 
+    VALUES(?, ?, ?, ?, ?, ?)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
 	return
 }
 
@@ -183,7 +184,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	return notifications, nil
 }
 
-// DeleteNotificationsWithIDs deletes all comma separated ids
+// DeleteNotificationsWithIDs deletes comma separated notifications ids
 func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string) error {
 	// arguments to be passed to the SQL query
 	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
@@ -203,6 +204,7 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string
 	}
 
 	if len(SQLArgs)-2 > 0 {
+		// language=MySQL
 		query := fmt.Sprintf(`
 		DELETE FROM notifications
 		WHERE credentials = ?
@@ -216,21 +218,35 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string
 	return nil
 }
 
-// IncreaseNotificationCnt increases the notification count in the database of the specific Credentials from the
-// Notification
-func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
+// IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
+// Notification and returns it
+func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
+	dbTx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer dbTx.Commit()
+
 	// language=MySQL
-	res, err := tdb.Exec(r, db, `UPDATE users 
+	res, err := dbTx.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
 	if err != nil {
-		return err
+		return 0, err
 	}
 	num, err := res.RowsAffected()
 	if err != nil {
-		return err
+		return 0, err
 	}
 	if num == 0 {
-		return errors.New("no such user with credentials")
+		return 0, errors.New("no such user with credentials")
 	}
-	return nil
+
+	row := dbTx.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	var cnt int64
+	err = row.Scan(&cnt)
+	if err != nil {
+		return 0, err
+	}
+
+	return cnt, nil
 }

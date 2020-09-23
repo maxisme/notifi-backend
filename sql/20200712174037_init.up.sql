@@ -27,6 +27,9 @@ create table if not exists notifications
     message     varchar(10000)                      not null,
     image       varchar(4000)                       not null,
     link        varchar(4000)                       not null,
+    UUID        varchar(255)                        not null,
+    constraint UUID
+        unique (UUID),
     constraint credentials
         foreign key (credentials) references users (credentials)
 );

@@ -12,6 +12,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"github.com/maxisme/notifi-backend/crypt"
 )
 
@@ -214,21 +215,22 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	if err := IncreaseNotificationCnt(r, s.db, notification); err != nil {
+	_, err := IncreaseNotificationCnt(s.db, notification)
+	if err != nil {
 		// no such user with Credentials
 		return
 	}
 
-	// set notification ID
+	// set notification
 	notification.Time = time.Now().Format(NotificationTimeLayout)
-	notificationBytes, err := json.Marshal([]Notification{notification})
+	notification.UUID = uuid.New().String()
+	notificationMsgBytes, err := json.Marshal([]Notification{notification})
 	if err != nil {
 		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	fmt.Println("sending to " + crypt.Hash(notification.Credentials))
-	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationBytes)
+	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)
 	if err != nil {
 		// store as user is not online
 		if err := notification.Store(r, s.db); err != nil {
