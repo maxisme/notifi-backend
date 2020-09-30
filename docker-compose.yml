@@ -70,6 +70,8 @@ services:
 
   migrate:
     image: migrate/migrate
+    depends_on:
+      - db
     volumes:
       - ./sql:/migrations/
     command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
