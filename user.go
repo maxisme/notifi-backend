@@ -50,9 +50,9 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
 			Log(r, log.InfoLevel, fmt.Sprintf("Credential reset for: %s", crypt.Hash(u.UUID)))
 
-			// language=MySQL
-			query := "UPDATE users SET credential_key = ? WHERE UUID = ?"
-			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+			// language=PostgreSQL
+			query := "UPDATE users SET credential_key = $1 WHERE UUID = $2"
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
 				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err
@@ -62,9 +62,9 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
 			Log(r, log.InfoLevel, fmt.Sprintf("Account reset for: %s", crypt.Hash(u.UUID)))
 
-			// language=MySQL
-			query := "UPDATE users SET credential_key = ?, credentials = ? WHERE UUID = ?"
-			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
+			// language=PostgreSQL
+			query := "UPDATE users SET credential_key = $1, credentials = $2 WHERE UUID = $3"
+			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
 				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err
@@ -77,9 +77,8 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
 		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
-			// if client passes current details they are asking for new Credentials
-
-			// verify the Credentials passed are valid
+			// If client passes current details they are asking for new Credentials.
+			// Verify the Credentials passed are valid
 			if u.Verify(r, db) {
 				isNewUser = false
 			} else {
@@ -93,15 +92,11 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	query := ""
 	if isNewUser {
 		// create new user
-		// language=MySQL
-		query = `
-		INSERT INTO users (credentials, credential_key, UUID) 
-		VALUES (?, ?, ?)`
+		// language=PostgreSQL
+		query = "INSERT INTO users (credentials, credential_key, UUID) VALUES ($1, $2, $3)"
 	} else {
-		// language=MySQL
-		query = `
-		UPDATE users SET credentials = ?, credential_key = ?
-		WHERE UUID = ?`
+		// language=PostgreSQL
+		query = "UPDATE users SET credentials = $1, credential_key = $2 WHERE UUID = $3"
 	}
 
 	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
@@ -113,22 +108,22 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 
 // GetWithUUID will return user params based on a UUID
 func (u *User) GetWithUUID(r *http.Request, db *sql.DB, UUID string) error {
-	// language=MySQL
+	// language=PostgreSQL
 	row := tdb.QueryRow(r, db, `
 	SELECT UUID, credentials, credential_key 
 	FROM users
-	WHERE UUID = ?
+	WHERE UUID = $1
 	`, crypt.Hash(UUID))
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
 
 // Get will return user params based on Credentials
 func (u *User) Get(r *http.Request, db *sql.DB, credentials string) error {
-	// language=MySQL
+	// language=PostgreSQL
 	var row = tdb.QueryRow(r, db, `
 	SELECT UUID, credentials, credential_key 
 	FROM users
-	WHERE credentials = ?
+	WHERE credentials = $1
 	`, crypt.Hash(credentials))
 	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
 }
@@ -152,16 +147,16 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 // StoreLogin stores the current timestamp that the user has connected to the web socket as well as the app version
 // the client is using and the public serverKey to encrypt messages on the Server with
 func (u User) StoreLogin(r *http.Request, db *sql.DB) error {
-	// language=MySQL
+	// language=PostgreSQL
 	return UpdateErr(tdb.Exec(r, db, `UPDATE users
-	SET last_login = NOW(), app_version = ?, is_connected = 1
-	WHERE credentials = ? AND UUID = ?`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
+	SET last_login = NOW(), app_version = $1, is_connected = true
+	WHERE credentials = $2 AND UUID = $3`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }
 
 // CloseLogin marks a user as no longer connected to web socket in db
 func (u User) CloseLogin(r *http.Request, db *sql.DB) error {
-	// language=MySQL
+	// language=PostgreSQL
 	return UpdateErr(tdb.Exec(r, db, `UPDATE users
-	SET is_connected = 0
-	WHERE credentials = ? AND UUID = ?`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
+	SET is_connected = false
+	WHERE credentials = $1 AND UUID = $2`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }

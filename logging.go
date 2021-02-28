@@ -37,10 +37,11 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 	// write log
 	log.WithFields(logTags).Log(level, args...)
 
-	if level == log.ErrorLevel {
+	if level >= log.ErrorLevel {
 		// log to sentry
 		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 			hub.WithScope(func(scope *sentry.Scope) {
+				scope.SetLevel(sentry.Level(level.String()))
 				for key := range logTags {
 					scope.SetTag(key, fmt.Sprintf("%v", logTags[key]))
 				}
@@ -52,6 +53,6 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 
 // WriteError will write a http.Error as well as logging the error locally and to Sentry
 func WriteError(w http.ResponseWriter, r *http.Request, code int, message string) {
-	LogWithSkip(r, log.ErrorLevel, 2, message)
+	LogWithSkip(r, log.WarnLevel, 2, message)
 	http.Error(w, message, code)
 }

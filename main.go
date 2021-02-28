@@ -40,22 +40,8 @@ var (
 
 const maxRequestsPerSecond = 5
 
-// ServerKeyMiddleware middleware makes sure the Sec-Key header matches the SERVER_KEY environment variable as
-// well as rate limiting requests
-func ServerKeyMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Sec-Key") != os.Getenv("SERVER_KEY") {
-			WriteError(w, r, http.StatusForbidden, "Invalid server key")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
-
 func main() {
 	rand.Seed(time.Now().UnixNano())
-
-	// load .env
 	_ = godotenv.Load()
 
 	// check all envs are set
@@ -65,10 +51,9 @@ func main() {
 	}
 
 	// connect to db
-	time.Sleep(2 * time.Second)
-	fmt.Println(os.Getenv("DB_HOST"))
-	dbConn, err := conn.MysqlConn(os.Getenv("DB_HOST"))
+	dbConn, err := conn.PgConn(os.Getenv("DB_HOST"))
 	if err != nil {
+		fmt.Println(os.Getenv("DB_HOST"))
 		panic(err)
 	}
 	defer dbConn.Close()
@@ -79,16 +64,6 @@ func main() {
 		panic(err)
 	}
 	defer redisConn.Close()
-
-	// tracing
-	if os.Getenv("COLLECTOR_HOSTNAME") != "" {
-		// start tracer
-		fn, err := tracer.InitJaegerExporter("notifi", os.Getenv("COLLECTOR_HOSTNAME"))
-		if err != nil {
-			panic(err)
-		}
-		defer fn()
-	}
 
 	s := Server{
 		db:        dbConn,
@@ -131,7 +106,7 @@ func main() {
 		traceR.HandleFunc("/api", s.APIHandler)
 	})
 
-	r.HandleFunc("/health", func(writer http.ResponseWriter, request *http.Request) {})
+	r.HandleFunc("/", func(_ http.ResponseWriter, _ *http.Request) {})
 	fmt.Println("Running: http://127.0.0.1:8080")
 	graceful.ListenAndServe(&http.Server{Addr: ":8080", Handler: r})
 }

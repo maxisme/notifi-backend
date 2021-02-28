@@ -16,6 +16,13 @@ ENCRYPTION_KEY=
 sentry_dsn=
 ```
 
+# migrations
+
+## instalation
+```
+$ brew install golang-migrate
+```
+
 To create new migrations run:
 ```
 $ migrate create -ext sql -dir sql/ -seq "description"

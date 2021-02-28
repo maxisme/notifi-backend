@@ -7,8 +7,6 @@ import (
 	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/propagation"
 	"go.opentelemetry.io/otel/api/trace"
-	"go.opentelemetry.io/otel/exporters/trace/jaeger"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"net"
 	"net/http"
 	"os"
@@ -20,24 +18,6 @@ func Middleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 		span.End()
 	})
-}
-
-func InitJaegerExporter(serviceName, colectorHostname string) (func(), error) {
-	flush, err := jaeger.InstallNewPipeline(
-		jaeger.WithCollectorEndpoint(fmt.Sprintf("http://%s/api/traces?format=zipkin.thrift", colectorHostname)),
-		jaeger.WithProcess(jaeger.Process{
-			ServiceName: serviceName,
-			Tags:        getTags(),
-		}),
-		jaeger.WithSDK(&sdktrace.Config{DefaultSampler: sdktrace.AlwaysSample()}),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return func() {
-		flush()
-	}, nil
 }
 
 func GetSpan(r *http.Request, spanName string, opts ...trace.StartOption) (span trace.Span) {

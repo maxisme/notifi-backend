@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/maxisme/notifi-backend/crypt"
 	"github.com/spf13/cobra"
 	"os"
@@ -27,7 +26,7 @@ var rootCmd = &cobra.Command{Use: "credentials",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// connect to db
 		var err error
-		dbConn, err = sql.Open("mysql", os.Getenv("db"))
+		dbConn, err = sql.Open("postgres", os.Getenv("db"))
 		Handle(err)
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {

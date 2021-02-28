@@ -18,7 +18,6 @@ import (
 // Notification structure
 type Notification struct {
 	Credentials credentials
-	ID          int    `json:"id"`
 	UUID        string `json:"UUID"`
 	Time        string `json:"time"`
 	Title       string `json:"title"`
@@ -34,10 +33,8 @@ const (
 	maxImageBytes = 100000
 )
 
-var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-
 // Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(r *http.Request, db *sql.DB) (err error) {
+func (n Notification) Store(r *http.Request, db *sql.DB, encryptionKey []byte) (err error) {
 	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
@@ -58,10 +55,10 @@ func (n Notification) Store(r *http.Request, db *sql.DB) (err error) {
 		return
 	}
 
+	// language=PostgreSQL
 	_, err = tdb.Exec(r, db, `
-	INSERT INTO notifications 
-    (UUID, title, message, image, link, credentials) 
-    VALUES(?, ?, ?, ?, ?, ?)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
+	INSERT INTO notifications (UUID, title, message, image, link, credentials) 
+    VALUES($1, $2, $3, $4, $5, $6)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
 	return
 }
 
@@ -72,7 +69,9 @@ func (n Notification) Validate(r *http.Request) error {
 	}
 
 	if n.Credentials == "<credentials>" {
-		return errors.New("You have not set your personal Credentials given to you by the notifi app! You instead used the placeholder '<Credentials>'!")
+		return errors.New(`You have not set your personal 
+		credentials given to you by the notifi app! 
+		You instead used the placeholder '<Credentials>'`)
 	}
 
 	if len(n.Title) == 0 {
@@ -123,7 +122,7 @@ func (n Notification) Validate(r *http.Request) error {
 }
 
 // Decrypt decrypts n Notification
-func (n *Notification) Decrypt() error {
+func (n *Notification) Decrypt(encryptionKey []byte) error {
 	title, err := crypt.DecryptAES(n.Title, encryptionKey)
 	if err == nil {
 		n.Title = title
@@ -151,14 +150,14 @@ func (n *Notification) Decrypt() error {
 func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	query := `
 	SELECT
-		id,
-		DATE_FORMAT(time, '%Y-%m-%d %T') as time,
+		uuid,
+		time,
 		title, 
 		message,
 		image,
 		link
 	FROM notifications
-	WHERE credentials = ?`
+	WHERE credentials = $1`
 	rows, err := db.Query(query, crypt.Hash(u.Credentials.Value))
 	if err != nil {
 		return nil, err
@@ -168,54 +167,43 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	var notifications []Notification
 	for rows.Next() {
 		var n Notification
-		err := rows.Scan(&n.ID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
+		err := rows.Scan(&n.UUID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
 		if err != nil {
 			return nil, err
 		}
 
-		// if there is no public serverKey decrypt using AES notification
-		err = n.Decrypt()
-		if err == nil {
-			notifications = append(notifications, n)
-		} else {
-			return nil, err
+		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
+		err = n.Decrypt(encryptionKey)
+		if err != nil {
+			Log(nil, log.WarnLevel, err.Error())
+			continue
 		}
+		notifications = append(notifications, n)
 	}
 	return notifications, nil
 }
 
 // DeleteNotificationsWithIDs deletes comma separated notifications ids
 func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string) error {
-	// arguments to be passed to the SQL query
-	SQLArgs := []interface{}{crypt.Hash(u.Credentials.Value)}
+	tx, err := db.Begin() // TODO send to tracer
+	if err != nil {
+		return err
+	}
 
-	// validate all comma separated values are integers
-	numIds := int64(0)
 	for _, element := range strings.Split(ids, ",") {
 		if len(element) == 0 {
 			continue
 		}
-		val, err := strconv.Atoi(element)
-		if err != nil {
-			continue
-		}
-		SQLArgs = append(SQLArgs, val)
-		numIds += 1
-	}
 
-	if len(SQLArgs)-2 > 0 {
-		// language=MySQL
-		query := fmt.Sprintf(`
-		DELETE FROM notifications
-		WHERE credentials = ?
-		AND id IN (?%s)`, strings.Repeat(",?", len(SQLArgs)-2))
-
-		_, err := tdb.Exec(r, db, query, SQLArgs...)
+		// language=PostgreSQL
+		_, err := tx.Exec(`DELETE FROM notifications
+		WHERE credentials = $1
+		AND UUID = $2`)
 		if err != nil {
 			return err
 		}
 	}
-	return nil
+	return tx.Commit()
 }
 
 // IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
@@ -227,9 +215,9 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
 	}
 	defer dbTx.Commit()
 
-	// language=MySQL
+	// language=PostgreSQL
 	res, err := dbTx.Exec(`UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	if err != nil {
 		return 0, err
 	}
@@ -241,7 +229,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
 		return 0, errors.New("no such user with credentials")
 	}
 
-	row := dbTx.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = ?`, crypt.Hash(n.Credentials))
+	row := dbTx.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	var cnt int64
 	err = row.Scan(&cnt)
 	if err != nil {

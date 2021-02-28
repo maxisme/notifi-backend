@@ -1,32 +1,37 @@
 version: '3.2'
 services:
   db:
-    image: mysql:5.7
-    expose:
-      - "3306"
+    image: postgres
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: notifi
-      MYSQL_USER: notifi
-      MYSQL_PASSWORD: notifi
-    tty: true
+      POSTGRES_DB: notifi
+      POSTGRES_USER: notifi
+      POSTGRES_PASSWORD: notifi
+    networks:
+      - overlay
+    ports:
+      - '5432:5432'
 
   redis:
-    image: "redis:alpine"
+    image: redis
+    networks:
+      - overlay
+    ports:
+      - '6379:6379'
 
   app:
     build:
       context: .
-    restart: always
+    env_file:
+      - ".env"
+    ports:
+      - "9081:8080"
     environment:
-      DB_HOST: notifi:notifi@tcp(db:3306)/notifi
-      SERVER_KEY: Hu2J7b7xA8MndeNS
-      ENCRYPTION_KEY: "Jf4N#mHGKYk[he2]dIFfHCqg}27ex}%3"
+      DB_HOST: "postgres://notifi:notifi@db:5432/notifi"
       REDIS_HOST: "redis:6379"
-    tty: true
+    networks:
+      - overlay
     depends_on:
-      - db
-      - redis
+      - migrate
     links:
       - db
       - redis
@@ -42,36 +47,22 @@ services:
       - "--log.level=DEBUG"
       - "--api.insecure=true"
       - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:80"
-      - "--tracing=true"
-      - "--tracing.serviceName=traefik"
-      - "--tracing.jaeger.samplingServerURL=http://jaeger:5778/sampling"
-      - "--tracing.jaeger.collector.endpoint=http://jaeger:14268/api/traces?format=zipkin.thrift"
-      - "--tracing.jaeger.gen128Bit"
-      - "--tracing.jaeger.propagation=b3"
     ports:
       - "80:80"
       - "8080:8080"
-    depends_on:
-      - jaeger
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
-  jaeger:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "127.0.0.1:16686:16686"
-    environment:
-      JAEGER_REPORTER_LOG_SPANS: "true"
-    command:
-      - "--log-level=debug"
-
-
   migrate:
     image: migrate/migrate
-    depends_on:
-      - db
     volumes:
-      - ./sql:/migrations/
-    command: ["-path", "/migrations/", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
+      - ./migrations:/migrations/
+    command: [ "-path", "/migrations/", "-database", "postgres://notifi:notifi@db:5432/notifi?sslmode=disable", "up" ]
+    links:
+      - db
+    networks:
+      - overlay
+
+networks:
+  overlay:

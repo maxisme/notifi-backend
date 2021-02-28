@@ -6,12 +6,11 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/maxisme/notifi-backend/ws"
 
-	"github.com/getsentry/sentry-go"
-	"github.com/go-sql-driver/mysql"
 	"github.com/google/uuid"
 	"github.com/maxisme/notifi-backend/crypt"
 )
@@ -167,15 +166,10 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	creds, err := PostUser.Store(r, s.db)
 	if err != nil {
-		mysqlErr, ok := err.(*mysql.MySQLError)
-		if ok && mysqlErr.Number != 1062 {
-			// log to sentry as a very big issue TODO what is 🤦‍
-			sentry.WithScope(func(scope *sentry.Scope) {
-				scope.SetLevel(sentry.LevelFatal)
-				sentry.CaptureException(err)
-			})
+		if err.Error() != "pq: duplicate key value violates unique constraint \"uuid\"" {
+			Log(r, log.FatalLevel, err.Error())
 		}
-		WriteError(w, r, 401, err.Error())
+		WriteError(w, r, 401, err.Error()) // UUID already exists
 		return
 	}
 
@@ -233,7 +227,8 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)
 	if err != nil {
 		// store as user is not online
-		if err := notification.Store(r, s.db); err != nil {
+		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
+		if err := notification.Store(r, s.db, encryptionKey); err != nil {
 			WriteError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}

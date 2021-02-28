@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/golang-migrate/migrate/v4"
+	"github.com/joho/godotenv"
 	"github.com/maxisme/notifi-backend/conn"
 	"math/rand"
 	"net/http"
@@ -17,7 +17,6 @@ import (
 
 	"github.com/maxisme/notifi-backend/ws"
 
-	_ "github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -28,41 +27,10 @@ var s Server
 
 // applied to every test
 func TestMain(t *testing.M) {
-	TESTDBNAME := "notifi_test"
-
-	// create database
-	db, err := conn.MysqlConn("root:root@tcp(127.0.0.1:3306)/?multiStatements=True")
-	if err != nil {
-		panic(err)
-	}
-
-	_, err = db.Exec(fmt.Sprintf(`DROP DATABASE IF EXISTS %[1]v; 
-	CREATE DATABASE %[1]v;`, TESTDBNAME))
-	if err != nil {
-		panic(err)
-	}
-	db.Close()
-
-	// apply patches
-	dbConnStr := "root:root@tcp(127.0.0.1:3306)" + "/" + TESTDBNAME
-	m, err := migrate.New("file://sql/", "mysql://"+dbConnStr)
-	if err != nil {
-		panic(err)
-	}
-
-	// test up and down commands work
-	if err := m.Up(); err != nil {
-		panic(err)
-	}
-	if err := m.Down(); err != nil {
-		panic(err)
-	}
-	if err := m.Up(); err != nil {
-		panic(err)
-	}
+	_ = godotenv.Load()
 
 	// init server db connection
-	db, err = conn.MysqlConn(dbConnStr)
+	db, err := conn.PgConn(os.Getenv("DB_HOST"))
 	if err != nil {
 		panic(err)
 	}
@@ -143,7 +111,7 @@ func SendNotification(credentials string, title string) *httptest.ResponseRecord
 func removeUserCredKey(db *sql.DB, UUID string) {
 	_, err := db.Exec(`UPDATE users
 	SET credential_key = NULL
-	WHERE UUID=?`, crypt.Hash(UUID))
+	WHERE UUID=$1`, crypt.Hash(UUID))
 	if err != nil {
 		panic(err)
 	}
@@ -152,7 +120,7 @@ func removeUserCredKey(db *sql.DB, UUID string) {
 func removeUserCreds(db *sql.DB, UUID string) {
 	_, err := db.Exec(`UPDATE users
 	SET credential_key = NULL, credentials = NULL
-	WHERE UUID=?`, crypt.Hash(UUID))
+	WHERE UUID=$1`, crypt.Hash(UUID))
 	if err != nil {
 		panic(err)
 	}

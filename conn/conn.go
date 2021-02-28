@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v7"
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 )
 
-func MysqlConn(dataSourceName string) (db *sql.DB, err error) {
-	db, err = sql.Open("mysql", dataSourceName)
+func PgConn(dataSourceName string) (db *sql.DB, err error) {
+	db, err = sql.Open("postgres", dataSourceName)
 	if err == nil {
 		err = db.Ping()
 	}
