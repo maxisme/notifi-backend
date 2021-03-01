@@ -42,7 +42,7 @@ services:
       - "traefik.http.services.notifi.loadbalancer.server.port=8080"
 
   test:
-    image: golang
+    image: golang:1.16
     ports:
       - "9081:8080"
     volumes:
