@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   test:
-    name: Test with Go version -
+    name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
@@ -19,40 +19,56 @@ jobs:
           file: ./coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  publish:
-    name: Publish Docker image
+  build:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set Docker Tags
+        id: prep
+        run: |
+          TAGS="${{ github.repository }}:sha-${GITHUB_SHA::7}"
+          echo ::set-output name=tags::${TAGS}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.prep.outputs.tags }}
+          platforms: linux/amd64,linux/arm/v7
+          build-args: |
+            COMMIT_HASH=${{ github.sha }}
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: azure/setup-helm@v1
       - uses: actions/checkout@master
         with:
           fetch-depth: '0'
-      - name: Publish to Docker Registry
-        uses: docker/build-push-action@v1
-        with:
-          cache_froms:
-          repository: ${{ github.repository }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-          tag_with_ref: true
-          tag_with_sha: true
-      - name: Update Swarm
-        if: github.ref == 'refs/heads/master'
+      - name: Upgrade helm
         run: |
-          export sha="${{ github.sha }}"
-          curl -f -X POST ${{ secrets.SWARM_HOOK }} \
-          -H 'Content-Type: application/x-www-form-urlencoded' \
-          -d 'service=notifi-backend_app' \
-          -d "image=${{ github.repository }}" \
-          -d "tag=sha-${sha:0:7}" \
-          -d "token=${{ secrets.HOOK_TOKEN }}"
-      - name: Update Swarm
-        if: github.ref == 'refs/heads/develop'
-        run: |
-          export sha="${{ github.sha }}"
-          curl -f -X POST ${{ secrets.SWARM_HOOK }} \
-          -H 'Content-Type: application/x-www-form-urlencoded' \
-          -d 'service=notifi-backend_dev' \
-          -d "image=${{ github.repository }}" \
-          -d "tag=sha-${sha:0:7}" \
-          -d "token=${{ secrets.HOOK_TOKEN }}"
+          # pull infra charts
+          helm repo add maxisme https://${{ secrets.GH_PA_TOKEN }}@raw.githubusercontent.com/maxisme/infra/master/k8s/charts/
+          helm repo update
+
+          # create kube config
+          mkdir ~/.kube
+          echo "${{ secrets.B64_KUBE_CONFIG }}" | base64 --decode > ~/.kube/config
+
+          # deploy helm
+          repo_name=$(echo "${{ github.repository }}" | sed 's:.*/::')
+          helm upgrade "${repo_name//./}" maxisme/web -f helm-values.yml --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 120s
+
+          # clean up
+          rm ~/.kube/config
