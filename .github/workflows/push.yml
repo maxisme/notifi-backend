@@ -5,35 +5,18 @@ jobs:
   test:
     name: Test with Go version -
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        go: ['1.12', '1.13', '1.14']
-
     steps:
       - uses: actions/checkout@v1
 
-      - name: Build the test stack
-        run: docker-compose -f docker-compose-test.yml up -d
-
-      - name: Setup Go
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go }}
-
-      - name: Run Tests
-        env:
-          ENCRYPTION_KEY: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
-          db: "root:root@"
-          dbsource: "root:root@/notifi"
-          SERVER_KEY: "46wyK8kZeHziiPMMGpZsE0UF1xTmrWB2"
-          REDIS_HOST: "127.0.0.1:6379"
-          redis_db: 1
-        run: go test ./... -v -covermode=count -coverprofile=coverage.out
+      - name: Run tests
+        run: |
+          touch .env
+          docker-compose up test
 
       - uses: codecov/codecov-action@v1
         if: github.ref == 'refs/heads/master'
         with:
+          file: ./coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
 
   publish:

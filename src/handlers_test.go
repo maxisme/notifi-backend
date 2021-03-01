@@ -36,7 +36,7 @@ func TestMain(t *testing.M) {
 	}
 
 	// init server redis connection
-	red, err := conn.RedisConn("127.0.0.1:6379")
+	red, err := conn.RedisConn(os.Getenv("REDIS_HOST"))
 	if err != nil {
 		panic(err)
 	}

@@ -26,7 +26,7 @@ services:
     ports:
       - "9081:8080"
     environment:
-      DB_HOST: "postgres://notifi:notifi@db:5432/notifi"
+      DB_HOST: "postgres://notifi:notifi@db:5432/notifi?sslmode=disable"
       REDIS_HOST: "redis:6379"
     networks:
       - overlay
@@ -40,6 +40,26 @@ services:
       - "traefik.http.routers.notifi.rule=Host(`localhost`)"
       - "traefik.http.routers.notifi.entrypoints=web"
       - "traefik.http.services.notifi.loadbalancer.server.port=8080"
+
+  test:
+    image: golang
+    ports:
+      - "9081:8080"
+    volumes:
+      - "./src:/app/"
+    environment:
+      DB_HOST: "postgres://notifi:notifi@db:5432/notifi?sslmode=disable"
+      REDIS_HOST: "redis:6379"
+      SERVER_KEY: "u2J7b7xA8MndeNS"
+      ENCRYPTION_KEY: "6bO9OFNEsqdz3Bl16bO9OFNEsqdz3Bl1"
+    networks:
+      - overlay
+    depends_on:
+      - migrate
+    command: sh -c "cd /app && go test ./... -v -covermode=count -coverprofile=coverage.out"
+    links:
+      - db
+      - redis
 
   traefik:
     image: "traefik"

@@ -26,7 +26,7 @@ var rootCmd = &cobra.Command{Use: "credentials",
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// connect to db
 		var err error
-		dbConn, err = sql.Open("postgres", os.Getenv("db"))
+		dbConn, err = sql.Open("postgres", os.Getenv("DB_HOST"))
 		Handle(err)
 	},
 	PersistentPostRun: func(cmd *cobra.Command, args []string) {
