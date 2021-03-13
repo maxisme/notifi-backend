@@ -1,14 +1,18 @@
 ingress:
-  match: "Host(`dev.notifi.it`) && (Path(`/ws`) || Path(`/code`))"
+  match: "Host(`dev.notifi.it`) && (Path(`/ws`) || Path(`/code`) || Path(`/api`))"
 
 image:
   repository: "maxisme/notifi-backend"
-  tag: "sha-6ceb69a"
 
 envSecretRef: "notifi-dev" # kubectl create secret generic notifi-dev --from-env-file .dev.env
 
 pg:
   enabled: true
+  name: "notifi"
   size: "500Mi"
+  replicas: 1
   migrate:
     enabled: true
+
+nodeSelector:
+  external: "true"
