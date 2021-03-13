@@ -9,9 +9,7 @@ jobs:
       - uses: actions/checkout@v1
 
       - name: Run tests
-        run: |
-          touch .env
-          docker-compose up test
+        run: docker-compose up test
 
       - uses: codecov/codecov-action@v1
         if: github.ref == 'refs/heads/master'
@@ -49,7 +47,7 @@ jobs:
             COMMIT_HASH=${{ github.sha }}
   deploy:
     needs: build
-    if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
     steps:
       - uses: azure/setup-helm@v1
@@ -60,15 +58,20 @@ jobs:
         run: |
           # pull infra charts
           helm repo add maxisme https://${{ secrets.GH_PA_TOKEN }}@raw.githubusercontent.com/maxisme/infra/master/k8s/charts/
-          helm repo update
 
           # create kube config
           mkdir ~/.kube
           echo "${{ secrets.B64_KUBE_CONFIG }}" | base64 --decode > ~/.kube/config
 
           # deploy helm
-          repo_name=$(echo "${{ github.repository }}" | sed 's:.*/::')
-          helm upgrade "${repo_name//./}" maxisme/web -f helm-values.yml --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 120s
+          helm_path="helm-values.yml"
+          name="notifi"
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]
+          then
+            name="notifi-dev"
+            helm_path="dev-helm-values.yml"
+          fi
+          helm upgrade $name maxisme/web -f $file_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 120s
 
           # clean up
           rm ~/.kube/config

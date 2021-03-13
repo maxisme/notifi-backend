@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"github.com/joho/godotenv"
 	"github.com/maxisme/notifi-backend/conn"
 	"math/rand"
 	"net/http"
@@ -27,16 +26,15 @@ var s Server
 
 // applied to every test
 func TestMain(t *testing.M) {
-	_ = godotenv.Load()
 
 	// init server db connection
-	db, err := conn.PgConn(os.Getenv("DB_HOST"))
+	db, err := conn.PgConn()
 	if err != nil {
 		panic(err)
 	}
 
 	// init server redis connection
-	red, err := conn.RedisConn(os.Getenv("REDIS_HOST"))
+	red, err := conn.RedisConn()
 	if err != nil {
 		panic(err)
 	}

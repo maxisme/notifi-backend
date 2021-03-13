@@ -25,7 +25,7 @@ const redisSleep = 100
 
 func TestMain(t *testing.M) {
 	var err error
-	red, err = conn.RedisConn(os.Getenv("REDIS_HOST"))
+	red, err = conn.RedisConn()
 	if err != nil {
 		fmt.Println("Make sure to run $ redis-server")
 		panic(err)

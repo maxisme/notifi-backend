@@ -23,7 +23,6 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi"
 	"github.com/gorilla/schema"
-	"github.com/joho/godotenv"
 )
 
 // Server is used for database pooling - sharing the db connection to the web handlers.
@@ -42,16 +41,15 @@ const maxRequestsPerSecond = 5
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
-	_ = godotenv.Load()
 
 	// check all envs are set
-	err := RequiredEnvs([]string{"DB_HOST", "REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
+	err := RequiredEnvs([]string{"REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
 	if err != nil {
 		panic(err)
 	}
 
 	// connect to db
-	dbConn, err := conn.PgConn(os.Getenv("DB_HOST"))
+	dbConn, err := conn.PgConn()
 	if err != nil {
 		fmt.Println(os.Getenv("DB_HOST"))
 		panic(err)
@@ -59,7 +57,7 @@ func main() {
 	defer dbConn.Close()
 
 	// connect to redis
-	redisConn, err := conn.RedisConn(os.Getenv("REDIS_HOST"))
+	redisConn, err := conn.RedisConn()
 	if err != nil {
 		panic(err)
 	}

@@ -9,31 +9,27 @@
 [![Supported Go Versions](https://img.shields.io/badge/go-1.16-green&style=plastic)](https://github.com/maxisme/notifi-backend/actions)
 [![Go Report Card](https://goreportcard.com/badge/github.com/maxisme/notifi-backend)](https://goreportcard.com/report/github.com/maxisme/notifi-backend)
 
-Add `.env` to project:
-```
-SERVER_KEY=
-ENCRYPTION_KEY=
-sentry_dsn=
-```
-
-# migrations
-
-## instalation
-```
-$ brew install golang-migrate
-```
-
-To create new migrations run:
-```
-$ migrate create -ext sql -dir sql/ -seq "description"
-```
 
 
-## Running locally
-For testing simply run:
+## Run tests
 ```bash
-$ docker-compose up -d db
-$ docker-compose up migrate
-$ docker-compose up -d redis
-$ go run .
+$ docker-compose up test
+```
+
+## Local development
+
+### Startup dbs
+```bash
+$ docker-compose up redis db
+```
+### env variables
+```bash
+REDIS_HOST=127.0.0.1:6379
+DATABASE_HOST=127.0.0.1
+DATABASE_USER=notifi
+DATABASE_PASS=notifi
+DATABASE_NAME=notifi
+DATABASE_SSL_DISABLE=1
+SERVER_KEY=u2J7b7xA8MndeNS
+ENCRYPTION_KEY=6bO9OFNEsqdz3Bl16bO9OFNEsqdz3Bl1
 ```

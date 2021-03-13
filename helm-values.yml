@@ -3,6 +3,8 @@ ingress:
 
 image:
   repository: "maxisme/notifi-backend"
-  tag: "latest"
 
-envSecretRef: "notifi" # kubectl create secret generic passforit --from-env-file .env
+envSecretRef: "notifi" # kubectl create secret generic notifi --from-env-file .env
+
+pg:
+  enabled: true

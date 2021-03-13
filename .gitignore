@@ -1,3 +1,4 @@
 .env
 coverage.out
 /.idea/
+.dev.env
