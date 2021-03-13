@@ -55,6 +55,7 @@ func RedisConn() (*redis.Client, error) {
 
 	client := redis.NewClient(&redis.Options{
 		Addr:        os.Getenv("REDIS_HOST"),
+		Password:    os.Getenv("REDIS_PASS"),
 		IdleTimeout: 1 * time.Minute,
 		MaxRetries:  2,
 		DB:          dbInt,
