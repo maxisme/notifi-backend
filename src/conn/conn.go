@@ -3,6 +3,9 @@ package conn
 import (
 	"database/sql"
 	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"os"
 	"strconv"
 	"time"
@@ -11,16 +14,27 @@ import (
 	_ "github.com/lib/pq"
 )
 
-func PgConn() (db *sql.DB, err error) {
-	psqlInfo := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s",
-		os.Getenv("DATABASE_HOST"), os.Getenv("DATABASE_USER"),
-		os.Getenv("DATABASE_PASS"), os.Getenv("DATABASE_NAME"))
+func getPgConString() string {
+	psqlInfo := fmt.Sprintf("postgres://%s:%s@%s:5432/%s", os.Getenv("DATABASE_USER"),
+		os.Getenv("DATABASE_PASS"), os.Getenv("DATABASE_HOST"), os.Getenv("DATABASE_NAME"))
 
 	if len(os.Getenv("DATABASE_SSL_DISABLE")) > 0 {
-		psqlInfo += " sslmode=disable"
+		psqlInfo += "?sslmode=disable"
 	}
 
-	db, err = sql.Open("postgres", psqlInfo)
+	return psqlInfo
+}
+
+func RunPgMigration() error {
+	m, err := migrate.New("file://migrations", getPgConString())
+	if err != nil {
+		return err
+	}
+	return m.Up()
+}
+
+func PgConn() (db *sql.DB, err error) {
+	db, err = sql.Open("postgres", getPgConString())
 	if err == nil {
 		err = db.Ping()
 	}

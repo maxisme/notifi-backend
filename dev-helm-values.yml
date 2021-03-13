@@ -3,9 +3,12 @@ ingress:
 
 image:
   repository: "maxisme/notifi-backend"
+  tag: "sha-6ceb69a"
 
 envSecretRef: "notifi-dev" # kubectl create secret generic notifi-dev --from-env-file .dev.env
 
 pg:
   enabled: true
   size: "500Mi"
+  migrate:
+    enabled: true

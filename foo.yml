@@ -1,0 +1,152 @@
+NAME: notifi-dev
+LAST DEPLOYED: Sat Mar 13 17:14:48 2021
+NAMESPACE: default
+STATUS: pending-install
+REVISION: 1
+TEST SUITE: None
+HOOKS:
+MANIFEST:
+---
+# Source: web/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "notifi-dev-sa"
+---
+# Source: web/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: notifi-dev
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      name: web
+  
+  selector:
+    app: notifi-dev
+---
+# Source: web/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notifi-dev
+  labels:
+    app: notifi-dev
+
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: notifi-dev
+  template:
+    metadata:
+      labels:
+        app: notifi-dev
+    spec:
+      
+      initContainers:
+        - name: migrations
+          image: migrate/migrate:latest
+          command: ['/migrate']
+          args: ['-source', 'github://maxisme/notifi-backend/migrations', '-database', 'postgres://acid-notifi-dev:5432/notifi-dev', 'up']
+      
+      containers:
+        - name: notifi-dev
+          image: "maxisme/notifi-backend:sha-6ceb69a"
+          imagePullPolicy: Always
+          
+          
+          
+          envFrom:
+            - secretRef:
+                name: notifi-dev
+          
+          
+          env:
+            - name: DATABASE_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: notifi-dev.acid-notifi-dev.credentials.postgresql.acid.zalan.do
+                  key: password
+            - name: DATABASE_USER
+              value: notifi-dev
+            - name: DATABASE_NAME
+              value: notifi-dev
+            - name: DATABASE_HOST
+              value: acid-notifi-dev
+          
+          ports:
+            - containerPort: 8080
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+---
+# Source: web/templates/ingress.yaml
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: notifi-dev
+spec:
+  entryPoints:
+    - websecure
+  routes:
+  - match: Host(`dev.notifi.it`) && (Path(`/ws`) || Path(`/code`))
+    kind: Rule
+    services:
+    - name: notifi-dev
+      passHostHeader: true
+      responseForwarding:
+        flushInterval: 1ms
+      port: 8080
+    middlewares:
+      - name: error-handler
+---
+# Source: web/templates/pg-definition.yml
+kind: "postgresql"
+apiVersion: "acid.zalan.do/v1"
+
+metadata:
+  name: "acid-notifi-dev"
+  namespace: "default"
+  labels:
+    team: acid
+
+spec:
+  teamId: "acid"
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: "external"
+              operator: In
+              values:
+                - "true"
+            - key: "kubernetes.io/arch"
+              operator: In
+              values:
+                - "amd64"
+  postgresql:
+    version: "13"
+  numberOfInstances: 2
+  volume:
+    size: 500Mi
+  users:
+    notifi-dev: []
+  databases:
+    notifi-dev: notifi-dev
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 100Mi
+    limits:
+      cpu: 500m
+      memory: 500Mi
+

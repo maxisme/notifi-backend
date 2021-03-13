@@ -40,6 +40,14 @@ var (
 const maxRequestsPerSecond = 5
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		if err := conn.RunPgMigration(); err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
+
 	rand.Seed(time.Now().UnixNano())
 
 	// check all envs are set

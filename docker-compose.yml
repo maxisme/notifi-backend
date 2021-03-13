@@ -81,10 +81,17 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
   migrate:
-    image: migrate/migrate
-    volumes:
-      - ./migrations:/migrations/
-    command: [ "-path", "/migrations/", "-database", "postgres://notifi:notifi@db:5432/notifi?sslmode=disable", "up" ]
+    build:
+      context: .
+    command:
+      - "./app"
+      - "migrate"
+    environment:
+      DATABASE_HOST: "db"
+      DATABASE_USER: "notifi"
+      DATABASE_PASS: "notifi"
+      DATABASE_NAME: "notifi"
+      DATABASE_SSL_DISABLE: "1"
     links:
       - db
     networks:
