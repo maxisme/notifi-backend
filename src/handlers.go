@@ -116,8 +116,8 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		go func() {
-			if err := user.DeleteNotificationsWithIDs(r, s.db, fmt.Sprint(message)); err != nil {
+		go func() { // TODO test
+			if err := user.DeleteNotificationsWithIDs(r, s.db, fmt.Sprint(message), hashedCredentials); err != nil {
 				Log(r, log.WarnLevel, err)
 			}
 		}()
@@ -167,7 +167,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	creds, err := PostUser.Store(r, s.db)
 	if err != nil {
 		if err.Error() != "pq: duplicate key value violates unique constraint \"uuid\"" {
-			Log(r, log.FatalLevel, err.Error())
+			Log(r, log.FatalLevel, err.Error()) // TODO test
 		}
 		WriteError(w, r, 401, err.Error()) // UUID already exists
 		return

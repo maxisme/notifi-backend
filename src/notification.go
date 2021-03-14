@@ -184,7 +184,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 // DeleteNotificationsWithIDs deletes comma separated notifications ids
-func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string) error {
+func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids, hashedCredentials string) error {
 	tx, err := db.Begin() // TODO send to tracer
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids string
 		// language=PostgreSQL
 		_, err := tx.Exec(`DELETE FROM notifications
 		WHERE credentials = $1
-		AND UUID = $2`)
+		AND UUID = $2`, hashedCredentials, element)
 		if err != nil {
 			return err
 		}
