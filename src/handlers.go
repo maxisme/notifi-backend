@@ -117,7 +117,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		go func() { // TODO test
-			if err := user.DeleteNotificationsWithIDs(r, s.db, fmt.Sprint(message), hashedCredentials); err != nil {
+			if err := user.DeleteNotificationsWithIDs(r, s.db, string(message), hashedCredentials); err != nil {
 				Log(r, log.WarnLevel, err)
 			}
 		}()
