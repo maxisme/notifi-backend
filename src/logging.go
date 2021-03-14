@@ -19,7 +19,7 @@ func Log(r *http.Request, level log.Level, args ...interface{}) {
 	LogWithSkip(r, level, 3, args...)
 }
 
-func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}) {
+func getTags(r *http.Request, skip int) log.Fields {
 	logTags := log.Fields{}
 	pc, _, ln, _ := runtime.Caller(skip)
 	details := runtime.FuncForPC(pc)
@@ -33,11 +33,16 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 	}
 	logTags["method"] = details.Name()
 	logTags["method-line"] = ln
+	return logTags
+}
+
+func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}) {
+	logTags := getTags(r, skip)
 
 	// write log
 	log.WithFields(logTags).Log(level, args...)
 
-	if level >= log.ErrorLevel {
+	if level < log.InfoLevel {
 		// log to sentry
 		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 			hub.WithScope(func(scope *sentry.Scope) {
