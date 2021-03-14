@@ -59,9 +59,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if len(DBUser.Credentials.Key) == 0 {
 		errorCode = RequestNewUserCode
 		if len(DBUser.Credentials.Value) == 0 {
-			Log(r, log.WarnLevel, "No credentials or key for: "+user.UUID)
+			Log(r, log.InfoLevel, "No credentials or key for: "+user.UUID)
 		} else {
-			Log(r, log.WarnLevel, "No credential key for: "+user.UUID)
+			Log(r, log.InfoLevel, "No credential key for: "+user.UUID)
 		}
 	} else if !user.Verify(r, s.db) {
 		errorCode = http.StatusForbidden
