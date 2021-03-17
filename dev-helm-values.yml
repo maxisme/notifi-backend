@@ -6,14 +6,10 @@ image:
 
 envSecretRef: "notifi-dev" # kubectl create secret generic notifi-dev --from-env-file .dev.env
 
-autoscaling:
-  minReplicas: 1
-
 pg:
   enabled: true
   name: "notifi"
-  size: "500Mi"
-  replicas: 1
+  size: "50Mi"
   migrate:
     enabled: true
 
