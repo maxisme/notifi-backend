@@ -93,7 +93,7 @@ func main() {
 
 	// middleware
 	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-		"X-Forwarded-For", "X-Real-IP",
+		"Cf-Connecting-Ip", "X-Forwarded-For", "X-Real-IP",
 	})
 
 	// HANDLERS
