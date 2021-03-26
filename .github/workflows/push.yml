@@ -58,6 +58,7 @@ jobs:
         run: |
           # pull infra charts
           helm repo add maxisme https://${{ secrets.GH_PA_TOKEN }}@raw.githubusercontent.com/maxisme/infra/master/k8s/charts/
+          helm repo update
 
           # create kube config
           mkdir ~/.kube
