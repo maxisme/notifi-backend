@@ -9,7 +9,7 @@ envSecretRef: "notifi-dev" # kubectl create secret generic notifi-dev --from-env
 pg:
   enabled: true
   name: "notifi"
-  size: "50Mi"
+  size: "100Mi"
   migrate:
     enabled: true
 
