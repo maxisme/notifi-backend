@@ -205,14 +205,8 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []stri
 // IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
 // Notification and returns it
 func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
-	dbTx, err := db.Begin()
-	if err != nil {
-		return 0, err
-	}
-	defer dbTx.Commit()
-
 	// language=PostgreSQL
-	res, err := dbTx.Exec(`UPDATE users 
+	res, err := db.Exec(`UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	if err != nil {
 		return 0, err
@@ -225,7 +219,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
 		return 0, errors.New("no such user with credentials")
 	}
 
-	row := dbTx.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
+	row := db.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	var cnt int64
 	err = row.Scan(&cnt)
 	if err != nil {
