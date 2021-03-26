@@ -116,8 +116,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
+		var uuids []string
+		if err := json.Unmarshal(message, &uuids); err != nil {
+			Log(r, log.WarnLevel, err)
+			break
+		}
 		go func() { // TODO test
-			if err := user.DeleteNotificationsWithIDs(r, s.db, string(message), hashedCredentials); err != nil {
+			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, hashedCredentials); err != nil {
 				Log(r, log.WarnLevel, err)
 			}
 		}()
