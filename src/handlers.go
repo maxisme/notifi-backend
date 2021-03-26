@@ -214,7 +214,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	_, err := IncreaseNotificationCnt(s.db, notification)
+	_, err := IncreaseNotificationCnt(r, s.db, notification)
 	if err != nil {
 		// no such user with Credentials
 		return

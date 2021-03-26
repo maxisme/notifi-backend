@@ -185,28 +185,23 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 
 // DeleteNotificationsWithIDs deletes comma separated notifications ids
 func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []string, hashedCredentials string) error {
-	tx, err := db.Begin() // TODO send to tracer
-	if err != nil {
-		return err
-	}
-
 	for _, UUID := range ids {
 		// language=PostgreSQL
-		_, err := tx.Exec(`DELETE FROM notifications
+		_, err := tdb.Exec(r, db, `DELETE FROM notifications
 		WHERE credentials = $1
 		AND UUID = $2`, hashedCredentials, UUID)
 		if err != nil {
 			return err
 		}
 	}
-	return tx.Commit()
+	return nil
 }
 
 // IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
 // Notification and returns it
-func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
+func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) (int64, error) {
 	// language=PostgreSQL
-	res, err := db.Exec(`UPDATE users 
+	res, err := tdb.Exec(r, db, `UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	if err != nil {
 		return 0, err
@@ -219,7 +214,7 @@ func IncreaseNotificationCnt(db *sql.DB, n Notification) (int64, error) {
 		return 0, errors.New("no such user with credentials")
 	}
 
-	row := db.QueryRow(`SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
+	row := tdb.QueryRow(r, db, `SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	var cnt int64
 	err = row.Scan(&cnt)
 	if err != nil {
