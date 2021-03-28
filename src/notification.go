@@ -214,6 +214,7 @@ func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) (int64
 		return 0, errors.New("no such user with credentials")
 	}
 
+	// language=PostgreSQL
 	row := tdb.QueryRow(r, db, `SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	var cnt int64
 	err = row.Scan(&cnt)

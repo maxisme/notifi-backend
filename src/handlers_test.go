@@ -124,6 +124,16 @@ func removeUserCreds(db *sql.DB, UUID string) {
 	}
 }
 
+func uuidInNotificationsExists(db *sql.DB, UUID string) bool {
+	dbUUID := ""
+	res := db.QueryRow(`SELECT uuid
+	FROM notifications
+	WHERE uuid=$1`, UUID)
+	_ = res.Scan(&dbUUID)
+	fmt.Println("db:" + dbUUID)
+	return dbUUID == UUID
+}
+
 ////////////////////
 // TEST FUNCTIONS //
 ////////////////////
@@ -301,6 +311,44 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	if notifications[0].Title != TITLE {
 		t.Errorf("Titles do not match! %v - %v", notifications[0].Title, TITLE)
 	}
+}
+
+func TestDeleteNotificationsOnReceiveWS(t *testing.T) {
+	var creds, form = GenUser() // generate user
+
+	// send notification over http
+	TITLE := crypt.RandomString(10)
+	SendNotification(creds.Value, TITLE)
+
+	// connect to ws
+	_, _, WS, _ := connectWSS(creds, form)
+	defer WS.Close()
+
+	// read notification over ws
+	notifications := readNotifications(WS)
+	if notifications == nil {
+		t.Errorf("No notifications!")
+		return
+	}
+
+	uuid := notifications[0].UUID
+	uuids := []string{uuid}
+	uuidsJson, _ := json.Marshal(uuids)
+
+	// verify notification is in DB
+	if !uuidInNotificationsExists(s.db, uuid) {
+		t.Errorf("Missing uuid!")
+	}
+
+	print(uuids)
+	_ = WS.WriteMessage(websocket.TextMessage, uuidsJson)
+
+	time.Sleep(10 * time.Millisecond)
+	if uuidInNotificationsExists(s.db, uuid) {
+		t.Errorf("uuid should have been deleted")
+	}
+
+	// verify notification is not in DB
 }
 
 func TestWSSResetKey(t *testing.T) {
