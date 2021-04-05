@@ -121,7 +121,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			Log(r, log.WarnLevel, err)
 			break
 		}
-		go func() { // TODO test
+		go func() {
 			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, hashedCredentials); err != nil {
 				Log(r, log.WarnLevel, err)
 			}
