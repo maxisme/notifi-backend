@@ -23,6 +23,11 @@ Install https://golangci-lint.run/usage/install/#local-installation
 $ (cd src && golangci-lint run)
 ```
 
+## Create DB migrations
+```bash
+migrate create -ext sql -dir migrations/ -seq "description"
+```
+
 ## Local development
 
 ### Startup dbs
