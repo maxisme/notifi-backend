@@ -4,12 +4,9 @@ import (
 	"context"
 	"fmt"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/propagation"
 	"go.opentelemetry.io/otel/api/trace"
-	"net"
 	"net/http"
-	"os"
 )
 
 func Middleware(next http.Handler) http.Handler {
@@ -36,19 +33,4 @@ func GetInjectSpan(r *http.Request, spanName string, inject bool, opts ...trace.
 		_, span = global.Tracer("").Start(context.Background(), spanName, opts...)
 	}
 	return
-}
-
-func getTags() []kv.KeyValue {
-	tags := []kv.KeyValue{
-		kv.String("commit-hash", os.Getenv("COMMIT_HASH")),
-	}
-	host, _ := os.Hostname()
-	tags = append(tags, kv.String("host", host))
-	ips, _ := net.LookupIP(host)
-	for id, addr := range ips {
-		if ipv4 := addr.To4(); ipv4 != nil {
-			tags = append(tags, kv.String(fmt.Sprintf("hostname-ip-%d", id), fmt.Sprintf("%v", ipv4)))
-		}
-	}
-	return tags
 }

@@ -113,7 +113,7 @@ func (n Notification) Validate(r *http.Request) error {
 			}
 
 			if contentLen > maxImageBytes {
-				return errors.New(fmt.Sprintf("Image too large (%d) should be less than %d", contentLen, maxImageBytes))
+				return fmt.Errorf("Image too large (%d) should be less than %d", contentLen, maxImageBytes)
 			}
 		}
 	}

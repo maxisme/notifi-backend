@@ -110,7 +110,7 @@ func TestSendBytesLocally(t *testing.T) {
 	}
 
 	funnels.Add(nil, funnel)
-	defer funnels.Remove(funnel)
+	defer funnels.Remove(funnel) //nolint
 
 	// send message over socket
 	sendMsg := []byte("hello")
@@ -140,7 +140,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		PubSub: red.Subscribe(key),
 	}
 	funnels1.Add(nil, funnel)
-	defer funnels1.Remove(funnel)
+	defer funnels1.Remove(funnel) // nolint
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 

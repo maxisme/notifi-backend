@@ -82,7 +82,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 			if u.Verify(r, db) {
 				isNewUser = false
 			} else {
-				Log(r, log.WarnLevel, fmt.Sprintf("Client passed credentials that were invalid"))
+				Log(r, log.WarnLevel, "Client passed credentials that were invalid")
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
