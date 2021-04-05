@@ -17,6 +17,12 @@
 $ docker-compose up test
 ```
 
+## Run linter
+Install https://golangci-lint.run/usage/install/#local-installation
+```bash
+$ (cd src && golangci-lint run)
+```
+
 ## Local development
 
 ### Startup dbs
