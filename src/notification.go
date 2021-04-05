@@ -57,8 +57,8 @@ func (n Notification) Store(r *http.Request, db *sql.DB, encryptionKey []byte) (
 
 	// language=PostgreSQL
 	_, err = tdb.Exec(r, db, `
-	INSERT INTO notifications (UUID, title, message, image, link, credentials) 
-    VALUES($1, $2, $3, $4, $5, $6)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials))
+	INSERT INTO notifications (UUID, title, message, image, link, credentials, time) 
+    VALUES($1, $2, $3, $4, $5, $6, $7)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials), n.Time)
 	return
 }
 

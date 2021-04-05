@@ -220,8 +220,10 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// set notification
-	notification.Time = time.Now().Format(NotificationTimeLayout)
+	// set time
+	loc, _ := time.LoadLocation("UTC")
+	notification.Time = time.Now().In(loc).Format(NotificationTimeLayout)
+
 	notification.UUID = uuid.New().String()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})
 	if err != nil {
