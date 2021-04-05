@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   lint:
-    name: lint
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -11,9 +11,11 @@ jobs:
         uses: golangci/golangci-lint-action@v2
         with:
           version: latest
+          working-directory: src
 
   test:
     name: Test
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1
