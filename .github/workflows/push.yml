@@ -18,6 +18,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
+    name: Build
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -46,6 +47,7 @@ jobs:
           build-args: |
             COMMIT_HASH=${{ github.sha }}
   deploy:
+    name: Deploy
     needs: build
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
