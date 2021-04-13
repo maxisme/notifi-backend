@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/TV4/graceful v0.3.4
+	github.com/appleboy/go-fcm v0.1.5 // indirect
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
 	github.com/getsentry/sentry-go v0.5.1

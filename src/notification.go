@@ -197,30 +197,20 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []stri
 	return nil
 }
 
-// IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
-// Notification and returns it
-func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) (int64, error) {
+// IncreaseNotificationCnt increases user notification count
+func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
 	// language=PostgreSQL
 	res, err := tdb.Exec(r, db, `UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	if err != nil {
-		return 0, err
+		return err
 	}
 	num, err := res.RowsAffected()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	if num == 0 {
-		return 0, errors.New("no such user with credentials")
+		return errors.New("no such user with credentials")
 	}
-
-	// language=PostgreSQL
-	row := tdb.QueryRow(r, db, `SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
-	var cnt int64
-	err = row.Scan(&cnt)
-	if err != nil {
-		return 0, err
-	}
-
-	return cnt, nil
+	return nil
 }

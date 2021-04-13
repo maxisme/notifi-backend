@@ -20,6 +20,7 @@ type User struct {
 	AppVersion      string
 	NotificationCnt string
 	UUID            string
+	FirebaseToken   string
 }
 
 // Credentials structure
@@ -93,13 +94,13 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	if isNewUser {
 		// create new user
 		// language=PostgreSQL
-		query = "INSERT INTO users (credentials, credential_key, UUID) VALUES ($1, $2, $3)"
+		query = "INSERT INTO users (credentials, credential_key, firebase_token, UUID) VALUES ($1, $2, $3, $4)"
 	} else {
 		// language=PostgreSQL
-		query = "UPDATE users SET credentials = $1, credential_key = $2 WHERE UUID = $3"
+		query = "UPDATE users SET credentials = $1, credential_key = $2, firebase_token = $3 WHERE UUID = $4"
 	}
 
-	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), u.FirebaseToken, crypt.Hash(u.UUID))
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -121,11 +122,11 @@ func (u *User) GetWithUUID(r *http.Request, db *sql.DB, UUID string) error {
 func (u *User) Get(r *http.Request, db *sql.DB, credentials string) error {
 	// language=PostgreSQL
 	var row = tdb.QueryRow(r, db, `
-	SELECT UUID, credentials, credential_key 
+	SELECT UUID, credentials, credential_key, notification_cnt, firebase_token
 	FROM users
 	WHERE credentials = $1
 	`, crypt.Hash(credentials))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key)
+	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key, &u.NotificationCnt, &u.FirebaseToken)
 }
 
 // Verify verifies a u User s credentials
@@ -149,8 +150,8 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 func (u User) StoreLogin(r *http.Request, db *sql.DB) error {
 	// language=PostgreSQL
 	return UpdateErr(tdb.Exec(r, db, `UPDATE users
-	SET last_login = NOW(), app_version = $1, is_connected = true
-	WHERE credentials = $2 AND UUID = $3`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
+	SET last_login = NOW(), app_version = $1, is_connected = true, firebase_token = $2
+	WHERE credentials = $3 AND UUID = $4`, u.AppVersion, u.FirebaseToken, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }
 
 // CloseLogin marks a user as no longer connected to web socket in db

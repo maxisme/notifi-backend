@@ -3,13 +3,13 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/appleboy/go-fcm"
 	"github.com/gorilla/websocket"
+	"github.com/maxisme/notifi-backend/ws"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"time"
-
-	"github.com/maxisme/notifi-backend/ws"
 
 	"github.com/google/uuid"
 	"github.com/maxisme/notifi-backend/crypt"
@@ -31,14 +31,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	credentials := Credentials{
-		Value: r.Header.Get("Credentials"),
-		Key:   r.Header.Get("Key"),
-	}
 	user := User{
-		Credentials: credentials,
-		UUID:        r.Header.Get("Uuid"),
-		AppVersion:  r.Header.Get("Version"),
+		Credentials: Credentials{
+			Value: r.Header.Get("Credentials"),
+			Key:   r.Header.Get("Key"),
+		},
+		UUID:          r.Header.Get("Uuid"),
+		AppVersion:    r.Header.Get("Version"),
+		FirebaseToken: r.Header.Get("Firebase-Token"),
 	}
 
 	// validate inputs
@@ -155,7 +155,8 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	// create PostUser struct
 	PostUser := User{
-		UUID: r.Form.Get("UUID"),
+		UUID:          r.Form.Get("UUID"),
+		FirebaseToken: r.Form.Get("firebase_token"),
 
 		// if asking for new Credentials
 		Credentials: Credentials{
@@ -214,7 +215,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	_, err := IncreaseNotificationCnt(r, s.db, notification)
+	err := IncreaseNotificationCnt(r, s.db, notification)
 	if err != nil {
 		// no such user with Credentials
 		return
@@ -229,6 +230,27 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, r, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	u := User{}
+	err = u.Get(r, s.db, notification.Credentials)
+	if err != nil {
+		WriteError(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if len(u.FirebaseToken) > 0 {
+		msg := &fcm.Message{
+			To: u.FirebaseToken,
+			Notification: &fcm.Notification{
+				Title: notification.Title,
+				Body:  notification.Message,
+			},
+		}
+		_, err := s.firebaseClient.Send(msg)
+		if err != nil {
+			log.Error(err)
+		}
 	}
 
 	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)

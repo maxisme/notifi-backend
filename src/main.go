@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"github.com/appleboy/go-fcm"
 	"github.com/go-chi/chi/middleware"
 	"github.com/maxisme/notifi-backend/tracer"
 	"math/rand"
@@ -27,10 +28,11 @@ import (
 
 // Server is used for database pooling - sharing the db connection to the web handlers.
 type Server struct {
-	db        *sql.DB
-	redis     *redis.Client
-	funnels   *ws.Funnels
-	serverKey string
+	db             *sql.DB
+	redis          *redis.Client
+	funnels        *ws.Funnels
+	serverKey      string
+	firebaseClient *fcm.Client
 }
 
 var (
@@ -73,11 +75,18 @@ func main() {
 	}
 	defer redisConn.Close()
 
+	// create firebase client
+	client, err := fcm.NewClient(os.Getenv("FIREBASE_SERVER_KEY"))
+	if err != nil {
+		panic(err)
+	}
+
 	s := Server{
-		db:        dbConn,
-		redis:     redisConn,
-		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
-		serverKey: os.Getenv("SERVER_KEY"),
+		db:             dbConn,
+		redis:          redisConn,
+		funnels:        &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		serverKey:      os.Getenv("SERVER_KEY"),
+		firebaseClient: client,
 	}
 
 	// init sentry

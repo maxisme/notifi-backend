@@ -25,7 +25,7 @@ $ (cd src && golangci-lint run)
 
 ## Create DB migrations
 ```bash
-migrate create -ext sql -dir migrations/ -seq "description"
+migrate create -ext sql -dir migrations/ -seq "add_firebasetoken_col"
 ```
 
 ## Local development
