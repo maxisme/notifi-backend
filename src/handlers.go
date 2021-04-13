@@ -249,7 +249,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		_, err := s.firebaseClient.Send(msg)
 		if err != nil {
-			log.Error(err)
+			Log(r, log.WarnLevel, err)
 		}
 	}
 
