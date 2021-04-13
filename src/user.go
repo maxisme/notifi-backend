@@ -120,13 +120,18 @@ func (u *User) GetWithUUID(r *http.Request, db *sql.DB, UUID string) error {
 
 // Get will return user params based on Credentials
 func (u *User) Get(r *http.Request, db *sql.DB, credentials string) error {
+	var firebaseToken sql.NullString
 	// language=PostgreSQL
 	var row = tdb.QueryRow(r, db, `
 	SELECT UUID, credentials, credential_key, notification_cnt, firebase_token
 	FROM users
 	WHERE credentials = $1
 	`, crypt.Hash(credentials))
-	return row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key, &u.NotificationCnt, &u.FirebaseToken)
+	if err := row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key, &u.NotificationCnt, &firebaseToken); err != nil {
+		return err
+	}
+	u.FirebaseToken = firebaseToken.String
+	return nil
 }
 
 // Verify verifies a u User s credentials
