@@ -7,7 +7,6 @@ import (
 	tdb "github.com/maxisme/notifi-backend/tracer/db"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +23,7 @@ type Notification struct {
 	Message     string `json:"message"`
 	Image       string `json:"image"`
 	Link        string `json:"link"`
+	IsEncrypted bool   `json:"is_encrypted"`
 }
 
 // size restrictions of notifications
@@ -34,23 +34,28 @@ const (
 )
 
 // Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(r *http.Request, db *sql.DB, encryptionKey []byte) (err error) {
-	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
+func (n Notification) Store(r *http.Request, db *sql.DB, b64PubKey string) (err error) {
+	key, err := crypt.B64StringToPubKey(b64PubKey)
 	if err != nil {
 		return
 	}
 
-	n.Message, err = crypt.EncryptAES(n.Message, encryptionKey)
+	n.Title, err = crypt.EncryptWithPubKey(n.Title, key)
 	if err != nil {
 		return
 	}
 
-	n.Image, err = crypt.EncryptAES(n.Image, encryptionKey)
+	n.Message, err = crypt.EncryptWithPubKey(n.Message, key)
 	if err != nil {
 		return
 	}
 
-	n.Link, err = crypt.EncryptAES(n.Link, encryptionKey)
+	n.Image, err = crypt.EncryptWithPubKey(n.Image, key)
+	if err != nil {
+		return
+	}
+
+	n.Link, err = crypt.EncryptWithPubKey(n.Link, key)
 	if err != nil {
 		return
 	}
@@ -121,33 +126,10 @@ func (n Notification) Validate(r *http.Request) error {
 	return nil
 }
 
-// Decrypt decrypts n Notification
-func (n *Notification) Decrypt(encryptionKey []byte) error {
-	title, err := crypt.DecryptAES(n.Title, encryptionKey)
-	if err == nil {
-		n.Title = title
-	}
-
-	message, err := crypt.DecryptAES(n.Message, encryptionKey)
-	if err == nil {
-		n.Message = message
-	}
-
-	image, err := crypt.DecryptAES(n.Image, encryptionKey)
-	if err == nil {
-		n.Image = image
-	}
-
-	link, err := crypt.DecryptAES(n.Link, encryptionKey)
-	if err == nil {
-		n.Link = link
-	}
-	return err
-}
-
-// FetchNotifications Fetches all notifications belonging to user.
+// FetchStoredNotifications Fetches all notifications belonging to user.
 // Will only decrypt if the user has no public serverKey and thus the messages were encrypted on the Server with AES.
-func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
+func (u User) FetchStoredNotifications(r *http.Request, db *sql.DB) ([]Notification, error) {
+	// language=PostgreSQL
 	query := `
 	SELECT
 		uuid,
@@ -158,7 +140,7 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 		link
 	FROM notifications
 	WHERE credentials = $1`
-	rows, err := db.Query(query, crypt.Hash(u.Credentials.Value))
+	rows, err := tdb.Query(r, db, query, crypt.Hash(u.Credentials.Value))
 	if err != nil {
 		return nil, err
 	}
@@ -167,16 +149,10 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 	var notifications []Notification
 	for rows.Next() {
 		var n Notification
+		n.IsEncrypted = true
 		err := rows.Scan(&n.UUID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
 		if err != nil {
 			return nil, err
-		}
-
-		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-		err = n.Decrypt(encryptionKey)
-		if err != nil {
-			Log(nil, log.WarnLevel, err.Error())
-			continue
 		}
 		notifications = append(notifications, n)
 	}
@@ -199,28 +175,32 @@ func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []stri
 
 // IncreaseNotificationCnt increases the notification count in the database of the Credentials from the
 // Notification and returns it
-func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) (int64, error) {
+func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
 	// language=PostgreSQL
 	res, err := tdb.Exec(r, db, `UPDATE users 
 	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
 	if err != nil {
-		return 0, err
+		return err
 	}
 	num, err := res.RowsAffected()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	if num == 0 {
-		return 0, errors.New("no such user with credentials")
+		return errors.New("no such user with credentials")
 	}
+	return nil
+}
 
+// FetchUser gets notification count and public key of user
+func FetchUser(r *http.Request, db *sql.DB, credentials credentials) (User, error) {
 	// language=PostgreSQL
-	row := tdb.QueryRow(r, db, `SELECT notification_cnt FROM users WHERE credentials = $1`, crypt.Hash(n.Credentials))
-	var cnt int64
-	err = row.Scan(&cnt)
-	if err != nil {
-		return 0, err
-	}
-
-	return cnt, nil
+	query := `
+	SELECT notification_cnt, public_key
+	FROM users
+	WHERE credentials = $1`
+	row := tdb.QueryRow(r, db, query, crypt.Hash(credentials))
+	var u User
+	err := row.Scan(&u.NotificationCnt, &u.PublicKey)
+	return u, err
 }

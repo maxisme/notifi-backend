@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/maxisme/notifi-backend/ws"
@@ -39,6 +38,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		Credentials: credentials,
 		UUID:        r.Header.Get("Uuid"),
 		AppVersion:  r.Header.Get("Version"),
+		PublicKey:   r.Header.Get("B64PublicKey"),
 	}
 
 	// validate inputs
@@ -50,6 +50,9 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
 		WriteError(w, r, http.StatusUnauthorized, "Invalid Credentials")
+		return
+	} else if !IsValidB64PublicKey(user.PublicKey) {
+		WriteError(w, r, http.StatusUnauthorized, "Invalid Public Key")
 		return
 	}
 
@@ -96,7 +99,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	Log(r, log.InfoLevel, "Client Connected: "+hashedCredentials)
 
 	// send all stored notifications from db
-	notifications, err := user.FetchNotifications(s.db)
+	notifications, err := user.FetchStoredNotifications(r, s.db)
 	if err != nil {
 		WriteError(w, r, http.StatusInternalServerError, err.Error())
 		return
@@ -155,7 +158,8 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	// create PostUser struct
 	PostUser := User{
-		UUID: r.Form.Get("UUID"),
+		UUID:      r.Form.Get("UUID"),
+		PublicKey: r.Form.Get("public_key"),
 
 		// if asking for new Credentials
 		Credentials: Credentials{
@@ -166,6 +170,9 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	if !IsValidUUID(PostUser.UUID) {
 		WriteError(w, r, http.StatusBadRequest, "Invalid UUID")
+		return
+	} else if !IsValidB64PublicKey(PostUser.PublicKey) {
+		WriteError(w, r, http.StatusBadRequest, "Invalid public key")
 		return
 	}
 
@@ -214,9 +221,15 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// increase notification count
-	_, err := IncreaseNotificationCnt(r, s.db, notification)
+	err := IncreaseNotificationCnt(r, s.db, notification)
 	if err != nil {
-		// no such user with Credentials
+		// probably no such user with Credentials
+		return
+	}
+
+	user, err := FetchUser(r, s.db, notification.Credentials)
+	if err != nil {
+		// probably no such user with Credentials
 		return
 	}
 
@@ -234,8 +247,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)
 	if err != nil {
 		// store as user is not online
-		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-		if err := notification.Store(r, s.db, encryptionKey); err != nil {
+		if err := notification.Store(r, s.db, user.PublicKey); err != nil {
 			WriteError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}

@@ -4,8 +4,11 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
+	"crypto/x509"
 	b64 "encoding/base64"
+	"encoding/pem"
 	"golang.org/x/crypto/bcrypt"
 	"io"
 	"log"
@@ -106,4 +109,25 @@ func PassHash(str string) string {
 func VerifyPassHash(str string, expectedStr string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(str), []byte(expectedStr))
 	return err == nil
+}
+
+// B64StringToPubKey converts a base64 RSA string to a public key
+// TODO cache
+func B64StringToPubKey(b64PubKey string) (*rsa.PublicKey, error) {
+	key, err := b64.StdEncoding.DecodeString(b64PubKey)
+	if err != nil {
+		return nil, err
+	}
+	block, _ := pem.Decode(key)
+	re, err := x509.ParsePKCS1PublicKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+	return re, nil
+}
+
+// B64StringToPubKey encrypts a string with public rsa key
+func EncryptWithPubKey(str string, pub *rsa.PublicKey) (string, error) {
+	encryptedStr, err := rsa.EncryptPKCS1v15(rand.Reader, pub, []byte(str))
+	return b64.StdEncoding.EncodeToString(encryptedStr), err
 }

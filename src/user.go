@@ -20,6 +20,7 @@ type User struct {
 	AppVersion      string
 	NotificationCnt string
 	UUID            string
+	PublicKey       string
 }
 
 // Credentials structure
@@ -36,7 +37,6 @@ const (
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store
-
 func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	// create new credentials
 	creds := Credentials{
@@ -93,13 +93,13 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	if isNewUser {
 		// create new user
 		// language=PostgreSQL
-		query = "INSERT INTO users (credentials, credential_key, UUID) VALUES ($1, $2, $3)"
+		query = "INSERT INTO users (credentials, credential_key, UUID, public_key) VALUES ($1, $2, $3, $4)"
 	} else {
 		// language=PostgreSQL
-		query = "UPDATE users SET credentials = $1, credential_key = $2 WHERE UUID = $3"
+		query = "UPDATE users SET credentials = $1, credential_key = $2, public_key = $4 WHERE UUID = $3"
 	}
 
-	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+	_, err := tdb.Exec(r, db, query, crypt.Hash(creds.Value), crypt.PassHash(creds.Key), crypt.Hash(u.UUID), u.PublicKey)
 	if err != nil {
 		return Credentials{}, err
 	}
@@ -149,8 +149,8 @@ func (u User) Verify(r *http.Request, db *sql.DB) bool {
 func (u User) StoreLogin(r *http.Request, db *sql.DB) error {
 	// language=PostgreSQL
 	return UpdateErr(tdb.Exec(r, db, `UPDATE users
-	SET last_login = NOW(), app_version = $1, is_connected = true
-	WHERE credentials = $2 AND UUID = $3`, u.AppVersion, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
+	SET last_login = NOW(), app_version = $1, is_connected = true, public_key = $2
+	WHERE credentials = $3 AND UUID = $4`, u.AppVersion, u.PublicKey, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
 }
 
 // CloseLogin marks a user as no longer connected to web socket in db

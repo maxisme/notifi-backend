@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/maxisme/notifi-backend/crypt"
 	url2 "net/url"
 	"regexp"
 	"strings"
@@ -29,6 +30,12 @@ func IsValidUUID(str string) bool {
 // IsValidCredentials checks a string is the length of expected Credentials
 func IsValidCredentials(credentials string) bool {
 	return len(credentials) == credentialLen
+}
+
+// IsValidB64PublicKey checks a string is a valid publicKey
+func IsValidB64PublicKey(publicKey string) bool {
+	_, err := crypt.B64StringToPubKey(publicKey)
+	return err == nil
 }
 
 // IsValidURL checks a string is a URL
