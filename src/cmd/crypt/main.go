@@ -12,7 +12,6 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-
 	var hashCmd = &cobra.Command{
 		Use:   "hash",
 		Short: "Hash a string",

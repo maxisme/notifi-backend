@@ -76,9 +76,8 @@ func TestEncryptWithPubKey(t *testing.T) {
 	if err != nil {
 		t.Errorf("key should be valid: " + err.Error())
 	}
-	encryptedStr, err := EncryptWithPubKey("foo", key)
+	_, err = EncryptWithPubKey([]byte("foo"), key)
 	if err != nil {
 		t.Errorf("key should be valid: " + err.Error())
 	}
-	print(encryptedStr)
 }

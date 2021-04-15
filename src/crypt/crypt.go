@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/x509"
 	b64 "encoding/base64"
@@ -16,8 +17,8 @@ import (
 )
 
 // EncryptAES encrypts a string using AES with a key
-func EncryptAES(str string, key []byte) (string, error) {
-	if len(str) == 0 {
+func EncryptAES(msg string, key []byte) (string, error) {
+	if len(msg) == 0 {
 		return "", nil
 	}
 
@@ -36,16 +37,16 @@ func EncryptAES(str string, key []byte) (string, error) {
 		return "", err
 	}
 
-	return b64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(str), nil)), nil
+	return b64.StdEncoding.EncodeToString(gcm.Seal(nonce, nonce, []byte(msg), nil)), nil
 }
 
 // DecryptAES decrypts a string using AES with a key
-func DecryptAES(str string, key []byte) (string, error) {
-	if len(str) == 0 {
+func DecryptAES(msg string, key []byte) (string, error) {
+	if len(msg) == 0 {
 		return "", nil
 	}
 
-	encryptedbytes, _ := b64.StdEncoding.DecodeString(str)
+	encryptedbytes, _ := b64.StdEncoding.DecodeString(msg)
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
@@ -126,8 +127,11 @@ func B64StringToPubKey(b64PubKey string) (*rsa.PublicKey, error) {
 	return re, nil
 }
 
-// B64StringToPubKey encrypts a string with public rsa key
-func EncryptWithPubKey(str string, pub *rsa.PublicKey) (string, error) {
-	encryptedStr, err := rsa.EncryptPKCS1v15(rand.Reader, pub, []byte(str))
-	return b64.StdEncoding.EncodeToString(encryptedStr), err
+// EncryptWithPubKey encrypts a string with public rsa key using a random key
+func EncryptWithPubKey(msg []byte, pub *rsa.PublicKey) (string, error) {
+	encryptedKey, err := rsa.EncryptOAEP(sha1.New(), rand.Reader, pub, msg, nil)
+	if err != nil {
+		return "", err
+	}
+	return b64.StdEncoding.EncodeToString(encryptedKey), err
 }

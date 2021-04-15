@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	. "github.com/maxisme/notifi-backend/structs"
 	tdb "github.com/maxisme/notifi-backend/tracer/db"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -14,61 +15,25 @@ import (
 	"github.com/maxisme/notifi-backend/crypt"
 )
 
-// Notification structure
-type Notification struct {
-	Credentials credentials
-	UUID        string `json:"UUID"`
-	Time        string `json:"time"`
-	Title       string `json:"title"`
-	Message     string `json:"message"`
-	Image       string `json:"image"`
-	Link        string `json:"link"`
-	IsEncrypted bool   `json:"is_encrypted"`
-}
-
-// size restrictions of notifications
+// restrictions of notifications
 const (
-	maxTitle      = 1000
-	maxMessage    = 10000
-	maxImageBytes = 100000
+	maxTitle       = 1000
+	maxMessage     = 10000
+	maxImageBytes  = 100000
+	imageTimeoutMS = 300
 )
 
-// Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(r *http.Request, db *sql.DB, b64PubKey string) (err error) {
-	key, err := crypt.B64StringToPubKey(b64PubKey)
-	if err != nil {
-		return
-	}
-
-	n.Title, err = crypt.EncryptWithPubKey(n.Title, key)
-	if err != nil {
-		return
-	}
-
-	n.Message, err = crypt.EncryptWithPubKey(n.Message, key)
-	if err != nil {
-		return
-	}
-
-	n.Image, err = crypt.EncryptWithPubKey(n.Image, key)
-	if err != nil {
-		return
-	}
-
-	n.Link, err = crypt.EncryptWithPubKey(n.Link, key)
-	if err != nil {
-		return
-	}
-
+// Store will store n Notification in the database
+func Store(r *http.Request, db *sql.DB, n Notification) (err error) {
 	// language=PostgreSQL
 	_, err = tdb.Exec(r, db, `
-	INSERT INTO notifications (UUID, title, message, image, link, credentials, time) 
-    VALUES($1, $2, $3, $4, $5, $6, $7)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials), n.Time)
+	INSERT INTO notifications (UUID, title, message, image, link, credentials, time, encrypted_key) 
+    VALUES($1, $2, $3, $4, $5, $6, $7, $8)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials), n.Time, n.EncryptedKey)
 	return
 }
 
 // Validate runs validation on n Notification
-func (n Notification) Validate(r *http.Request) error {
+func Validate(r *http.Request, n Notification) error {
 	if len(n.Credentials) == 0 {
 		return errors.New("You must specify Credentials!")
 	}
@@ -101,24 +66,22 @@ func (n Notification) Validate(r *http.Request) error {
 		if strings.Contains(n.Image, "http://") {
 			return errors.New("Image host must use https!")
 		}
-
-		timeout := 300 * time.Millisecond
 		client := http.Client{
-			Timeout: timeout,
+			Timeout: imageTimeoutMS * time.Millisecond,
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Log(r, log.WarnLevel, err)
+			Log(r, log.InfoLevel, err)
 			n.Image = "" // remove image reference
 		} else {
 			contentLen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Log(r, log.WarnLevel, err)
+				Log(r, log.InfoLevel, err)
 				n.Image = "" // remove image reference
 			}
 
 			if contentLen > maxImageBytes {
-				return fmt.Errorf("Image too large (%d) should be less than %d", contentLen, maxImageBytes)
+				return fmt.Errorf("Image too large (%d) should be less than %d bytes", contentLen, maxImageBytes)
 			}
 		}
 	}
@@ -137,7 +100,8 @@ func (u User) FetchStoredNotifications(r *http.Request, db *sql.DB) ([]Notificat
 		title, 
 		message,
 		image,
-		link
+		link,
+	    encrypted_key
 	FROM notifications
 	WHERE credentials = $1`
 	rows, err := tdb.Query(r, db, query, crypt.Hash(u.Credentials.Value))
@@ -149,11 +113,12 @@ func (u User) FetchStoredNotifications(r *http.Request, db *sql.DB) ([]Notificat
 	var notifications []Notification
 	for rows.Next() {
 		var n Notification
-		n.IsEncrypted = true
-		err := rows.Scan(&n.UUID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
+		var encryptedKey sql.NullString
+		err := rows.Scan(&n.UUID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link, &encryptedKey)
 		if err != nil {
 			return nil, err
 		}
+		n.EncryptedKey = encryptedKey.String
 		notifications = append(notifications, n)
 	}
 	return notifications, nil
@@ -193,7 +158,7 @@ func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error 
 }
 
 // FetchUser gets notification count and public key of user
-func FetchUser(r *http.Request, db *sql.DB, credentials credentials) (User, error) {
+func FetchUser(r *http.Request, db *sql.DB, credentials string) (User, error) {
 	// language=PostgreSQL
 	query := `
 	SELECT notification_cnt, public_key

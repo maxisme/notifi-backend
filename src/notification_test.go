@@ -4,11 +4,12 @@ import (
 	"testing"
 
 	"github.com/maxisme/notifi-backend/crypt"
+	. "github.com/maxisme/notifi-backend/structs"
 )
 
 // return error if validation passes
 func validateNotificationTest(t *testing.T, n Notification) {
-	err := n.Validate(nil)
+	err := Validate(nil, n)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}

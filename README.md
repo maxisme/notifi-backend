@@ -17,15 +17,15 @@
 $ docker-compose up test
 ```
 
-## Run linter
-Install https://golangci-lint.run/usage/install/#local-installation
+## Setup pre-commit
 ```bash
-$ (cd src && golangci-lint run)
+ln -s $(pwd)/pre-commit.sh $(pwd)/.git/hooks/pre-commit
+chmod +x $(pwd)/.git/hooks/pre-commit
 ```
 
 ## Create DB migrations
 ```bash
-migrate create -ext sql -dir migrations/ -seq "add_public_key_"
+migrate create -ext sql -dir migrations/ -seq "add_encryption_key"
 ```
 
 ## Local development

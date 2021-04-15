@@ -24,10 +24,9 @@ type User struct {
 }
 
 // Credentials structure
-type credentials = string
 type Credentials struct {
-	Value credentials `json:"credentials"`
-	Key   string      `json:"credential_key"`
+	Value string `json:"credentials"`
+	Key   string `json:"credential_key"`
 }
 
 const (

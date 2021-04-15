@@ -8,10 +8,13 @@ import (
 	"net/http"
 	"time"
 
+	. "github.com/maxisme/notifi-backend/structs"
 	"github.com/maxisme/notifi-backend/ws"
 
 	"github.com/google/uuid"
 	"github.com/maxisme/notifi-backend/crypt"
+
+	"github.com/golang/gddo/httputil/header"
 )
 
 // custom error codes
@@ -204,18 +207,29 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
-		return
-	}
-
 	var notification Notification
-	if err := decoder.Decode(&notification, r.Form); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
-		return
+	contentType, _ := header.ParseValueAndParams(r.Header, "Content-Type")
+	if contentType == "application/json" {
+		dec := json.NewDecoder(r.Body)
+		dec.DisallowUnknownFields()
+		err := dec.Decode(&notification)
+		if err != nil {
+			WriteError(w, r, http.StatusBadRequest, err.Error())
+			return
+		}
+	} else {
+		if err := r.ParseForm(); err != nil {
+			WriteError(w, r, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		if err := decoder.Decode(&notification, r.Form); err != nil {
+			WriteError(w, r, http.StatusBadRequest, err.Error())
+			return
+		}
 	}
 
-	if err := notification.Validate(r); err != nil {
+	if err := Validate(r, notification); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -246,10 +260,40 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)
 	if err != nil {
-		// store as user is not online
-		if err := notification.Store(r, s.db, user.PublicKey); err != nil {
+		// encrypt & store because user is probably not connected to ws
+		if len(notification.EncryptedKey) == 0 {
+			// notification is not already encrypted
+			if err := notification.Encrypt(user.PublicKey); err != nil {
+				WriteError(w, r, http.StatusInternalServerError, err.Error())
+				return
+			}
+		}
+
+		if err := Store(r, s.db, notification); err != nil {
 			WriteError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
+}
+
+// KeyHandler returns the public key of a set of credentials
+func (s *Server) KeyHandler(w http.ResponseWriter, r *http.Request) {
+	credentials, ok := r.URL.Query()["credentials"]
+	if !ok || len(credentials[0]) < 1 {
+		WriteError(w, r, http.StatusBadRequest, "Missing credentials argument")
+		return
+	}
+
+	if !IsValidCredentials(credentials[0]) {
+		WriteError(w, r, http.StatusUnauthorized, "Invalid Credentials")
+		return
+	}
+
+	user, err := FetchUser(r, s.db, credentials[0])
+	if err != nil {
+		// probably no such user with Credentials
+		return
+	}
+
+	_, _ = w.Write([]byte(user.PublicKey))
 }

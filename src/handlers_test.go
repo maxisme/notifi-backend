@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/maxisme/notifi-backend/conn"
+	"github.com/maxisme/notifi-backend/structs"
 	"math/rand"
 	"net/http"
 	"net/http/httptest"
@@ -42,7 +43,7 @@ func TestMain(t *testing.M) {
 	s = Server{
 		db:        db,
 		redis:     red,
-		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		funnels:   &ws.Funnels{Clients: make(map[string]*ws.Funnel)},
 		serverKey: "rps2P8irs0mT5uCgicv8m5PMq9a6WyzbxL7HWeRK",
 	}
 
@@ -276,7 +277,7 @@ func TestStoredNotificationsOnWSConnect(t *testing.T) {
 	}
 }
 
-func readNotifications(ws *websocket.Conn) (notifications []Notification) {
+func readNotifications(ws *websocket.Conn) (notifications []structs.Notification) {
 	_, mess, err := ws.ReadMessage()
 	if err != nil {
 		fmt.Println(err.Error())

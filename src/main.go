@@ -39,6 +39,10 @@ var (
 
 const maxRequestsPerSecond = 5
 
+var realIPs = []string{
+	"Cf-Connecting-Ip",
+}
+
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		if err := conn.RunPgMigration(); err != nil {
@@ -76,7 +80,7 @@ func main() {
 	s := Server{
 		db:        dbConn,
 		redis:     redisConn,
-		funnels:   &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
+		funnels:   &ws.Funnels{Clients: make(map[string]*ws.Funnel)},
 		serverKey: os.Getenv("SERVER_KEY"),
 	}
 
@@ -92,9 +96,12 @@ func main() {
 	r := chi.NewRouter()
 
 	// middleware
-	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-		"Cf-Connecting-Ip", "X-Forwarded-For", "X-Real-IP",
-	})
+	var lmt = tollbooth_chi.LimitHandler(
+		tollbooth.NewLimiter(
+			maxRequestsPerSecond,
+			&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour},
+		).SetIPLookups(realIPs),
+	)
 
 	// HANDLERS
 	r.Group(func(traceR chi.Router) {
@@ -102,16 +109,28 @@ func main() {
 		traceR.Use(middleware.RealIP)
 		traceR.Use(middleware.Recoverer)
 		traceR.Use(sentryMiddleware.Handle)
-		traceR.Use(tollbooth_chi.LimitHandler(lmt))
+		traceR.Use(lmt)
 
-		traceR.Group(func(secureR chi.Router) {
-			secureR.Use(ServerKeyMiddleware)
+		// internal
+		traceR.Group(func(appR chi.Router) {
+			appR.Use(ServerKeyMiddleware)
 
-			secureR.HandleFunc("/ws", s.WSHandler)
-			secureR.HandleFunc("/code", s.CredentialHandler)
+			appR.HandleFunc("/ws", s.WSHandler)
+			appR.HandleFunc("/code", s.CredentialHandler)
 		})
 
+		// external
 		traceR.HandleFunc("/api", s.APIHandler)
+		traceR.Group(func(keyR chi.Router) {
+			var lmt = tollbooth_chi.LimitHandler(
+				tollbooth.NewLimiter(
+					1,
+					&limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour},
+				).SetIPLookups(realIPs),
+			)
+			keyR.Use(lmt)
+			keyR.HandleFunc("/key", s.KeyHandler)
+		})
 	})
 
 	r.HandleFunc("/", func(_ http.ResponseWriter, _ *http.Request) {})
