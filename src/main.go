@@ -76,9 +76,14 @@ func main() {
 	defer redisConn.Close()
 
 	// create firebase client
-	client, err := fcm.NewClient(os.Getenv("FIREBASE_SERVER_KEY"))
-	if err != nil {
-		panic(err)
+	var firebaseClient *fcm.Client
+	if len(os.Getenv("FIREBASE_SERVER_KEY")) > 0 {
+		firebaseClient, err = fcm.NewClient(os.Getenv("FIREBASE_SERVER_KEY"))
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		fmt.Println("WARNING: missing FIREBASE_SERVER_KEY")
 	}
 
 	s := Server{
@@ -86,7 +91,7 @@ func main() {
 		redis:          redisConn,
 		funnels:        &ws.Funnels{Clients: make(map[credentials]*ws.Funnel)},
 		serverKey:      os.Getenv("SERVER_KEY"),
-		firebaseClient: client,
+		firebaseClient: firebaseClient,
 	}
 
 	// init sentry
