@@ -31,7 +31,6 @@ services:
       DATABASE_SSL_DISABLE: "1"
       REDIS_HOST: "redis:6379"
       SERVER_KEY: "Hu2J7b7xA8MndeNS"
-      ENCRYPTION_KEY: "6bO9OFNEsqdz3Bl16bO9OFNEsqdz3Bl1"
     networks:
       - overlay
     depends_on:
@@ -77,6 +76,8 @@ services:
     ports:
       - "80:80"
       - "8080:8080"
+    depends_on:
+      - app
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
 

@@ -1,5 +1,5 @@
 ingress:
-  match: "Host(`notifi.it`) && (Path(`/ws`) || Path(`/code`) || Path(`/api`))"
+  match: "Host(`notifi.it`) && (Path(`/ws`) || Path(`/code`) || Path(`/api`)) || Path(`/api`))"
 
 image:
   repository: "maxisme/notifi-backend"

@@ -57,7 +57,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	// check all envs are set
-	err := RequiredEnvs([]string{"REDIS_HOST", "ENCRYPTION_KEY", "SERVER_KEY"})
+	err := RequiredEnvs([]string{"REDIS_HOST", "SERVER_KEY"})
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +65,6 @@ func main() {
 	// connect to db
 	dbConn, err := conn.PgConn()
 	if err != nil {
-		fmt.Println(os.Getenv("DB_HOST"))
 		panic(err)
 	}
 	defer dbConn.Close()
