@@ -37,6 +37,7 @@ services:
       - migrate
     links:
       - db
+      - migrate
       - redis
     labels:
       - "traefik.enable=true"
@@ -91,7 +92,7 @@ services:
       DATABASE_PASS: "notifi"
       DATABASE_NAME: "notifi"
       DATABASE_SSL_DISABLE: "1"
-    links:
+    depends_on:
       - db
     networks:
       - overlay
