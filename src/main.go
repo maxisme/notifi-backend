@@ -39,7 +39,7 @@ var (
 	decoder = schema.NewDecoder()
 )
 
-const maxRequestsPerSecond = 5
+const maxRequestsPerSecond = 2
 
 func main() {
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
@@ -105,9 +105,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// middleware
-	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{
-		"Cf-Connecting-Ip",
-	})
+	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{"Cf-Connecting-Ip", "RemoteAddr", "X-Forwarded-For", "X-Real-IP"})
 
 	// HANDLERS
 	r.Group(func(traceR chi.Router) {
