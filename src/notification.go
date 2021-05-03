@@ -30,7 +30,7 @@ type Notification struct {
 const (
 	maxTitle      = 1000
 	maxMessage    = 10000
-	maxImageBytes = 1000000
+	maxImageBytes = 2000000 // 2MB
 )
 
 // Store will store n Notification in the database after encrypting the content
