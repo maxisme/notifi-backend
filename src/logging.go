@@ -60,4 +60,5 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 func WriteError(w http.ResponseWriter, r *http.Request, code int, message string) {
 	LogWithSkip(r, log.WarnLevel, 3, message)
 	http.Error(w, message, code)
+	_, _ = w.Write([]byte(message))
 }

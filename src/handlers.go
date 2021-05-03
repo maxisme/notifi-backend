@@ -210,7 +210,8 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := notification.Validate(r); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
