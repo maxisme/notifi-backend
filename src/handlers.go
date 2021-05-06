@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-version"
 	"github.com/maxisme/notifi-backend/crypt"
 )
 
@@ -262,5 +263,69 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
+	}
+}
+
+// UpgradeHandler returns xml information on the latest app version or if passing version GET argument will return
+// 200 if there is new version else 404
+func (s *Server) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
+	_, develop := r.URL.Query()["develop"]
+
+	githubResponses, err := GetGitHubResponses("https://api.github.com/repos/maxisme/notifi/releases")
+	if err != nil {
+		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	var githubResponse GitHubResponse
+	for _, githubResp := range githubResponses {
+		if !githubResp.Draft {
+			if develop && githubResp.Prerelease {
+				githubResponse = githubResp
+				break
+			} else if !develop && !githubResp.Prerelease {
+				githubResponse = githubResp
+				break
+			}
+		}
+	}
+
+	if currentVersion, found := r.URL.Query()["version"]; found {
+		currentV, err := version.NewVersion(currentVersion[0])
+		if err != nil {
+			panic(err)
+		}
+		latestV, err := version.NewVersion(githubResponse.TagName)
+		if err != nil {
+			panic(err)
+		}
+
+		if currentV.LessThan(latestV) {
+			w.WriteHeader(http.StatusOK)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+		return
+	}
+
+	pubDttm := githubResponse.PublishedAt.Format(rfc2822)
+	dmgUrl := githubResponse.Assets[0].BrowserDownloadURL
+	w.Header().Set("Content-Type", "application/xml")
+	xml := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="https://notifi.it/xml-namespaces/sparkle" xmlns:dc="https://notifi.it/dc/elements/1.1/">
+  <channel>
+	<item>
+		<title>%s</title>
+		<description><![CDATA[
+			%s
+		]]>
+		</description>
+		<pubDate>%s</pubDate>
+		<enclosure url="%s" sparkle:version="%s"/>
+	</item>
+  </channel>
+</rss>`, githubResponse.Name, githubResponse.Body, pubDttm, dmgUrl, githubResponse.TagName)
+	if _, err := w.Write([]byte(xml)); err != nil {
+		panic(err)
 	}
 }

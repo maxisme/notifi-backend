@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/TV4/graceful v0.3.4
-	github.com/appleboy/go-fcm v0.1.5 // indirect
+	github.com/appleboy/go-fcm v0.1.5
 	github.com/didip/tollbooth v4.0.2+incompatible
 	github.com/didip/tollbooth_chi v0.0.0-20170928041846-6ab5f3083f3d
 	github.com/getsentry/sentry-go v0.5.1
@@ -15,8 +15,9 @@ require (
 	github.com/google/uuid v1.1.1
 	github.com/gorilla/schema v1.1.0
 	github.com/gorilla/websocket v1.4.1
+	github.com/hashicorp/go-version v1.2.0
 	github.com/lib/pq v1.0.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.4.1
 	github.com/spf13/cobra v0.0.5
