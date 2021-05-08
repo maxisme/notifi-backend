@@ -1,53 +1,101 @@
 version: '3.2'
 services:
   db:
-    image: mysql:5.6
+    image: postgres
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: notifi
-      MYSQL_USER: notifi
-      MYSQL_PASSWORD: notifi
-    tty: true
-    restart: always
+      POSTGRES_DB: notifi
+      POSTGRES_USER: notifi
+      POSTGRES_PASSWORD: notifi
     networks:
       - overlay
+    ports:
+      - '5432:5432'
 
   redis:
-    image: "redis:alpine"
+    image: redis
     networks:
       - overlay
+    ports:
+      - '6379:6379'
 
   app:
-    image: maxisme/notifi-backend:latest
-    restart: always
-    environment:
-      db: notifi:notifi@tcp(db:3306)/notifi
-      sentry_dsn: ${sentry_dsn:?err}
-      server_key: ${server_key:?err}
-      encryption_key: ${encryption_key:?err}
-      redis: "redis:6379"
-    deploy:
-      mode: global
-    tty: true
+    build:
+      context: .
     ports:
       - "9081:8080"
+    environment:
+      DATABASE_HOST: "db"
+      DATABASE_USER: "notifi"
+      DATABASE_PASS: "notifi"
+      DATABASE_NAME: "notifi"
+      DATABASE_SSL_DISABLE: "1"
+      REDIS_HOST: "redis:6379"
+      SERVER_KEY: "Hu2J7b7xA8MndeNS"
     networks:
       - overlay
     depends_on:
+      - migrate
+    links:
       - db
+      - migrate
       - redis
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notifi.rule=Host(`localhost`)"
+      - "traefik.http.routers.notifi.entrypoints=web"
+      - "traefik.http.services.notifi.loadbalancer.server.port=8080"
+
+  test:
+    image: golang:1.16
+    volumes:
+      - "./src:/app/"
+    environment:
+      DATABASE_HOST: "db"
+      DATABASE_USER: "notifi"
+      DATABASE_PASS: "notifi"
+      DATABASE_NAME: "notifi"
+      DATABASE_SSL_DISABLE: "1"
+      REDIS_HOST: "redis:6379"
+      SERVER_KEY: "u2J7b7xA8MndeNS"
+      ENCRYPTION_KEY: "6bO9OFNEsqdz3Bl16bO9OFNEsqdz3Bl1"
+    networks:
+      - overlay
+    depends_on:
+      - migrate
+    command: sh -c "cd /app && go test ./... -v -covermode=count -coverprofile=coverage.out"
     links:
       - db
       - redis
 
-  # helpers
-  migrate:
-    image: migrate/migrate
+  traefik:
+    image: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
     volumes:
-      - .sql:/sql
-    command: ["-path", "/sql", "-database", "mysql://notifi:notifi@tcp(db:3306)/notifi", "up"]
-    links:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+
+  migrate:
+    build:
+      context: .
+    command:
+      - "./app"
+      - "migrate"
+    environment:
+      DATABASE_HOST: "db"
+      DATABASE_USER: "notifi"
+      DATABASE_PASS: "notifi"
+      DATABASE_NAME: "notifi"
+      DATABASE_SSL_DISABLE: "1"
+    depends_on:
       - db
+    networks:
+      - overlay
 
 networks:
   overlay:
