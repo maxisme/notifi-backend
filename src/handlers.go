@@ -43,13 +43,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		WriteErrorLog(w, r, http.StatusUnauthorized, "Invalid UUID")
+		WriteErrorLog(w, r, http.StatusBadRequest, "Invalid UUID")
 		return
 	} else if !IsValidVersion(user.AppVersion) {
-		WriteErrorLog(w, r, http.StatusUnauthorized, fmt.Sprintf("Invalid Version %v", user.AppVersion))
+		WriteErrorLog(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid Version %v", user.AppVersion))
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
-		WriteErrorLog(w, r, http.StatusUnauthorized, "Invalid Credentials")
+		WriteErrorLog(w, r, http.StatusForbidden, "Invalid Credentials")
 		return
 	}
 
