@@ -27,8 +27,7 @@ const NotificationTimeLayout = "2006-01-02 15:04:05"
 // WSHandler is the http handler for web socket connections
 func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "GET" {
-		print(r.Method)
-		WriteError(w, r, http.StatusBadRequest, "Method not allowed "+r.Method)
+		WriteError(w, "Method not allowed", http.StatusBadRequest)
 		return
 	}
 
@@ -44,13 +43,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		WriteError(w, r, http.StatusUnauthorized, "Invalid UUID")
+		WriteErrorLog(w, r, http.StatusUnauthorized, "Invalid UUID")
 		return
 	} else if !IsValidVersion(user.AppVersion) {
-		WriteError(w, r, http.StatusUnauthorized, fmt.Sprintf("Invalid Version %v", user.AppVersion))
+		WriteErrorLog(w, r, http.StatusUnauthorized, fmt.Sprintf("Invalid Version %v", user.AppVersion))
 		return
 	} else if !IsValidCredentials(user.Credentials.Value) {
-		WriteError(w, r, http.StatusUnauthorized, "Invalid Credentials")
+		WriteErrorLog(w, r, http.StatusUnauthorized, "Invalid Credentials")
 		return
 	}
 
@@ -69,19 +68,19 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errorCode != 0 {
-		WriteError(w, r, errorCode, "Invalid login")
+		WriteError(w, "Method not allowed", http.StatusBadRequest)
 		return
 	}
 
 	if err := user.StoreLogin(r, s.db); err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	// connect to socket
 	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -99,14 +98,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	// send all stored notifications from db
 	notifications, err := user.FetchNotifications(s.db)
 	if err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	if len(notifications) > 0 {
 		bytes, _ := json.Marshal(notifications)
 		if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			WriteError(w, r, http.StatusInternalServerError, err.Error())
+			WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
@@ -144,13 +143,13 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 // CredentialHandler is the handler for creating and updating Credentials
 func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" {
-		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
+		WriteError(w, "Method not allowed", http.StatusBadRequest)
 		return
 	}
 
 	err := r.ParseForm()
 	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -167,7 +166,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		WriteError(w, r, http.StatusBadRequest, "Invalid UUID")
+		WriteError(w, "Invalid UUID", http.StatusBadRequest)
 		return
 	}
 
@@ -176,18 +175,18 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 		if err.Error() != "pq: duplicate key value violates unique constraint \"uuid\"" {
 			Log(r, log.FatalLevel, err.Error()) // TODO test
 		}
-		WriteError(w, r, 401, err.Error()) // UUID already exists
+		WriteErrorLog(w, r, 401, err.Error()) // UUID already exists
 		return
 	}
 
 	c, err := json.Marshal(creds)
 	if err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 	_, err = w.Write(c)
 	if err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 }
@@ -195,24 +194,23 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 // APIHandler is the http handler for handling API calls to create notifications
 func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != "POST" && r.Method != "GET" {
-		WriteError(w, r, http.StatusBadRequest, "Method not allowed")
+		WriteError(w, "Method not allowed", http.StatusBadRequest)
 		return
 	}
 
 	if err := r.ParseForm(); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var notification Notification
 	if err := decoder.Decode(&notification, r.Form); err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	if err := notification.Validate(r); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		_, _ = w.Write([]byte(err.Error()))
+		WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -230,14 +228,14 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	notification.UUID = uuid.New().String()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})
 	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		WriteErrorLog(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	u := User{}
 	err = u.Get(r, s.db, notification.Credentials)
 	if err != nil {
-		WriteError(w, r, http.StatusBadRequest, err.Error())
+		WriteErrorLog(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -260,7 +258,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		// store as user is not online
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(r, s.db, encryptionKey); err != nil {
-			WriteError(w, r, http.StatusInternalServerError, err.Error())
+			WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
@@ -273,7 +271,7 @@ func (s *Server) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
 
 	githubResponses, err := GetGitHubResponses("https://api.github.com/repos/maxisme/notifi/releases")
 	if err != nil {
-		WriteError(w, r, http.StatusInternalServerError, err.Error())
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
 
