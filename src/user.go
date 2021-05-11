@@ -77,13 +77,13 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 	isNewUser := true
 	if len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
-		if len(u.Credentials.Key) > 0 && len(u.Credentials.Value) > 0 {
+		if len(u.Credentials.Key) > 0 && IsValidCredentials(u.Credentials.Value) {
 			// If client passes current details they are asking for new Credentials.
 			// Verify the Credentials passed are valid
 			if u.Verify(r, db) {
 				isNewUser = false
 			} else {
-				Log(r, log.WarnLevel, "Client passed credentials that were invalid")
+				Log(r, log.WarnLevel, fmt.Sprintf("Client passed credentials that were invalid: %s", crypt.Hash(u.Credentials.Value)))
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
@@ -96,6 +96,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 		// language=PostgreSQL
 		query = "INSERT INTO users (credentials, credential_key, firebase_token, UUID) VALUES ($1, $2, $3, $4)"
 	} else {
+		// update user
 		// language=PostgreSQL
 		query = "UPDATE users SET credentials = $1, credential_key = $2, firebase_token = $3 WHERE UUID = $4"
 	}
