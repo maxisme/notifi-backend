@@ -95,6 +95,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	Log(r, log.InfoLevel, "Client Connected: "+hashedCredentials)
 
+	// send "." to client when successfully connected to web socket
+	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
+		WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	// send all stored notifications from db
 	notifications, err := user.FetchNotifications(s.db)
 	if err != nil {
@@ -103,10 +109,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(notifications) > 0 {
-		bytes, _ := json.Marshal(notifications)
-		if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
-			WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
-			return
+		bytes, err := json.Marshal(notifications)
+		if err != nil {
+			if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
+				WriteErrorLog(w, r, http.StatusInternalServerError, err.Error())
+				return
+			}
 		}
 	}
 
