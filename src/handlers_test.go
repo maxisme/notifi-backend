@@ -92,6 +92,12 @@ func connectWSSHeader(wsheader http.Header) (*httptest.Server, *http.Response, *
 	if err == nil {
 		// add ws read timeout
 		_ = ws.SetReadDeadline(time.Now().Add(5 * time.Second))
+
+		// read "." set on succesfull connect
+		_, mess, _ := ws.ReadMessage()
+		if string(mess) != "." {
+			fmt.Println("expected '.'")
+		}
 	}
 	return server, res, ws, err
 }

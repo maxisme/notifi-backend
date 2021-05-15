@@ -68,7 +68,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if errorCode != 0 {
-		WriteError(w, "Method not allowed", http.StatusBadRequest)
+		WriteError(w, "Method not allowed", errorCode)
 		return
 	}
 
@@ -108,13 +108,16 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	fmt.Println(notifications)
 	if len(notifications) > 0 {
 		bytes, err := json.Marshal(notifications)
-		if err != nil {
+		if err == nil {
 			if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
 				WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
 				return
 			}
+		} else {
+			Log(r, log.WarnLevel, err.Error())
 		}
 	}
 
