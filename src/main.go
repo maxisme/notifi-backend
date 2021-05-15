@@ -123,7 +123,7 @@ func main() {
 		})
 
 		traceR.HandleFunc("/api", s.APIHandler)
-		traceR.HandleFunc("/upgrade", s.UpgradeHandler)
+		traceR.HandleFunc("/version", s.VersionHandler)
 	})
 
 	r.HandleFunc("/", func(_ http.ResponseWriter, _ *http.Request) {})

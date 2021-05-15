@@ -275,9 +275,9 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UpgradeHandler returns xml information on the latest app version or if passing version GET argument will return
+// VersionHandler returns xml information on the latest app version or if passing version GET argument will return
 // 200 if there is new version else 404
-func (s *Server) UpgradeHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) VersionHandler(w http.ResponseWriter, r *http.Request) {
 	_, develop := r.URL.Query()["develop"]
 
 	githubResponses, err := GetGitHubResponses("https://api.github.com/repos/maxisme/notifi/releases")
