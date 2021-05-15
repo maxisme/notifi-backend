@@ -24,10 +24,11 @@ jobs:
         run: docker-compose up --abort-on-container-exit test
 
       - uses: codecov/codecov-action@v1
-        if: github.ref == 'refs/heads/master'
         with:
+          gcov_root_dir: ./src/
           file: ./src/coverage.out
           token: ${{ secrets.CODECOV_TOKEN }}
+          verbose: true
 
   build:
     name: Build
