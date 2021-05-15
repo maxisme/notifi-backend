@@ -70,7 +70,7 @@ services:
         condition: service_started
       redis:
         condition: service_started
-    command: sh -c "cd /app && go test ./... -v -covermode=count -coverprofile=coverage.out"
+    command: sh -c "cd /app && go test ./... -race -v -covermode=atomic -coverprofile=coverage.out"
 
   traefik:
     image: "traefik"
