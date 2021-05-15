@@ -59,12 +59,10 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 // WriteError will write a http.Error as well as writing the error message
 func WriteError(w http.ResponseWriter, message string, code int) {
 	http.Error(w, message, code)
-	_, _ = w.Write([]byte(message))
 }
 
 // WriteHTTPError will write a http.Error as well as logging the error locally and to Sentry
 func WriteHTTPError(w http.ResponseWriter, r *http.Request, code int, message string) {
-	LogWithSkip(r, log.WarnLevel, 3, message)
+	LogWithSkip(r, log.WarnLevel, 2, message)
 	http.Error(w, message, code)
-	_, _ = w.Write([]byte(message))
 }

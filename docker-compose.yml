@@ -1,4 +1,4 @@
-version: '3.2'
+version: '3.9'
 services:
   db:
     image: postgres
@@ -8,6 +8,11 @@ services:
       POSTGRES_PASSWORD: notifi
     networks:
       - overlay
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     ports:
       - '5432:5432'
 
@@ -61,11 +66,11 @@ services:
     networks:
       - overlay
     depends_on:
-      - migrate
+      migrate:
+        condition: service_started
+      redis:
+        condition: service_started
     command: sh -c "cd /app && go test ./... -v -covermode=count -coverprofile=coverage.out"
-    links:
-      - db
-      - redis
 
   traefik:
     image: "traefik"
@@ -93,7 +98,8 @@ services:
       DATABASE_NAME: "notifi"
       DATABASE_SSL_DISABLE: "1"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - overlay
 
