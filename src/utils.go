@@ -62,7 +62,7 @@ func GetGitHubResponses(url string) ([]GitHubResponse, error) {
 		return githubResponses.([]GitHubResponse), nil
 	}
 
-	var client = &http.Client{Timeout: 1 * time.Second}
+	var client = &http.Client{Timeout: 2 * time.Second}
 	r, err := client.Get(url)
 	if err != nil {
 		return nil, err
