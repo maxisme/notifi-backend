@@ -103,12 +103,12 @@ func (n Notification) Validate(r *http.Request) error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Log(r, log.WarnLevel, err)
+			Log(r, log.InfoLevel, err)
 			n.Image = "" // remove image reference
 		} else {
 			contentLen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Log(r, log.WarnLevel, err)
+				Log(r, log.InfoLevel, err)
 				n.Image = "" // remove image reference
 			}
 
