@@ -1,0 +1,5 @@
+fixes:
+  - "::src/"
+
+ignore:
+  - "src/main.go"
