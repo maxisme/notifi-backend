@@ -257,7 +257,6 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 				Title: notification.Title,
 				Body:  notification.Message,
 				Sound: "default",
-				Badge: "+",
 			},
 		}
 		resp, err := s.firebaseClient.Send(msg)
