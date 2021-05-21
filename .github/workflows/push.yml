@@ -56,7 +56,7 @@ jobs:
           context: .
           push: true
           tags: ${{ steps.prep.outputs.tags }}
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm/v7
           build-args: |
             COMMIT_HASH=${{ github.sha }}
   deploy:
