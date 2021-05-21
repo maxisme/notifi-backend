@@ -10,9 +10,9 @@ import (
 )
 
 type Funnel struct {
-	Key    string
-	WSConn *websocket.Conn
-	PubSub *redis.PubSub
+	Channel string
+	WSConn  *websocket.Conn
+	PubSub  *redis.PubSub
 }
 
 type Funnels struct {
@@ -28,18 +28,18 @@ var Upgrader = websocket.Upgrader{
 
 func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
 	funnels.Lock()
-	funnels.Clients[funnel.Key] = funnel
+	funnels.Clients[funnel.Channel] = funnel
 	funnels.Unlock()
 
 	if funnels.StoreOnFailure {
 		// read and write all temporary stored socket messages
 		for {
-			msg := red.LPop(funnel.Key)
+			msg := red.LPop(funnel.Channel)
 			if msg.Err() != nil || len(msg.Val()) == 0 {
 				break
 			}
 			if err := funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(msg.Val())); err != nil {
-				fmt.Println("problem writing pending messages: " + err.Error())
+				fmt.Println("problem writing pending redis messages: " + err.Error())
 			}
 		}
 	}
@@ -57,47 +57,51 @@ func (funnels *Funnels) Remove(funnel *Funnel) error {
 
 	// remove funnel from map
 	funnels.Lock()
-	delete(funnels.Clients, funnel.Key)
+	delete(funnels.Clients, funnel.Channel)
 	funnels.Unlock()
 
 	return nil
 }
 
-func (funnels *Funnels) Send(red *redis.Client, key string, msg interface{}) error {
+func (funnels *Funnels) Send(red *redis.Client, channel string, msg interface{}) error {
 	// json encode msg
 	bytes, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	return funnels.SendBytes(red, key, bytes)
+	return funnels.SendBytes(red, channel, bytes)
 }
 
-func (funnels *Funnels) SendBytes(red *redis.Client, key string, msg []byte) error {
+func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte) error {
 	// check if the websocket connection to this client is on this Funnels (machine)
 	funnels.RLock()
-	funnel, gotFunnel := funnels.Clients[key]
-	funnels.RUnlock()
+	funnel, gotFunnel := funnels.Clients[channel]
+	defer funnels.RUnlock()
 
 	if gotFunnel {
 		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
 	}
 
 	// send msg blindly to redis pub sub
-	numSubscribers := red.Publish(key, string(msg))
-	if numSubscribers.Val() != 0 {
-		// successfully sent to a redis subscriber
-		return nil
+	numSubscribers := red.Publish(channel, string(msg)).Val()
+	if numSubscribers != 0 {
+		if numSubscribers == 1 {
+			// successfully sent to a redis subscriber
+			return nil
+		} else {
+			fmt.Printf("There are more than one subscribers (%d) to this channel...\n", numSubscribers)
+		}
 	}
 
 	if funnels.StoreOnFailure {
 		// store message in redis list due to being unable to send
-		if err := red.LPush(key, string(msg)).Err(); err != nil {
+		if err := red.LPush(channel, string(msg)).Err(); err != nil {
 			return fmt.Errorf("unable to store message in redis map")
 		}
 	}
 
-	return fmt.Errorf("no socket or redis subscribers for %s", key)
+	return fmt.Errorf("no socket or redis subscribers for %s", channel)
 }
 
 func (funnel *Funnel) pubSubWSListener() {

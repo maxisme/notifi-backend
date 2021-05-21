@@ -319,6 +319,16 @@ func TestReceivingNotificationWSOnline(t *testing.T) {
 	}
 }
 
+func TestReceivingStoredNotificationsOnFullStop(t *testing.T) {
+	var creds, form = GenUser() // generate user
+
+	// connect to ws
+	_, _, WS, _ := connectWSS(creds, form)
+	defer WS.Close()
+
+	_ = WS.WriteMessage(websocket.TextMessage, []byte("."))
+}
+
 func TestDeleteNotificationsOnReceiveWS(t *testing.T) {
 	var creds, form = GenUser() // generate user
 
