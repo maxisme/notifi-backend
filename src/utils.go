@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/maxisme/notifi-backend/crypt"
 	"github.com/patrickmn/go-cache"
 	"net/http"
 	"os"
@@ -81,4 +82,8 @@ func GetGitHubResponses(url string) ([]GitHubResponse, error) {
 		return nil, err
 	}
 	return githubResponses, err
+}
+
+func GetWSChannelKey(channel string) string {
+	return crypt.Hash(channel)
 }

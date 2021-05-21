@@ -82,9 +82,9 @@ func TestSendBytesToRemovedFunnel(t *testing.T) {
 
 	key := "foo"
 	funnel := &Funnel{
-		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Channel: key,
+		WSConn:  createWS(t),
+		PubSub:  red.Subscribe(key),
 	}
 
 	funnels.Add(nil, funnel)
@@ -104,9 +104,9 @@ func TestSendBytesLocally(t *testing.T) {
 
 	key := randStringBytes(10)
 	funnel := &Funnel{
-		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Channel: key,
+		WSConn:  createWS(t),
+		PubSub:  red.Subscribe(key),
 	}
 
 	funnels.Add(nil, funnel)
@@ -171,9 +171,9 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 
 	key := randStringBytes(10)
 	funnel := &Funnel{
-		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Channel: key,
+		WSConn:  createWS(t),
+		PubSub:  red.Subscribe(key),
 	}
 	funnels1.Add(nil, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
@@ -207,9 +207,9 @@ func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
 
 	key := randStringBytes(10)
 	funnel := &Funnel{
-		Key:    key,
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Channel: key,
+		WSConn:  createWS(t),
+		PubSub:  red.Subscribe(key),
 	}
 	funnels1.Add(red, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise

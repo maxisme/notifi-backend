@@ -63,7 +63,7 @@ func (n Notification) Store(r *http.Request, db *sql.DB, encryptionKey []byte) (
 }
 
 // Validate runs validation on n Notification
-func (n Notification) Validate(r *http.Request) error {
+func (n *Notification) Validate(r *http.Request) error {
 	if len(n.Credentials) == 0 {
 		return errors.New("You must specify Credentials!")
 	}
@@ -97,7 +97,7 @@ func (n Notification) Validate(r *http.Request) error {
 			return errors.New("Image host must use https!")
 		}
 
-		timeout := 300 * time.Millisecond
+		timeout := 500 * time.Millisecond
 		client := http.Client{
 			Timeout: timeout,
 		}
@@ -184,12 +184,12 @@ func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
 }
 
 // DeleteNotificationsWithIDs deletes comma separated notifications ids
-func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []string, hashedCredentials string) error {
+func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []string, credentials string) error {
 	for _, UUID := range ids {
 		// language=PostgreSQL
 		_, err := tdb.Exec(r, db, `DELETE FROM notifications
 		WHERE credentials = $1
-		AND UUID = $2`, hashedCredentials, UUID)
+		AND UUID = $2`, crypt.Hash(credentials), UUID)
 		if err != nil {
 			return err
 		}

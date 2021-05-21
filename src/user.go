@@ -2,7 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"github.com/gorilla/websocket"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 
@@ -166,4 +168,25 @@ func (u User) CloseLogin(r *http.Request, db *sql.DB) error {
 	return UpdateErr(tdb.Exec(r, db, `UPDATE users
 	SET is_connected = false
 	WHERE credentials = $1 AND UUID = $2`, crypt.Hash(u.Credentials.Value), crypt.Hash(u.UUID)))
+}
+
+// SendStoredNotifications sends all stored notifications
+func (u User) SendStoredNotifications(r *http.Request, db *sql.DB, ws *websocket.Conn) error {
+	// send all stored notifications from db
+	notifications, err := u.FetchNotifications(db)
+	if err != nil {
+		return err
+	}
+
+	if len(notifications) > 0 {
+		bytes, err := json.Marshal(notifications)
+		if err == nil {
+			if err := ws.WriteMessage(websocket.TextMessage, bytes); err != nil {
+				return err
+			}
+		} else {
+			Log(r, log.WarnLevel, err.Error())
+		}
+	}
+	return nil
 }

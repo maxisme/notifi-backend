@@ -13,7 +13,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-version"
-	"github.com/maxisme/notifi-backend/crypt"
 )
 
 // custom error codes
@@ -85,15 +84,15 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// initialise WS funnel
-	hashedCredentials := crypt.Hash(user.Credentials.Value)
+	channel := GetWSChannelKey(user.Credentials.Value)
 	funnel := &ws.Funnel{
-		Key:    hashedCredentials,
-		WSConn: WSConn,
-		PubSub: s.redis.Subscribe(hashedCredentials),
+		Channel: channel,
+		WSConn:  WSConn,
+		PubSub:  s.redis.Subscribe(channel),
 	}
 	s.funnels.Add(s.redis, funnel)
 
-	Log(r, log.InfoLevel, "Client Connected: "+hashedCredentials)
+	Log(r, log.InfoLevel, "Client Connected: "+channel)
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
@@ -102,23 +101,8 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send all stored notifications from db
-	notifications, err := user.FetchNotifications(s.db)
-	if err != nil {
-		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	fmt.Println(notifications)
-	if len(notifications) > 0 {
-		bytes, err := json.Marshal(notifications)
-		if err == nil {
-			if err := WSConn.WriteMessage(websocket.TextMessage, bytes); err != nil {
-				WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
-				return
-			}
-		} else {
-			Log(r, log.WarnLevel, err.Error())
-		}
+	if err := user.SendStoredNotifications(r, s.db, WSConn); err != nil {
+		Log(r, log.ErrorLevel, err)
 	}
 
 	// incoming socket messages
@@ -127,13 +111,21 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
+
+		if string(message) == "." {
+			if err := user.SendStoredNotifications(r, s.db, WSConn); err != nil {
+				Log(r, log.ErrorLevel, err)
+			}
+			continue
+		}
+
 		var uuids []string
 		if err := json.Unmarshal(message, &uuids); err != nil {
 			Log(r, log.WarnLevel, err)
-			break
+			continue
 		}
 		go func() {
-			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, hashedCredentials); err != nil {
+			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, user.Credentials.Value); err != nil {
 				Log(r, log.WarnLevel, err)
 			}
 		}()
@@ -143,7 +135,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		Log(r, log.WarnLevel, err)
 	}
 
-	Log(r, log.InfoLevel, "Client Disconnected: "+hashedCredentials)
+	Log(r, log.InfoLevel, "Client Disconnected: "+channel)
 
 	// close connection
 	if err := user.CloseLogin(r, s.db); err != nil {
@@ -268,7 +260,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = s.funnels.SendBytes(s.redis, crypt.Hash(notification.Credentials), notificationMsgBytes)
+	err = s.funnels.SendBytes(s.redis, GetWSChannelKey(notification.Credentials), notificationMsgBytes)
 	if err != nil {
 		// store as user is not online
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
