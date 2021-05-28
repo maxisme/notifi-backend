@@ -176,7 +176,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	creds, err := PostUser.Store(r, s.db)
 	if err != nil {
 		if err.Error() != "pq: duplicate key value violates unique constraint \"uuid\"" {
-			Log(r, log.FatalLevel, err.Error()) // TODO test
+			Log(r, log.InfoLevel, err.Error())
 		}
 		WriteHTTPError(w, r, 401, err.Error()) // UUID already exists
 		return

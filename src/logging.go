@@ -50,7 +50,7 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 				for key := range logTags {
 					scope.SetTag(key, fmt.Sprintf("%v", logTags[key]))
 				}
-				hub.CaptureException(fmt.Errorf(level.String(), args...))
+				hub.CaptureException(fmt.Errorf(fmt.Sprint(args...)))
 			})
 		}
 	}
