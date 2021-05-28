@@ -45,8 +45,12 @@ func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
 		}
 	}
 
-	// start redis subscriber listener
-	go funnel.pubSubWSListener()
+	if err := funnel.PubSub.Ping(); err != nil {
+		fmt.Printf("Problem contacting subscription...%s\n", err.Error())
+	} else {
+		// start redis subscriber listener
+		go funnel.pubSubWSListener()
+	}
 }
 
 func (funnels *Funnels) Remove(funnel *Funnel) error {
@@ -78,16 +82,24 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 	// check if the websocket connection to this client is on this Funnels (machine)
 	funnels.RLock()
 	funnel, gotFunnel := funnels.Clients[channel]
-	defer funnels.RUnlock()
+	funnels.RUnlock()
 
 	if gotFunnel {
+		fmt.Println("~")
 		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
+	}
+
+	_, err := red.Ping().Result()
+	if err != nil {
+		fmt.Println("Problem with redis conn in api")
+		return err
 	}
 
 	// send msg blindly to redis pub sub
 	numSubscribers := red.Publish(channel, string(msg)).Val()
 	if numSubscribers != 0 {
 		if numSubscribers == 1 {
+			fmt.Println("+")
 			// successfully sent to a redis subscriber
 			return nil
 		} else {
@@ -108,6 +120,7 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 func (funnel *Funnel) pubSubWSListener() {
 	for {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
+		fmt.Println(".")
 		if err == nil {
 			err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 			if err != nil {
