@@ -87,8 +87,8 @@ jobs:
             name="notifi-dev"
             helm_path="dev-helm-values.yml"
           fi
-          echo helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 120s
-          helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 120s --debug
+          echo helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 240s
+          helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 240s --debug
 
           # clean up
           rm ~/.kube/config
