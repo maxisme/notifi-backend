@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/websocket"
@@ -107,13 +108,20 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 func (funnel *Funnel) pubSubWSListener() {
 	for {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
-		if err != nil {
-			// TODO catch specific err
-			break
-		}
-		err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
-		if err != nil {
-			fmt.Println("problem sending funnel socket message though redis: " + err.Error())
+		if err == nil {
+			err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
+			if err != nil {
+				fmt.Println("problem sending funnel socket message though redis: " + err.Error())
+			}
+		} else {
+			fmt.Println(err.Error())
+			if err := funnel.PubSub.Ping(); err != nil {
+				// redis is down
+				fmt.Println(err.Error())
+				time.Sleep(1 * time.Second)
+			} else {
+				break
+			}
 		}
 	}
 }
