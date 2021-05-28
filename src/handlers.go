@@ -92,8 +92,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	s.funnels.Add(s.redis, funnel)
 
-	Log(r, log.InfoLevel, "Client Connected: "+channel)
-
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
 		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
@@ -134,8 +132,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	if err := s.funnels.Remove(funnel); err != nil {
 		Log(r, log.WarnLevel, err)
 	}
-
-	Log(r, log.InfoLevel, "Client Disconnected: "+channel)
 
 	// close connection
 	if err := user.CloseLogin(r, s.db); err != nil {
