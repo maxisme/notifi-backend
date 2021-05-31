@@ -29,7 +29,7 @@ $ (cd src && golangci-lint run)
 
 ## Create DB migrations
 ```bash
-migrate create -ext sql -dir migrations/ -seq "drop_credentials_fk"
+migrate create -ext sql -dir migrations/ -seq "drop_uuid_unique"
 ```
 
 ## Local development
