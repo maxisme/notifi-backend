@@ -154,19 +154,10 @@ func TestCredentials(t *testing.T) {
 		return
 	}
 
-	// try create a new user without specifying current credentials
-	r := PostRequest("", form, s.CredentialHandler)
-	var nocreds Credentials
-	_ = json.Unmarshal(r.Body.Bytes(), &nocreds)
-	if len(nocreds.Value) != 0 || len(nocreds.Key) != 0 {
-		t.Errorf("Shouldn't have been able to generate new creds for user! %v", nocreds)
-		return
-	}
-
 	// ask for new Credentials for user
 	form.Add("current_credentials", creds.Value)
 	form.Add("current_credential_key", creds.Key)
-	r = PostRequest("", form, s.CredentialHandler)
+	r := PostRequest("", form, s.CredentialHandler)
 	var newcreds Credentials
 	_ = json.Unmarshal(r.Body.Bytes(), &newcreds)
 	if len(newcreds.Value) == 0 || creds.Value == newcreds.Value {
