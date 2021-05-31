@@ -93,6 +93,16 @@ func main() {
 		firebaseClient: firebaseClient,
 	}
 
+	// tracing
+	if os.Getenv("COLLECTOR_HOSTNAME") != "" {
+		// start tracer
+		fn, err := tracer.InitJaegerExporter("notifi", os.Getenv("COLLECTOR_HOSTNAME"))
+		if err != nil {
+			panic(err)
+		}
+		defer fn()
+	}
+
 	// init sentry
 	sentryDsn := os.Getenv("SENTRY_DSN")
 	if sentryDsn != "" {
