@@ -85,7 +85,6 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 	funnels.RUnlock()
 
 	if gotFunnel {
-		fmt.Println("~")
 		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
 	}
 
@@ -99,7 +98,6 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 	numSubscribers := red.Publish(channel, string(msg)).Val()
 	if numSubscribers != 0 {
 		if numSubscribers == 1 {
-			fmt.Println("+")
 			// successfully sent to a redis subscriber
 			return nil
 		} else {
@@ -120,7 +118,6 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 func (funnel *Funnel) pubSubWSListener() {
 	for {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
-		fmt.Println(".")
 		if err == nil {
 			err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 			if err != nil {
