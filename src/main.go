@@ -105,7 +105,7 @@ func main() {
 	r := chi.NewRouter()
 
 	// middleware
-	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{"Cf-Connecting-Ip", "RemoteAddr", "X-Forwarded-For", "X-Real-IP"})
+	var lmt = tollbooth.NewLimiter(maxRequestsPerSecond, &limiter.ExpirableOptions{DefaultExpirationTTL: time.Hour}).SetIPLookups([]string{"Cf-Connecting-Ip"})
 
 	// HANDLERS
 	r.Group(func(traceR chi.Router) {
