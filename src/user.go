@@ -22,7 +22,7 @@ type User struct {
 	AppVersion      string
 	NotificationCnt string
 	UUID            string
-	FirebaseToken   string
+	FirebaseToken   sql.NullString
 }
 
 // Credentials structure
@@ -133,7 +133,7 @@ func (u *User) Get(r *http.Request, db *sql.DB, credentials string) error {
 	if err := row.Scan(&u.UUID, &u.Credentials.Value, &u.Credentials.Key, &u.NotificationCnt, &firebaseToken); err != nil {
 		return err
 	}
-	u.FirebaseToken = firebaseToken.String
+	u.FirebaseToken = firebaseToken
 	return nil
 }
 
