@@ -127,7 +127,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 				Log(r, log.WarnLevel, err)
 			}
 			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, user.Credentials.Value); err != nil {
-				Log(r, log.WarnLevel, err)
+				Log(r, log.InfoLevel, err)
 			}
 		}()
 	}
@@ -244,7 +244,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(u.FirebaseToken.String) > 0 {
+	if u.FirebaseToken.Valid {
 		msg := &fcm.Message{
 			To: u.FirebaseToken.String,
 			Notification: &fcm.Notification{
