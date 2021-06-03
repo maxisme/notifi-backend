@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/gorilla/websocket"
+	"github.com/maxisme/notifi-backend/conn"
 	. "github.com/maxisme/notifi-backend/logging"
 	"github.com/maxisme/notifi-backend/ws"
 	log "github.com/sirupsen/logrus"
@@ -95,7 +96,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		WSConn:  WSConn,
 		PubSub:  s.redis.Subscribe(channel),
 	}
-	s.funnels.Add(r, s.redis, funnel)
+
+	if err := s.funnels.Add(r, s.redis, funnel); err != nil {
+		// attempt to reconnect to redis
+		redisConn, _ := conn.RedisConn()
+		s.redis = redisConn
+		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {

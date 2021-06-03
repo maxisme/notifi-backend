@@ -55,7 +55,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 
 			// language=PostgreSQL
 			query := "UPDATE users SET credential_key = $1 WHERE UUID = $2"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
+			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(u.UUID))
 			if err != nil {
 				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err
@@ -67,7 +67,7 @@ func (u User) Store(r *http.Request, db *sql.DB) (Credentials, error) {
 
 			// language=PostgreSQL
 			query := "UPDATE users SET credential_key = $1, credentials = $2 WHERE UUID = $3"
-			_, err := db.Exec(query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
+			_, err := tdb.Exec(r, db, query, crypt.PassHash(creds.Key), crypt.Hash(creds.Value), crypt.Hash(u.UUID))
 			if err != nil {
 				Log(r, log.ErrorLevel, err.Error())
 				return Credentials{}, err

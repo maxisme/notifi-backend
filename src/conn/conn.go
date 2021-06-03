@@ -57,7 +57,7 @@ func RedisConn() (*redis.Client, error) {
 		Addr:        os.Getenv("REDIS_HOST"),
 		Password:    os.Getenv("REDIS_PASS"),
 		IdleTimeout: 1 * time.Minute,
-		MaxRetries:  2,
+		MaxRetries:  5,
 		DB:          dbInt,
 	})
 	_, err := client.Ping().Result()
