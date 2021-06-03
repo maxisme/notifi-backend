@@ -3,6 +3,9 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	. "github.com/maxisme/notifi-backend/logging"
+	log "github.com/sirupsen/logrus"
+	"net/http"
 	"sync"
 	"time"
 
@@ -27,7 +30,7 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
+func (funnels *Funnels) Add(r *http.Request, red *redis.Client, funnel *Funnel) {
 	funnels.Lock()
 	funnels.Clients[funnel.Channel] = funnel
 	funnels.Unlock()
@@ -40,16 +43,16 @@ func (funnels *Funnels) Add(red *redis.Client, funnel *Funnel) {
 				break
 			}
 			if err := funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(msg.Val())); err != nil {
-				fmt.Println("problem writing pending redis messages: " + err.Error())
+				Log(r, log.ErrorLevel, "problem writing pending redis messages: "+err.Error())
 			}
 		}
 	}
 
 	if err := funnel.PubSub.Ping(); err != nil {
-		fmt.Printf("Problem contacting subscription...%s\n", err.Error())
+		Log(r, log.FatalLevel, "Problem contacting subscription: "+err.Error())
 	} else {
 		// start redis subscriber listener
-		go funnel.pubSubWSListener()
+		go funnel.pubSubWSListener(r)
 	}
 }
 
@@ -68,17 +71,17 @@ func (funnels *Funnels) Remove(funnel *Funnel) error {
 	return nil
 }
 
-func (funnels *Funnels) Send(red *redis.Client, channel string, msg interface{}) error {
+func (funnels *Funnels) Send(r *http.Request, red *redis.Client, channel string, msg interface{}) error {
 	// json encode msg
 	bytes, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
 
-	return funnels.SendBytes(red, channel, bytes)
+	return funnels.SendBytes(r, red, channel, bytes)
 }
 
-func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte) error {
+func (funnels *Funnels) SendBytes(r *http.Request, red *redis.Client, channel string, msg []byte) error {
 	// check if the websocket connection to this client is on this Funnels (machine)
 	funnels.RLock()
 	funnel, gotFunnel := funnels.Clients[channel]
@@ -90,7 +93,7 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 
 	_, err := red.Ping().Result()
 	if err != nil {
-		fmt.Println("Problem with redis conn in api")
+		Log(r, log.FatalLevel, "Problem with redis conn in api: "+err.Error())
 		return err
 	}
 
@@ -101,7 +104,7 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 			// successfully sent to a redis subscriber
 			return nil
 		} else {
-			fmt.Printf("There are more than one subscribers (%d) to this channel...\n", numSubscribers)
+			Log(r, log.WarnLevel, fmt.Sprintf("There are more than one subscribers (%d) to this channel...", numSubscribers))
 		}
 	}
 
@@ -115,19 +118,18 @@ func (funnels *Funnels) SendBytes(red *redis.Client, channel string, msg []byte)
 	return fmt.Errorf("no socket or redis subscribers for %s", channel)
 }
 
-func (funnel *Funnel) pubSubWSListener() {
+func (funnel *Funnel) pubSubWSListener(r *http.Request) {
 	for {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
 		if err == nil {
 			err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 			if err != nil {
-				fmt.Println("problem sending funnel socket message though redis: " + err.Error())
+				Log(r, log.FatalLevel, "problem sending funnel socket message though redis: "+err.Error())
 			}
 		} else {
-			fmt.Println(err.Error())
+			Log(r, log.FatalLevel, "problem receiving pub/sub message though redis: "+err.Error())
 			if err := funnel.PubSub.Ping(); err != nil {
-				// redis is down
-				fmt.Println(err.Error())
+				Log(r, log.FatalLevel, "problem pinging redis: "+err.Error())
 				time.Sleep(1 * time.Second)
 			} else {
 				break

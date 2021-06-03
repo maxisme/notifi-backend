@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/gorilla/websocket"
+	. "github.com/maxisme/notifi-backend/logging"
 	"github.com/maxisme/notifi-backend/ws"
 	log "github.com/sirupsen/logrus"
 	"net/http"
@@ -90,7 +91,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		WSConn:  WSConn,
 		PubSub:  s.redis.Subscribe(channel),
 	}
-	s.funnels.Add(s.redis, funnel)
+	s.funnels.Add(r, s.redis, funnel)
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
@@ -254,7 +255,7 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = s.funnels.SendBytes(s.redis, GetWSChannelKey(notification.Credentials), notificationMsgBytes)
+	err = s.funnels.SendBytes(r, s.redis, GetWSChannelKey(notification.Credentials), notificationMsgBytes)
 	if err != nil {
 		// store as user is not online
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))

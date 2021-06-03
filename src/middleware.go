@@ -1,6 +1,7 @@
 package main
 
 import (
+	. "github.com/maxisme/notifi-backend/logging"
 	"net/http"
 	"os"
 )
