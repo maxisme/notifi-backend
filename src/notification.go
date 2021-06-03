@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	. "github.com/maxisme/notifi-backend/logging"
 	tdb "github.com/maxisme/notifi-backend/tracer/db"
 	log "github.com/sirupsen/logrus"
 	"net/http"

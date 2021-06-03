@@ -4,13 +4,13 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/go-errors/errors"
 	"github.com/gorilla/websocket"
+	"github.com/maxisme/notifi-backend/crypt"
+	. "github.com/maxisme/notifi-backend/logging"
+	tdb "github.com/maxisme/notifi-backend/tracer/db"
 	log "github.com/sirupsen/logrus"
 	"net/http"
-
-	"github.com/go-errors/errors"
-	"github.com/maxisme/notifi-backend/crypt"
-	tdb "github.com/maxisme/notifi-backend/tracer/db"
 )
 
 // User structure
