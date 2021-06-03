@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/appleboy/go-fcm"
@@ -36,9 +37,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			Value: r.Header.Get("Credentials"),
 			Key:   r.Header.Get("Key"),
 		},
-		UUID:          r.Header.Get("Uuid"),
-		AppVersion:    r.Header.Get("Version"),
-		FirebaseToken: r.Header.Get("Firebase-Token"),
+		UUID:       r.Header.Get("Uuid"),
+		AppVersion: r.Header.Get("Version"),
+	}
+
+	if len(r.Header.Get("Firebase-Token")) > 0 {
+		user.FirebaseToken = sql.NullString{String: r.Header.Get("Firebase-Token"), Valid: true}
 	}
 
 	// validate inputs
@@ -153,14 +157,17 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 
 	// create PostUser struct
 	PostUser := User{
-		UUID:          r.Form.Get("UUID"),
-		FirebaseToken: r.Form.Get("firebase_token"),
+		UUID: r.Form.Get("UUID"),
 
 		// if asking for new Credentials
 		Credentials: Credentials{
 			Value: r.Form.Get("current_credentials"),
 			Key:   r.Form.Get("current_credential_key"),
 		},
+	}
+
+	if len(r.Form.Get("firebase_token")) > 0 {
+		PostUser.FirebaseToken = sql.NullString{String: r.Form.Get("firebase_token"), Valid: true}
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
@@ -237,9 +244,9 @@ func (s *Server) APIHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(u.FirebaseToken) > 0 {
+	if len(u.FirebaseToken.String) > 0 {
 		msg := &fcm.Message{
-			To: u.FirebaseToken,
+			To: u.FirebaseToken.String,
 			Notification: &fcm.Notification{
 				Title: notification.Title,
 				Body:  notification.Message,
