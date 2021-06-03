@@ -30,7 +30,7 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-func (funnels *Funnels) Add(r *http.Request, red *redis.Client, funnel *Funnel) {
+func (funnels *Funnels) Add(r *http.Request, red *redis.Client, funnel *Funnel) error {
 	funnels.Lock()
 	funnels.Clients[funnel.Channel] = funnel
 	funnels.Unlock()
@@ -50,10 +50,12 @@ func (funnels *Funnels) Add(r *http.Request, red *redis.Client, funnel *Funnel) 
 
 	if err := funnel.PubSub.Ping(); err != nil {
 		Log(r, log.FatalLevel, "Problem contacting subscription: "+err.Error())
+		return err
 	} else {
 		// start redis subscriber listener
 		go funnel.pubSubWSListener(r)
 	}
+	return nil
 }
 
 func (funnels *Funnels) Remove(funnel *Funnel) error {
