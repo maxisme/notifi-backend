@@ -13,7 +13,11 @@ import (
 func Exec(r *http.Request, db *sql.DB, query string, args ...interface{}) (sql.Result, error) {
 	span := getDBSpan(r, "db Exec", query, args...)
 	defer span.End()
-	return db.Exec(query, args...)
+	res, err := db.Exec(query, args...)
+	if err != nil {
+		span.RecordError(r.Context(), err)
+	}
+	return res, err
 }
 
 func Query(r *http.Request, db *sql.DB, query string, args ...interface{}) (*sql.Rows, error) {
