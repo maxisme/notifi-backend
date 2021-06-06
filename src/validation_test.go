@@ -2,8 +2,6 @@ package main
 
 import (
 	"testing"
-
-	"github.com/maxisme/notifi-backend/crypt"
 )
 
 func TestIsValidUUID(t *testing.T) {
@@ -47,7 +45,7 @@ func TestVersionValidity(t *testing.T) {
 }
 
 func TestIsValidCredentials(t *testing.T) {
-	credentials := crypt.RandomString(credentialLen)
+	credentials := RandomString(credentialLen)
 	if !IsValidCredentials(credentials) {
 		t.Errorf("'%s' should have been valid Credentials", credentials)
 	}

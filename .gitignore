@@ -2,3 +2,5 @@
 coverage.out
 /.idea/
 .dev.env
+*.terraform*
+*.tfstate*

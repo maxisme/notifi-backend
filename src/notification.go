@@ -1,19 +1,13 @@
 package main
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
-	. "github.com/maxisme/notifi-backend/logging"
-	tdb "github.com/maxisme/notifi-backend/tracer/db"
-	log "github.com/sirupsen/logrus"
+	"github.com/guregu/dynamo"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/maxisme/notifi-backend/crypt"
 )
 
 // Notification structure
@@ -21,7 +15,7 @@ type Notification struct {
 	Credentials credentials
 	UUID        string `json:"UUID"`
 	Time        string `json:"time"`
-	Title       string `json:"title"`
+	Title       string `json:"title" `
 	Message     string `json:"message"`
 	Image       string `json:"image"`
 	Link        string `json:"link"`
@@ -34,37 +28,36 @@ const (
 	maxImageBytes = 2000000 // 2MB
 )
 
+const NotificationTable = "notification"
+
 // Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(r *http.Request, db *sql.DB, encryptionKey []byte) (err error) {
-	n.Title, err = crypt.EncryptAES(n.Title, encryptionKey)
+func (n Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
+	n.Title, err = EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Message, err = crypt.EncryptAES(n.Message, encryptionKey)
+	n.Message, err = EncryptAES(n.Message, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Image, err = crypt.EncryptAES(n.Image, encryptionKey)
+	n.Image, err = EncryptAES(n.Image, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	n.Link, err = crypt.EncryptAES(n.Link, encryptionKey)
+	n.Link, err = EncryptAES(n.Link, encryptionKey)
 	if err != nil {
 		return
 	}
 
-	// language=PostgreSQL
-	_, err = tdb.Exec(r, db, `
-	INSERT INTO notifications (UUID, title, message, image, link, credentials, time) 
-    VALUES($1, $2, $3, $4, $5, $6, $7)`, n.UUID, n.Title, n.Message, n.Image, n.Link, crypt.Hash(n.Credentials), n.Time)
+	err = AddItem(db, NotificationTable, n)
 	return
 }
 
 // Validate runs validation on n Notification
-func (n *Notification) Validate(r *http.Request) error {
+func (n *Notification) Validate() error {
 	if len(n.Credentials) == 0 {
 		return errors.New("You must specify Credentials!")
 	}
@@ -104,12 +97,10 @@ func (n *Notification) Validate(r *http.Request) error {
 		}
 		resp, err := client.Head(n.Image)
 		if err != nil {
-			Log(r, log.InfoLevel, err)
 			n.Image = "" // remove image reference
 		} else {
 			contentLen, err := strconv.Atoi(resp.Header.Get("Content-Length"))
 			if err != nil {
-				Log(r, log.InfoLevel, err)
 				n.Image = "" // remove image reference
 			}
 
@@ -124,94 +115,44 @@ func (n *Notification) Validate(r *http.Request) error {
 
 // Decrypt decrypts n Notification
 func (n *Notification) Decrypt(encryptionKey []byte) error {
-	title, err := crypt.DecryptAES(n.Title, encryptionKey)
+	title, err := DecryptAES(n.Title, encryptionKey)
 	if err == nil {
 		n.Title = title
 	}
 
-	message, err := crypt.DecryptAES(n.Message, encryptionKey)
+	message, err := DecryptAES(n.Message, encryptionKey)
 	if err == nil {
 		n.Message = message
 	}
 
-	image, err := crypt.DecryptAES(n.Image, encryptionKey)
+	image, err := DecryptAES(n.Image, encryptionKey)
 	if err == nil {
 		n.Image = image
 	}
 
-	link, err := crypt.DecryptAES(n.Link, encryptionKey)
+	link, err := DecryptAES(n.Link, encryptionKey)
 	if err == nil {
 		n.Link = link
 	}
 	return err
 }
 
-// FetchNotifications Fetches all notifications belonging to user.
-// Will only decrypt if the user has no public serverKey and thus the messages were encrypted on the Server with AES.
-func (u User) FetchNotifications(db *sql.DB) ([]Notification, error) {
-	query := `
-	SELECT
-		uuid,
-		time,
-		title, 
-		message,
-		image,
-		link
-	FROM notifications
-	WHERE credentials = $1`
-	rows, err := db.Query(query, crypt.Hash(u.Credentials.Value))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var notifications []Notification
-	for rows.Next() {
-		var n Notification
-		err := rows.Scan(&n.UUID, &n.Time, &n.Title, &n.Message, &n.Image, &n.Link)
-		if err != nil {
-			return nil, err
-		}
-
-		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-		err = n.Decrypt(encryptionKey)
-		if err != nil {
-			Log(nil, log.WarnLevel, err.Error())
-			continue
-		}
-		notifications = append(notifications, n)
-	}
-	return notifications, nil
-}
-
-// DeleteNotificationsWithIDs deletes comma separated notifications ids
-func (u User) DeleteNotificationsWithIDs(r *http.Request, db *sql.DB, ids []string, credentials string) error {
-	for _, UUID := range ids {
-		// language=PostgreSQL
-		_, err := tdb.Exec(r, db, `DELETE FROM notifications
-		WHERE credentials = $1
-		AND UUID = $2`, crypt.Hash(credentials), UUID)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // IncreaseNotificationCnt increases user notification count
-func IncreaseNotificationCnt(r *http.Request, db *sql.DB, n Notification) error {
-	// language=PostgreSQL
-	res, err := tdb.Exec(r, db, `UPDATE users 
-	SET notification_cnt = notification_cnt + 1 WHERE credentials = $1`, crypt.Hash(n.Credentials))
+func IncreaseNotificationCnt(db *dynamo.DB, n Notification) error {
+	t := db.Table(UserTable)
+	wrtx := db.WriteTx()
+	rtx := db.GetTx()
+
+	var u User
+	getUserQuery := t.Get("credentials", n.Credentials)
+	err := rtx.GetOne(getUserQuery, u).Run()
 	if err != nil {
+		// likely means there is no such user
 		return err
 	}
-	num, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if num == 0 {
-		return errors.New("no such user with credentials")
-	}
-	return nil
+
+	u.NotificationCnt = u.NotificationCnt + 1
+
+	updateUserQuery := t.Update(n.Credentials, u)
+	return wrtx.Update(updateUserQuery).Run()
 }
