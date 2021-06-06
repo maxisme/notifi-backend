@@ -13,52 +13,55 @@ jobs:
           version: latest
           working-directory: src
 
-  test:
-    name: Test
-    needs: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-
-      - name: Run tests
-        run: docker-compose up --abort-on-container-exit test
-
-      - uses: codecov/codecov-action@v1
-        with:
-          directory: ./src/
-          root_dir: ./src/
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+#  test:
+#    name: Test
+#    needs: lint
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v1
+#
+#      - name: Run tests
+#        run: docker-compose up --abort-on-container-exit test
+#
+#      - uses: codecov/codecov-action@v1
+#        with:
+#          directory: ./src/
+#          root_dir: ./src/
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          fail_ci_if_error: true
 
   build:
     name: Build
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v1
-      - name: Set Docker Tags
-        id: prep
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          TAGS="${{ github.repository }}:sha-${GITHUB_SHA::7}"
-          echo ::set-output name=tags::${TAGS}
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v1
-      - name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push
-        uses: docker/build-push-action@v2
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.prep.outputs.tags }}
-          platforms: linux/amd64,linux/arm/v7
-          build-args: |
-            COMMIT_HASH=${{ github.sha }}
+          for handler in api connect disconnect message signup
+          do
+            tag="$ECR_REGISTRY/notifi:${{ github.sha }}-$handler"
+            if [[ "${{ github.ref }}" != "refs/heads/master" ]]
+            then
+              tag="$ECR_REGISTRY/notifi:latest-$handler"
+            fi
+            echo "building $tag ..."
+            docker build --build-arg=HANDLER=$handler --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t $tag .
+            docker push $tag
+          done
+
   deploy:
     name: Deploy
     needs: build
@@ -71,24 +74,4 @@ jobs:
           fetch-depth: '0'
       - name: Upgrade helm
         run: |
-          # pull infra charts
-          helm repo add maxisme https://${{ secrets.GH_PA_TOKEN }}@raw.githubusercontent.com/maxisme/infra/master/k8s/charts/
-          helm repo update
-
-          # create kube config
-          mkdir ~/.kube
-          echo "${{ secrets.B64_KUBE_CONFIG }}" | base64 --decode > ~/.kube/config
-
-          # deploy helm
-          helm_path="helm-values.yml"
-          name="notifi"
-          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]
-          then
-            name="notifi-dev"
-            helm_path="dev-helm-values.yml"
-          fi
-          echo helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 240s
-          helm upgrade "$name" maxisme/web -f $helm_path --set="image.tag=sha-${GITHUB_SHA::7}" --atomic --timeout 240s --debug
-
-          # clean up
-          rm ~/.kube/config
+          # TODO
