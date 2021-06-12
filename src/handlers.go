@@ -48,7 +48,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		WriteHTTPError(w, r, http.StatusBadRequest, "Invalid UUID")
+		WriteHTTPError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid UUID: '%s'", user.UUID))
 		return
 	} else if !IsValidVersion(user.AppVersion) {
 		WriteHTTPError(w, r, http.StatusBadRequest, fmt.Sprintf("Invalid Version %v", user.AppVersion))
@@ -179,7 +179,7 @@ func (s *Server) CredentialHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		WriteError(w, "Invalid UUID", http.StatusBadRequest)
+		WriteError(w, fmt.Sprintf("Invalid UUID: '%s'", PostUser.UUID), http.StatusBadRequest)
 		return
 	}
 
