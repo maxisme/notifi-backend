@@ -127,6 +127,9 @@ func (funnel *Funnel) pubSubWSListener(r *http.Request) {
 		redisMsg, err := funnel.PubSub.ReceiveMessage()
 		if err == nil {
 			fmt.Println("received: " + redisMsg.Payload)
+			if redisMsg.Payload == "close" {
+				break
+			}
 			err = funnel.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 			if err != nil {
 				Log(r, log.FatalLevel, "problem sending funnel socket message though redis: "+err.Error())

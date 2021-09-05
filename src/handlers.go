@@ -100,6 +100,8 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
+	// tells subscribers to disconnect
+	defer s.redis.Publish(channel, "close")
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
