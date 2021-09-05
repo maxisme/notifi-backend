@@ -3,15 +3,14 @@ package conn
 import (
 	"database/sql"
 	"fmt"
+	"github.com/go-redis/redis/v7"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/go-redis/redis/v7"
-	_ "github.com/lib/pq"
 )
 
 func getPgConString() string {
@@ -60,6 +59,16 @@ func RedisConn() (*redis.Client, error) {
 		MaxRetries:  5,
 		DB:          dbInt,
 	})
+	go func() {
+		for {
+			_, err := client.Ping().Result()
+			if err != nil {
+				print(fmt.Sprintf("MAJOR ERROR WITH REDIS: %s", err))
+				panic(err)
+			}
+			time.Sleep(30 * time.Second)
+		}
+	}()
 	_, err := client.Ping().Result()
 	return client, err
 }

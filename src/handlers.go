@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/gorilla/websocket"
-	"github.com/maxisme/notifi-backend/conn"
 	. "github.com/maxisme/notifi-backend/logging"
 	"github.com/maxisme/notifi-backend/ws"
 	log "github.com/sirupsen/logrus"
@@ -23,7 +22,7 @@ const (
 	RequestNewUserCode = 551
 )
 
-// layout for times Format()
+// NotificationTimeLayout layout for the time Format()
 const NotificationTimeLayout = "2006-01-02 15:04:05"
 
 // WSHandler is the http handler for web socket connections
@@ -98,9 +97,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.funnels.Add(r, s.redis, funnel); err != nil {
-		// attempt to reconnect to redis
-		redisConn, _ := conn.RedisConn()
-		s.redis = redisConn
 		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
