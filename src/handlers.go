@@ -90,6 +90,7 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	// initialise WS funnel
 	channel := GetWSChannelKey(user.Credentials.Value)
+	print("subscribing to channel: " + channel)
 	funnel := &ws.Funnel{
 		Channel: channel,
 		WSConn:  WSConn,
