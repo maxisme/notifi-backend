@@ -84,11 +84,12 @@ func TestSendBytesToRemovedFunnel(t *testing.T) {
 	funnel := &Funnel{
 		Channel: key,
 		WSConn:  createWS(t),
-		PubSub:  red.Subscribe(key),
 	}
 
-	_ = funnels.Add(nil, nil, funnel)
-	_ = funnels.Remove(funnel)
+	go funnels.Add(nil, red, funnel)
+	time.Sleep(redisSleep * time.Millisecond)
+	_ = funnels.Remove(funnel, red)
+	time.Sleep(redisSleep * time.Millisecond)
 
 	err := funnels.SendBytes(nil, red, key, []byte("test"))
 	if err == nil {
@@ -106,11 +107,11 @@ func TestSendBytesLocally(t *testing.T) {
 	funnel := &Funnel{
 		Channel: key,
 		WSConn:  createWS(t),
-		PubSub:  red.Subscribe(key),
 	}
 
-	_ = funnels.Add(nil, nil, funnel)
-	defer funnels.Remove(funnel) //nolint
+	go funnels.Add(nil, red, funnel)
+	time.Sleep(redisSleep * time.Millisecond)
+	defer funnels.Remove(funnel, red) //nolint
 
 	// send message over socket
 	sendMsg := []byte("hello")
@@ -136,11 +137,11 @@ func TestSendBytesThroughRedis(t *testing.T) {
 
 	key := randStringBytes(10)
 	funnel := &Funnel{
-		WSConn: createWS(t),
-		PubSub: red.Subscribe(key),
+		Channel: key,
+		WSConn:  createWS(t),
 	}
-	_ = funnels1.Add(nil, nil, funnel)
-	defer funnels1.Remove(funnel) // nolint
+	go funnels1.Add(nil, red, funnel)
+	defer funnels1.Remove(funnel, red) // nolint
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
@@ -173,12 +174,11 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 	funnel := &Funnel{
 		Channel: key,
 		WSConn:  createWS(t),
-		PubSub:  red.Subscribe(key),
 	}
-	_ = funnels1.Add(nil, nil, funnel)
+	go funnels1.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
-	err := funnels1.Remove(funnel)
+	err := funnels1.Remove(funnel, red)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -209,12 +209,11 @@ func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
 	funnel := &Funnel{
 		Channel: key,
 		WSConn:  createWS(t),
-		PubSub:  red.Subscribe(key),
 	}
-	_ = funnels1.Add(nil, red, funnel)
+	go funnels1.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
-	err := funnels1.Remove(funnel)
+	err := funnels1.Remove(funnel, red)
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -228,7 +227,7 @@ func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
 	}
 
 	// add initial funnel back which should send all pending messages
-	_ = funnels1.Add(nil, red, funnel)
+	go funnels1.Add(nil, red, funnel)
 
 	_, msg, err := funnel.WSConn.ReadMessage()
 	if err != nil {

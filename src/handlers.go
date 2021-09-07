@@ -76,11 +76,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := user.StoreLogin(r, s.db); err != nil {
-		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	// connect to socket
 	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -88,23 +83,32 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := user.StoreLogin(r, s.db); err != nil {
+		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
+		return
+	}
+	defer func() {
+		// close db store connected
+		if err := user.CloseLogin(r, s.db); err != nil {
+			Log(r, log.WarnLevel, err)
+		}
+	}()
+
 	// initialise WS funnel
 	channel := GetWSChannelKey(user.Credentials.Value)
 	print("subscribing to channel: " + channel)
 	funnel := &ws.Funnel{
 		Channel: channel,
 		WSConn:  WSConn,
-		PubSub:  s.redis.Subscribe(channel),
 	}
 
-	if err := s.funnels.Add(r, s.redis, funnel); err != nil {
-		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
-		return
-	}
-	// tells subscribers to disconnect
+	go s.funnels.Add(r, s.redis, funnel)
+
 	defer func() {
-		print("sent close")
-		s.redis.Publish(channel, "close")
+		// tells subscribers to disconnect
+		if err := s.funnels.Remove(funnel, s.redis); err != nil {
+			Log(r, log.WarnLevel, err)
+		}
 	}()
 
 	// send "." to client when successfully connected to web socket
@@ -140,15 +144,6 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 				Log(r, log.InfoLevel, err)
 			}
 		}()
-	}
-
-	if err := s.funnels.Remove(funnel); err != nil {
-		Log(r, log.WarnLevel, err)
-	}
-
-	// close connection
-	if err := user.CloseLogin(r, s.db); err != nil {
-		Log(r, log.WarnLevel, err)
 	}
 }
 
