@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/appleboy/go-fcm"
+	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/websocket"
 	. "github.com/maxisme/notifi-backend/logging"
 	"github.com/maxisme/notifi-backend/ws"
@@ -87,12 +88,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
 		return
 	}
-	defer func() {
+	defer func(request *http.Request, db *sql.DB) {
 		// close db store connected
-		if err := user.CloseLogin(r, s.db); err != nil {
-			Log(r, log.WarnLevel, err)
+		if err := user.CloseLogin(request, db); err != nil {
+			Log(request, log.WarnLevel, err)
 		}
-	}()
+	}(r, s.db)
 
 	// initialise WS funnel
 	channel := GetWSChannelKey(user.Credentials.Value)
@@ -104,12 +105,12 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 
 	go s.funnels.Add(r, s.redis, funnel)
 
-	defer func() {
+	defer func(request *http.Request, f *ws.Funnel, redisClient *redis.Client) {
 		// tells subscribers to disconnect
-		if err := s.funnels.Remove(funnel, s.redis); err != nil {
+		if err := s.funnels.Remove(f, redisClient); err != nil {
 			Log(r, log.WarnLevel, err)
 		}
-	}()
+	}(r, funnel, s.redis)
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {
@@ -135,15 +136,15 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			continue
 		}
-		go func() {
+		go func(request *http.Request, dbConn *sql.DB, credentials string, m []byte) {
 			var uuids []string
-			if err := json.Unmarshal(message, &uuids); err != nil {
-				Log(r, log.WarnLevel, err)
+			if err := json.Unmarshal(m, &uuids); err != nil {
+				Log(request, log.WarnLevel, err)
 			}
 			if err := user.DeleteNotificationsWithIDs(r, s.db, uuids, user.Credentials.Value); err != nil {
-				Log(r, log.InfoLevel, err)
+				Log(request, log.InfoLevel, err)
 			}
-		}()
+		}(r, s.db, user.Credentials.Value, message)
 	}
 }
 
