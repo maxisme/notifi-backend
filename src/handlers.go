@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/appleboy/go-fcm"
-	"github.com/go-redis/redis/v7"
 	"github.com/gorilla/websocket"
 	. "github.com/maxisme/notifi-backend/logging"
 	"github.com/maxisme/notifi-backend/ws"
@@ -77,10 +76,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	channel := GetWSChannelKey(user.Credentials.Value)
+
+	s.redis.Publish(channel, "close")
+
 	// connect to socket
 	WSConn, err := ws.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		WriteHTTPError(w, r, http.StatusInternalServerError, err.Error())
+		WriteHTTPError(w, r, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -96,21 +99,14 @@ func (s *Server) WSHandler(w http.ResponseWriter, r *http.Request) {
 	}(r, s.db)
 
 	// initialise WS funnel
-	channel := GetWSChannelKey(user.Credentials.Value)
-	print("subscribing to channel: " + channel)
+	Log(r, log.InfoLevel, "subscribing to channel: "+channel)
 	funnel := &ws.Funnel{
 		Channel: channel,
 		WSConn:  WSConn,
 	}
 
 	go s.funnels.Add(r, s.redis, funnel)
-
-	defer func(request *http.Request, f *ws.Funnel, redisClient *redis.Client) {
-		// tells subscribers to disconnect
-		if err := s.funnels.Remove(f, redisClient); err != nil {
-			Log(r, log.WarnLevel, err)
-		}
-	}(r, funnel, s.redis)
+	defer s.funnels.Remove(channel, s.redis)
 
 	// send "." to client when successfully connected to web socket
 	if err := WSConn.WriteMessage(websocket.TextMessage, []byte(".")); err != nil {

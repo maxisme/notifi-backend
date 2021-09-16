@@ -43,15 +43,17 @@ func LogWithSkip(r *http.Request, level log.Level, skip int, args ...interface{}
 	log.WithFields(logTags).Log(level, args...)
 
 	if level < log.InfoLevel {
-		// log to sentry if more than an info log
-		if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
-			hub.WithScope(func(scope *sentry.Scope) {
-				scope.SetLevel(sentry.Level(level.String()))
-				for key := range logTags {
-					scope.SetTag(key, fmt.Sprintf("%v", logTags[key]))
-				}
-				hub.CaptureException(fmt.Errorf(fmt.Sprint(args...)))
-			})
+		if r != nil {
+			// log to sentry if more than an info log
+			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
+				hub.WithScope(func(scope *sentry.Scope) {
+					scope.SetLevel(sentry.Level(level.String()))
+					for key := range logTags {
+						scope.SetTag(key, fmt.Sprintf("%v", logTags[key]))
+					}
+					hub.CaptureException(fmt.Errorf(fmt.Sprint(args...)))
+				})
+			}
 		}
 	}
 }

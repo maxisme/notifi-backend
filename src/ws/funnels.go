@@ -3,14 +3,12 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-redis/redis/v7"
+	"github.com/gorilla/websocket"
 	. "github.com/maxisme/notifi-backend/logging"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"sync"
-	"time"
-
-	"github.com/go-redis/redis/v7"
-	"github.com/gorilla/websocket"
 )
 
 type Funnel struct {
@@ -50,14 +48,12 @@ func (funnels *Funnels) Add(r *http.Request, red *redis.Client, funnel *Funnel) 
 	funnels.pubSubWSListener(r, red, funnel.Channel)
 }
 
-func (funnels *Funnels) Remove(funnel *Funnel, red *redis.Client) error {
-	red.Publish(funnel.Channel, "close")
+func (funnels *Funnels) Remove(channel string, red *redis.Client) {
+	red.Publish(channel, "close")
 	// remove funnel from map
 	funnels.Lock()
-	delete(funnels.Clients, funnel.Channel)
+	delete(funnels.Clients, channel)
 	funnels.Unlock()
-
-	return nil
 }
 
 func (funnels *Funnels) Send(r *http.Request, red *redis.Client, channel string, msg interface{}) error {
@@ -72,13 +68,15 @@ func (funnels *Funnels) Send(r *http.Request, red *redis.Client, channel string,
 
 func (funnels *Funnels) SendBytes(r *http.Request, red *redis.Client, channel string, msg []byte) error {
 	// check if the websocket connection to this client is on this Funnels (machine)
-	funnels.RLock()
+	funnels.Lock()
 	funnel, gotFunnel := funnels.Clients[channel]
-	funnels.RUnlock()
-
 	if gotFunnel {
-		return funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
+		Log(r, log.InfoLevel, "Sent local message to: "+channel)
+		err := funnel.WSConn.WriteMessage(websocket.TextMessage, msg)
+		funnels.Unlock()
+		return err
 	}
+	funnels.Unlock()
 
 	_, err := red.Ping().Result()
 	if err != nil {
@@ -88,13 +86,13 @@ func (funnels *Funnels) SendBytes(r *http.Request, red *redis.Client, channel st
 
 	// send msg blindly to redis pub sub
 	numSubscribers := red.Publish(channel, string(msg)).Val()
-	fmt.Println("sent: " + string(msg) + " to: " + channel + " with " + fmt.Sprintf("%d subscribers", numSubscribers))
+	Log(r, log.InfoLevel, "sent message to: "+channel+" with "+fmt.Sprintf("%d subscribers", numSubscribers))
 	if numSubscribers != 0 {
 		if numSubscribers == 1 {
 			// successfully sent to a redis subscriber
 			return nil
 		} else {
-			Log(r, log.WarnLevel, fmt.Sprintf("There are more than one subscribers (%d) to this channel...", numSubscribers))
+			Log(r, log.ErrorLevel, fmt.Sprintf("There are more than one subscribers (%d) to this channel...", numSubscribers))
 		}
 	}
 
@@ -111,35 +109,49 @@ func (funnels *Funnels) SendBytes(r *http.Request, red *redis.Client, channel st
 func (funnels *Funnels) pubSubWSListener(r *http.Request, red *redis.Client, channel string) {
 	pubSub := red.Subscribe(channel)
 	if err := pubSub.Ping(); err != nil {
-		Log(r, log.FatalLevel, "Problem contacting subscription: "+err.Error())
+		Log(r, log.FatalLevel, "Problem cofunnels_test.go:112 ntacting subscription: "+err.Error())
 	}
+	defer func(pubSub *redis.PubSub) {
+		if err := pubSub.Unsubscribe(); err != nil {
+			Log(r, log.FatalLevel, "problem unsubscribing: "+err.Error())
+		}
+	}(pubSub)
 
 	for {
 		redisMsg, err := pubSub.ReceiveMessage()
 		if err == nil {
-			fmt.Println(channel + " received: " + redisMsg.Payload)
+			Log(r, log.InfoLevel, channel+" received msg")
 			if redisMsg.Payload == "close" {
 				break
 			}
 			funnels.Lock()
-			client := funnels.Clients[channel]
-			err := client.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
-			if err != nil {
-				Log(r, log.FatalLevel, "problem sending funnel socket message though redis: "+err.Error())
+			client, ok := funnels.Clients[channel]
+			if ok {
+				err := client.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
+				if err != nil {
+					Log(r, log.FatalLevel, "problem sending funnel socket message though redis: "+err.Error())
+				}
+			} else {
+				Log(r, log.FatalLevel, "redis subscribed client doesn't have funnel")
 			}
 			funnels.Unlock()
 		} else {
 			Log(r, log.FatalLevel, "problem receiving pub/sub message though redis: "+err.Error())
 			if err := pubSub.Ping(); err != nil {
 				Log(r, log.FatalLevel, "problem pinging redis: "+err.Error())
-				time.Sleep(1 * time.Second)
 			} else {
 				break
 			}
 		}
 	}
-	if err := pubSub.Unsubscribe(channel); err != nil {
-		Log(r, log.FatalLevel, "problem unsubscribing: "+err.Error())
+	Log(r, log.InfoLevel, "closed redis listener for client: "+channel)
+
+	funnels.Lock()
+	client, ok := funnels.Clients[channel]
+	if ok {
+		if err := client.WSConn.Close(); err != nil {
+			Log(r, log.FatalLevel, "problem force closing websocket: "+err.Error())
+		}
 	}
-	fmt.Println("closed redis listener for client: " + channel)
+	funnels.Unlock()
 }

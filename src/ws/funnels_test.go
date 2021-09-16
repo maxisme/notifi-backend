@@ -88,7 +88,7 @@ func TestSendBytesToRemovedFunnel(t *testing.T) {
 
 	go funnels.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond)
-	_ = funnels.Remove(funnel, red)
+	funnels.Remove(funnel.Channel, red)
 	time.Sleep(redisSleep * time.Millisecond)
 
 	err := funnels.SendBytes(nil, red, key, []byte("test"))
@@ -111,7 +111,7 @@ func TestSendBytesLocally(t *testing.T) {
 
 	go funnels.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond)
-	defer funnels.Remove(funnel, red) //nolint
+	defer funnels.Remove(funnel.Channel, red) //nolint
 
 	// send message over socket
 	sendMsg := []byte("hello")
@@ -141,7 +141,7 @@ func TestSendBytesThroughRedis(t *testing.T) {
 		WSConn:  createWS(t),
 	}
 	go funnels1.Add(nil, red, funnel)
-	defer funnels1.Remove(funnel, red) // nolint
+	defer funnels1.Remove(funnel.Channel, red) // nolint
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
@@ -178,15 +178,12 @@ func TestFailedSendBytesThroughRedis(t *testing.T) {
 	go funnels1.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
-	err := funnels1.Remove(funnel, red)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	funnels1.Remove(funnel.Channel, red)
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis unsubscribe
 
 	sendMsg := []byte("hello")
-	err = funnels2.SendBytes(nil, red, key, sendMsg)
+	err := funnels2.SendBytes(nil, red, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}
@@ -213,15 +210,12 @@ func TestStoredFailedSendBytesThroughRedis(t *testing.T) {
 	go funnels1.Add(nil, red, funnel)
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis subscriber in go routine to initialise
 
-	err := funnels1.Remove(funnel, red)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
+	funnels1.Remove(funnel.Channel, red)
 
 	time.Sleep(redisSleep * time.Millisecond) // wait for redis unsubscribe
 
 	sendMsg := []byte("hello")
-	err = funnels2.SendBytes(nil, red, key, sendMsg)
+	err := funnels2.SendBytes(nil, red, key, sendMsg)
 	if err == nil {
 		t.Errorf("Should have returned error")
 	}
@@ -244,5 +238,5 @@ func randStringBytes(n int) string {
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
-	return fmt.Sprint(b)
+	return string(b)
 }
