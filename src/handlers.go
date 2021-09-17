@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -318,7 +319,14 @@ func (s *Server) VersionHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	pubDttm := githubResponse.PublishedAt.Format(rfc2822)
-	dmgUrl := githubResponse.Assets[0].BrowserDownloadURL
+
+	downloadURL := ""
+	for _, asset := range githubResponse.Assets {
+		if strings.Contains(asset.BrowserDownloadURL, ".dmg") {
+			downloadURL = asset.BrowserDownloadURL
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/xml")
 	xml := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="https://notifi.it/xml-namespaces/sparkle" xmlns:dc="https://notifi.it/dc/elements/1.1/">
@@ -333,7 +341,7 @@ func (s *Server) VersionHandler(w http.ResponseWriter, r *http.Request) {
 		<enclosure url="%s" sparkle:version="%s"/>
 	</item>
   </channel>
-</rss>`, githubResponse.Name, githubResponse.Body, pubDttm, dmgUrl, githubResponse.TagName)
+</rss>`, githubResponse.Name, githubResponse.Body, pubDttm, downloadURL, githubResponse.TagName)
 	if _, err := w.Write([]byte(xml)); err != nil {
 		panic(err)
 	}

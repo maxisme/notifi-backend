@@ -130,9 +130,11 @@ func (funnels *Funnels) pubSubWSListener(r *http.Request, red *redis.Client, cha
 				err := client.WSConn.WriteMessage(websocket.TextMessage, []byte(redisMsg.Payload))
 				if err != nil {
 					Log(r, log.FatalLevel, "problem sending funnel socket message though redis: "+err.Error())
+					break
 				}
 			} else {
 				Log(r, log.FatalLevel, "redis subscribed client doesn't have funnel")
+				break
 			}
 			funnels.Unlock()
 		} else {
