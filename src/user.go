@@ -42,7 +42,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, _ := GetItem(db, UserTable, "uuid", u.UUID) // doesn't matter if error just means there is no previous user with UUID
+	result, _ := GetItem(db, UserTable, "uuid", u.UUID)
 	DBUser := result.(User)
 	if len(DBUser.UUID) > 0 {
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {

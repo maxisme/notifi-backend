@@ -6,12 +6,7 @@ import (
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
-
-func main() {
-	lambda.Start(HandleMessage)
-}
 
 func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if r.Body == "." {

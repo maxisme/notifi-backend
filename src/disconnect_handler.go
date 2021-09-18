@@ -3,13 +3,8 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"net/http"
 )
-
-func main() {
-	lambda.Start(HandleDisconnect)
-}
 
 func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	db, err := GetDB()
