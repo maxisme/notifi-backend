@@ -12,40 +12,10 @@
 
 
 ## Run App
-```bash
-$ docker-compose up --build app
-```
 
-## Run tests
-```bash
-$ docker-compose up test
-```
 
 ## Run linter
 Install https://golangci-lint.run/usage/install/#local-installation
 ```bash
 $ (cd src && golangci-lint run)
-```
-
-## Create DB migrations
-```bash
-migrate create -ext sql -dir migrations/ -seq "drop_uuid_unique"
-```
-
-## Local development
-
-### Startup dbs
-```bash
-$ docker-compose up redis db
-```
-### env variables
-```bash
-REDIS_HOST=127.0.0.1:6379
-DATABASE_HOST=127.0.0.1
-DATABASE_USER=notifi
-DATABASE_PASS=notifi
-DATABASE_NAME=notifi
-DATABASE_SSL_DISABLE=1
-SERVER_KEY=u2J7b7xA8MndeNS
-ENCRYPTION_KEY=6bO9OFNEsqdz3Bl16bO9OFNEsqdz3Bl1
 ```

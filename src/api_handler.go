@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/google/uuid"
 	"net/http"
 	"os"
@@ -15,10 +14,6 @@ import (
 )
 
 const NotificationTimeLayout = "2006-01-02 15:04:05"
-
-func main() {
-	lambda.Start(HandleApi)
-}
 
 func HandleApi(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if r.HTTPMethod != "POST" && r.HTTPMethod != "GET" {

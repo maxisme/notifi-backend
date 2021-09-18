@@ -7,13 +7,9 @@ ADD src/go.mod src/go.sum ./
 RUN go mod download
 # build
 ADD src/. .
-RUN rm *_handler.go
-ARG HANDLER
-ADD src/${HANDLER}_handler.go .
 RUN go build -o /main
 
 FROM public.ecr.aws/lambda/go:1
 COPY --from=build /main /main
 ARG COMMIT_HASH
 ENV COMMIT_HASH=$COMMIT_HASH
-ENTRYPOINT [ "/main" ]

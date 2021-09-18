@@ -8,14 +8,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 )
 
 const RequestNewUserCode = 551
-
-func main() {
-	lambda.Start(HandleConnect)
-}
 
 func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if r.HTTPMethod != "GET" {
@@ -82,7 +77,6 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	// send all stored notifications from db
-
 	if err := SendStoredMessages(db, Hash(user.Credentials.Value), r.RequestContext.ConnectionID); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}

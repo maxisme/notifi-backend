@@ -5,15 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
 	"net/http"
 )
 
-func main() {
-	lambda.Start(HandleSignup)
-}
-
-func HandleSignup(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func HandleCode(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	if r.HTTPMethod != "POST" {
 		return WriteError(fmt.Errorf("Method not allowed"), http.StatusBadRequest)
 	}
@@ -29,7 +24,7 @@ func HandleSignup(ctx context.Context, r events.APIGatewayProxyRequest) (events.
 		},
 	}
 
-	firebaseToken, ok := r.StageVariables["current_credential_key"]
+	firebaseToken, ok := r.StageVariables["firebase_token"]
 	if ok {
 		PostUser.FirebaseToken = firebaseToken
 	}
