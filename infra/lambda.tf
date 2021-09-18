@@ -46,24 +46,25 @@ resource "aws_lambda_function" "disconnect" {
   image_config {
     command = ["./main", "disconnect"]
   }
+  package_type = "Image"
 }
 
 resource "aws_lambda_function" "message" {
   function_name = "notifi-message"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = data.aws_ecr_repository.notifi.repository_url
-  package_type  = "Image"
   image_config {
     command = ["./main", "message"]
   }
+  package_type = "Image"
 }
 
 resource "aws_lambda_function" "code" {
   function_name = "notifi-code"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = data.aws_ecr_repository.notifi.repository_url
-  package_type  = "Image"
   image_config {
     command = ["./main", "code"]
   }
+  package_type = "Image"
 }
