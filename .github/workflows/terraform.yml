@@ -18,7 +18,7 @@ jobs:
         working-directory: ./infra
         run: terraform init
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/lambda'
         working-directory: ./infra
         run: terraform apply -auto-approve
 
