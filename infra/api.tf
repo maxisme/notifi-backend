@@ -1,6 +1,6 @@
 resource "aws_apigatewayv2_api" "ws" {
-  name          = "notifi-websocket"
-  protocol_type = "WEBSOCKET"
+  name                       = "notifi-websocket"
+  protocol_type              = "WEBSOCKET"
   route_selection_expression = "$request.body.action"
 }
 
@@ -14,14 +14,14 @@ resource "aws_apigatewayv2_api" "http" {
 // deployment //
 ////////////////
 resource "aws_apigatewayv2_deployment" "develop-api" {
-  api_id      = aws_apigatewayv2_route.api.api_id
+  api_id = aws_apigatewayv2_route.api.api_id
 
   lifecycle {
     create_before_destroy = true
   }
 }
 resource "aws_apigatewayv2_deployment" "production-api" {
-  api_id      = aws_apigatewayv2_route.api.api_id
+  api_id = aws_apigatewayv2_route.api.api_id
 
   lifecycle {
     create_before_destroy = true
@@ -29,14 +29,14 @@ resource "aws_apigatewayv2_deployment" "production-api" {
 }
 
 resource "aws_apigatewayv2_deployment" "develop-code" {
-  api_id      = aws_apigatewayv2_route.code.api_id
+  api_id = aws_apigatewayv2_route.code.api_id
 
   lifecycle {
     create_before_destroy = true
   }
 }
 resource "aws_apigatewayv2_deployment" "production-code" {
-  api_id      = aws_apigatewayv2_route.code.api_id
+  api_id = aws_apigatewayv2_route.code.api_id
 
   lifecycle {
     create_before_destroy = true
@@ -48,33 +48,33 @@ resource "aws_apigatewayv2_deployment" "production-code" {
 ////////////
 
 resource "aws_apigatewayv2_stage" "develop-api" {
-  api_id = aws_apigatewayv2_api.http.id
-  name   = "develop-api"
+  api_id        = aws_apigatewayv2_api.http.id
+  name          = "develop-api"
   deployment_id = aws_apigatewayv2_deployment.develop-api.id
 }
 
 resource "aws_apigatewayv2_stage" "production-api" {
-  api_id = aws_apigatewayv2_api.http.id
-  name   = "production-api"
+  api_id        = aws_apigatewayv2_api.http.id
+  name          = "production-api"
   deployment_id = aws_apigatewayv2_deployment.production-api.id
 }
 
 resource "aws_apigatewayv2_stage" "develop-code" {
-  api_id = aws_apigatewayv2_api.http.id
-  name   = "develop-code"
+  api_id        = aws_apigatewayv2_api.http.id
+  name          = "develop-code"
   deployment_id = aws_apigatewayv2_deployment.develop-code.id
 }
 
 resource "aws_apigatewayv2_stage" "production-code" {
-  api_id = aws_apigatewayv2_api.http.id
-  name   = "production-code"
+  api_id        = aws_apigatewayv2_api.http.id
+  name          = "production-code"
   deployment_id = aws_apigatewayv2_deployment.production-code.id
 }
 
 resource "aws_apigatewayv2_stage" "develop-ws" {
-  api_id = aws_apigatewayv2_api.ws.id
-  name   = "develop-ws"
-  auto_deploy = true
+  api_id        = aws_apigatewayv2_api.ws.id
+  name          = "develop-ws"
+  auto_deploy   = true
   deployment_id = ""
 }
 
@@ -88,10 +88,10 @@ resource "aws_apigatewayv2_stage" "production-ws" {
 //////////////////
 // HTTP
 resource "aws_apigatewayv2_integration" "api" {
-  api_id                    = aws_apigatewayv2_api.http.id
-  connection_type           = "INTERNET"
-  integration_type          = "AWS_PROXY"
-  integration_uri           = aws_lambda_function.api.invoke_arn
+  api_id           = aws_apigatewayv2_api.http.id
+  connection_type  = "INTERNET"
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.api.invoke_arn
 }
 resource "aws_apigatewayv2_route" "api" {
   api_id    = aws_apigatewayv2_api.http.id
@@ -100,10 +100,10 @@ resource "aws_apigatewayv2_route" "api" {
 }
 
 resource "aws_apigatewayv2_integration" "code" {
-  api_id                    = aws_apigatewayv2_api.http.id
-  connection_type           = "INTERNET"
-  integration_type          = "AWS_PROXY"
-  integration_uri           = aws_lambda_function.code.invoke_arn
+  api_id           = aws_apigatewayv2_api.http.id
+  connection_type  = "INTERNET"
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.code.invoke_arn
 }
 resource "aws_apigatewayv2_route" "code" {
   api_id    = aws_apigatewayv2_api.http.id
