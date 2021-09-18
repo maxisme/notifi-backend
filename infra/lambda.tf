@@ -26,7 +26,7 @@ resource "aws_lambda_function" "api" {
   image_config {
     command = ["./main", "api"]
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 
 resource "aws_lambda_function" "connect" {
@@ -36,7 +36,7 @@ resource "aws_lambda_function" "connect" {
   image_config {
     command = ["./main", "connect"]
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 
 resource "aws_lambda_function" "disconnect" {
