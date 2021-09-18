@@ -19,3 +19,10 @@ Install https://golangci-lint.run/usage/install/#local-installation
 ```bash
 $ (cd src && golangci-lint run)
 ```
+
+# tokens
+## AWS AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+ - https://console.aws.amazon.com
+ - Security Credentials (under username)
+ - Access keys (access key ID and secret access key)
+
