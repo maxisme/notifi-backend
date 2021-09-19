@@ -18,7 +18,6 @@ resource "aws_iam_role" "iam_for_lambda" {
 EOF
 }
 
-
 resource "aws_lambda_function" "api" {
   function_name = "notifi-api"
   role          = aws_iam_role.iam_for_lambda.arn
@@ -27,6 +26,12 @@ resource "aws_lambda_function" "api" {
     entry_point = ["/main", "api"]
   }
   package_type = "Image"
+}
+resource "aws_lambda_permission" "api" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.api.function_name
+  principal     = "apigateway.amazonaws.com"
 }
 
 resource "aws_lambda_function" "connect" {
@@ -38,6 +43,12 @@ resource "aws_lambda_function" "connect" {
   }
   package_type = "Image"
 }
+resource "aws_lambda_permission" "connect" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.connect.function_name
+  principal     = "apigateway.amazonaws.com"
+}
 
 resource "aws_lambda_function" "disconnect" {
   function_name = "notifi-disconnect"
@@ -47,6 +58,12 @@ resource "aws_lambda_function" "disconnect" {
     entry_point = ["/main", "disconnect"]
   }
   package_type = "Image"
+}
+resource "aws_lambda_permission" "disconnect" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.disconnect.function_name
+  principal     = "apigateway.amazonaws.com"
 }
 
 resource "aws_lambda_function" "message" {
@@ -58,6 +75,12 @@ resource "aws_lambda_function" "message" {
   }
   package_type = "Image"
 }
+resource "aws_lambda_permission" "message" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.message.function_name
+  principal     = "apigateway.amazonaws.com"
+}
 
 resource "aws_lambda_function" "code" {
   function_name = "notifi-code"
@@ -67,6 +90,12 @@ resource "aws_lambda_function" "code" {
     entry_point = ["/main", "code"]
   }
   package_type = "Image"
+}
+resource "aws_lambda_permission" "code" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.code.function_name
+  principal     = "apigateway.amazonaws.com"
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
