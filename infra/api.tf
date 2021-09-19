@@ -60,8 +60,8 @@ resource "aws_apigatewayv2_stage" "ws" {
 // HTTP
 resource "aws_apigatewayv2_integration" "api" {
   api_id           = aws_apigatewayv2_api.api.id
-  connection_type  = "INTERNET"
   integration_type = "AWS_PROXY"
+  connection_type  = "INTERNET"
   integration_uri  = aws_lambda_function.api.invoke_arn
 }
 resource "aws_apigatewayv2_route" "api" {
@@ -71,10 +71,10 @@ resource "aws_apigatewayv2_route" "api" {
 }
 
 resource "aws_apigatewayv2_integration" "code" {
-  api_id           = aws_apigatewayv2_api.code.id
-  connection_type  = "INTERNET"
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.code.invoke_arn
+  api_id             = aws_apigatewayv2_api.code.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.code.invoke_arn
 }
 resource "aws_apigatewayv2_route" "code" {
   api_id    = aws_apigatewayv2_api.code.id
