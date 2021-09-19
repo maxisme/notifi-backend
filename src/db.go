@@ -40,7 +40,7 @@ func UpdateItem(db *dynamo.DB, table, key string, item interface{}) error {
 	return t.Update(key, item).Run()
 }
 
-func DeleteItem(db *dynamo.DB, table, keyName, key string) error {
-	t := db.Table(table)
-	return t.Delete(keyName, key).Run()
-}
+//func DeleteItem(db *dynamo.DB, table, keyName, key string) error {
+//	t := db.Table(table)
+//	return t.Delete(keyName, key).Run()
+//}

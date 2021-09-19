@@ -13,29 +13,14 @@ resource "aws_apigatewayv2_api" "http" {
 ////////////////
 // deployment //
 ////////////////
-resource "aws_apigatewayv2_deployment" "develop-api" {
+resource "aws_apigatewayv2_deployment" "api" {
   api_id = aws_apigatewayv2_route.api.api_id
 
   lifecycle {
     create_before_destroy = true
   }
 }
-resource "aws_apigatewayv2_deployment" "production-api" {
-  api_id = aws_apigatewayv2_route.api.api_id
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_apigatewayv2_deployment" "develop-code" {
-  api_id = aws_apigatewayv2_route.code.api_id
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-resource "aws_apigatewayv2_deployment" "production-code" {
+resource "aws_apigatewayv2_deployment" "code" {
   api_id = aws_apigatewayv2_route.code.api_id
 
   lifecycle {
@@ -47,40 +32,24 @@ resource "aws_apigatewayv2_deployment" "production-code" {
 // stages //
 ////////////
 
-resource "aws_apigatewayv2_stage" "develop-api" {
+resource "aws_apigatewayv2_stage" "api" {
   api_id        = aws_apigatewayv2_api.http.id
-  name          = "develop-api"
-  deployment_id = aws_apigatewayv2_deployment.develop-api.id
+  name          = "api"
+  deployment_id = aws_apigatewayv2_deployment.api.id
+  auto_deploy = true
 }
 
-resource "aws_apigatewayv2_stage" "production-api" {
+resource "aws_apigatewayv2_stage" "code" {
   api_id        = aws_apigatewayv2_api.http.id
-  name          = "production-api"
-  deployment_id = aws_apigatewayv2_deployment.production-api.id
+  name          = "code"
+  deployment_id = aws_apigatewayv2_deployment.code.id
+  auto_deploy = true
 }
 
-resource "aws_apigatewayv2_stage" "develop-code" {
-  api_id        = aws_apigatewayv2_api.http.id
-  name          = "develop-code"
-  deployment_id = aws_apigatewayv2_deployment.develop-code.id
-}
-
-resource "aws_apigatewayv2_stage" "production-code" {
-  api_id        = aws_apigatewayv2_api.http.id
-  name          = "production-code"
-  deployment_id = aws_apigatewayv2_deployment.production-code.id
-}
-
-resource "aws_apigatewayv2_stage" "develop-ws" {
-  api_id        = aws_apigatewayv2_api.ws.id
-  name          = "develop-ws"
-  auto_deploy   = true
-  deployment_id = ""
-}
-
-resource "aws_apigatewayv2_stage" "production-ws" {
+resource "aws_apigatewayv2_stage" "ws" {
   api_id = aws_apigatewayv2_api.ws.id
-  name   = "production-ws"
+  name   = "ws"
+  auto_deploy = true
 }
 
 //////////////////
@@ -111,7 +80,7 @@ resource "aws_apigatewayv2_route" "code" {
   target    = "integrations/${aws_apigatewayv2_integration.code.id}"
 }
 
-// WS
+// Web Socket
 resource "aws_apigatewayv2_integration" "message" {
   api_id                    = aws_apigatewayv2_api.ws.id
   integration_type          = "AWS"
