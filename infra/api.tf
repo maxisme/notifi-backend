@@ -4,8 +4,13 @@ resource "aws_apigatewayv2_api" "ws" {
   route_selection_expression = "$request.body.action"
 }
 
-resource "aws_apigatewayv2_api" "http" {
-  name          = "notifi-http"
+resource "aws_apigatewayv2_api" "code" {
+  name          = "notifi-code"
+  protocol_type = "HTTP"
+}
+
+resource "aws_apigatewayv2_api" "api" {
+  name          = "notifi-api"
   protocol_type = "HTTP"
 }
 
@@ -33,23 +38,20 @@ resource "aws_apigatewayv2_deployment" "code" {
 ////////////
 
 resource "aws_apigatewayv2_stage" "api" {
-  api_id        = aws_apigatewayv2_api.http.id
+  api_id        = aws_apigatewayv2_api.api.id
   name          = "api"
   deployment_id = aws_apigatewayv2_deployment.api.id
-  auto_deploy   = true
 }
 
 resource "aws_apigatewayv2_stage" "code" {
-  api_id        = aws_apigatewayv2_api.http.id
+  api_id        = aws_apigatewayv2_api.code.id
   name          = "code"
   deployment_id = aws_apigatewayv2_deployment.code.id
-  auto_deploy   = true
 }
 
 resource "aws_apigatewayv2_stage" "ws" {
   api_id      = aws_apigatewayv2_api.ws.id
   name        = "ws"
-  auto_deploy = true
 }
 
 //////////////////
@@ -57,26 +59,26 @@ resource "aws_apigatewayv2_stage" "ws" {
 //////////////////
 // HTTP
 resource "aws_apigatewayv2_integration" "api" {
-  api_id           = aws_apigatewayv2_api.http.id
+  api_id           = aws_apigatewayv2_api.api.id
   connection_type  = "INTERNET"
   integration_type = "AWS_PROXY"
   integration_uri  = aws_lambda_function.api.invoke_arn
 }
 resource "aws_apigatewayv2_route" "api" {
-  api_id    = aws_apigatewayv2_api.http.id
+  api_id    = aws_apigatewayv2_api.api.id
   route_key = "ANY /api"
   target    = "integrations/${aws_apigatewayv2_integration.api.id}"
 }
 
 resource "aws_apigatewayv2_integration" "code" {
-  api_id           = aws_apigatewayv2_api.http.id
+  api_id           = aws_apigatewayv2_api.code.id
   connection_type  = "INTERNET"
   integration_type = "AWS_PROXY"
   integration_uri  = aws_lambda_function.code.invoke_arn
 }
 resource "aws_apigatewayv2_route" "code" {
-  api_id    = aws_apigatewayv2_api.http.id
-  route_key = "ANY /code"
+  api_id    = aws_apigatewayv2_api.code.id
+  route_key = "POST /code"
   target    = "integrations/${aws_apigatewayv2_integration.code.id}"
 }
 
