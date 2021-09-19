@@ -9,10 +9,6 @@ import (
 )
 
 func HandleCode(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if r.HTTPMethod != "POST" {
-		return WriteError(fmt.Errorf("Method not allowed"), http.StatusBadRequest)
-	}
-
 	// create PostUser struct
 	PostUser := User{
 		UUID: r.StageVariables["UUID"],
