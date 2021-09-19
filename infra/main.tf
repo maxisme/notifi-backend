@@ -5,6 +5,13 @@ terraform {
       version = "~> 3.44"
     }
   }
+  backend "remote" {
+    hostname = "app.terraform.io"
+    organization = "notifi"
+    workspaces {
+      name = "github-actions"
+    }
+  }
 }
 
 provider "aws" {
