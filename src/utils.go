@@ -8,10 +8,8 @@ import (
 	awscreds "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
-	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/guregu/dynamo"
 	"net/http"
-	"time"
 )
 
 const (
@@ -21,13 +19,13 @@ const (
 	Region             = "YOUR_REGION"
 )
 
-func NewDynamoDBSession() *dynamodb.DynamoDB {
-	sess, _ := session.NewSession(&aws.Config{
-		Region:      aws.String(Region),
-		Credentials: awscreds.NewStaticCredentials(AccessKeyID, SecretAccessKey, ""),
-	})
-	return dynamodb.New(sess)
-}
+//func NewDynamoDBSession() *dynamodb.DynamoDB {
+//	sess, _ := session.NewSession(&aws.Config{
+//		Region:      aws.String(Region),
+//		Credentials: awscreds.NewStaticCredentials(AccessKeyID, SecretAccessKey, ""),
+//	})
+//	return dynamodb.New(sess)
+//}
 
 func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
 	sess, _ := session.NewSession(&aws.Config{
@@ -51,22 +49,22 @@ func WriteSuccess() (events.APIGatewayProxyResponse, error) {
 	}, nil
 }
 
-const rfc2822 = "Mon, 28 Jan 2013 14:30:00 +0500"
-
-type GitHubResponse struct {
-	TagName     string    `json:"tag_name"`
-	Name        string    `json:"name"`
-	Prerelease  bool      `json:"prerelease"`
-	Draft       bool      `json:"draft"`
-	CreatedAt   time.Time `json:"created_at"`
-	PublishedAt time.Time `json:"published_at"`
-	Assets      []struct {
-		Name               string `json:"name"`
-		Size               int    `json:"size"`
-		BrowserDownloadURL string `json:"browser_download_url"`
-	} `json:"assets"`
-	Body string `json:"body"`
-}
+//const rfc2822 = "Mon, 28 Jan 2013 14:30:00 +0500"
+//
+//type GitHubResponse struct {
+//	TagName     string    `json:"tag_name"`
+//	Name        string    `json:"name"`
+//	Prerelease  bool      `json:"prerelease"`
+//	Draft       bool      `json:"draft"`
+//	CreatedAt   time.Time `json:"created_at"`
+//	PublishedAt time.Time `json:"published_at"`
+//	Assets      []struct {
+//		Name               string `json:"name"`
+//		Size               int    `json:"size"`
+//		BrowserDownloadURL string `json:"browser_download_url"`
+//	} `json:"assets"`
+//	Body string `json:"body"`
+//}
 
 //// RequiredEnvs verifies envKeys all have values
 //func RequiredEnvs(envKeys []string) error {

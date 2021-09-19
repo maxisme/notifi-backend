@@ -58,16 +58,16 @@ jobs:
           docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t $tag .
           docker push $tag
 
-  deploy:
-    name: Deploy
-    needs: build
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: azure/setup-helm@v1
-      - uses: actions/checkout@master
-        with:
-          fetch-depth: '0'
-      - name: Upgrade helm
-        run: |
-          # TODO
+#  deploy:
+#    name: Deploy
+#    needs: build
+#    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: azure/setup-helm@v1
+#      - uses: actions/checkout@master
+#        with:
+#          fetch-depth: '0'
+#      - name: Upgrade helm
+#        run: |
+#          # TODO

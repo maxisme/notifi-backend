@@ -5,4 +5,7 @@ resource "aws_ecr_repository" "notifi" {
 
 data "aws_ecr_repository" "notifi" {
   name = "notifi"
+  depends_on = [
+    aws_ecr_repository.notifi,
+  ]
 }
