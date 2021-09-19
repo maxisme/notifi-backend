@@ -81,5 +81,5 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	return WriteSuccess()
+	return WriteEmptySuccess()
 }

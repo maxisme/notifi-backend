@@ -3,10 +3,14 @@ package main
 import (
 	"context"
 	"github.com/aws/aws-lambda-go/events"
+	"net/http"
 )
 
 func HandleCode(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	return WriteSuccess()
+	return events.APIGatewayProxyResponse{
+		StatusCode: http.StatusOK,
+		Body:       "hi",
+	}, nil
 	//if r.HTTPMethod != "POST" {
 	//	return WriteError(fmt.Errorf("Method not allowed"), http.StatusBadRequest)
 	//}

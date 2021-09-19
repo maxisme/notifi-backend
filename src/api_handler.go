@@ -38,7 +38,7 @@ func HandleApi(ctx context.Context, r events.APIGatewayProxyRequest) (events.API
 	// increase notification count
 	err = IncreaseNotificationCnt(db, notification)
 	if err != nil {
-		return WriteSuccess()
+		return WriteEmptySuccess()
 	}
 
 	// set time
@@ -83,5 +83,5 @@ func HandleApi(ctx context.Context, r events.APIGatewayProxyRequest) (events.API
 		}
 	}
 
-	return WriteSuccess()
+	return WriteEmptySuccess()
 }

@@ -43,7 +43,7 @@ func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
 	}, err
 }
 
-func WriteSuccess() (events.APIGatewayProxyResponse, error) {
+func WriteEmptySuccess() (events.APIGatewayProxyResponse, error) {
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
 	}, nil

@@ -24,7 +24,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		return WriteSuccess()
+		return WriteEmptySuccess()
 	}
 
 	var uuids []string
@@ -46,5 +46,5 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	return WriteSuccess()
+	return WriteEmptySuccess()
 }
