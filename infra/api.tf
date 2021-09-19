@@ -36,19 +36,19 @@ resource "aws_apigatewayv2_stage" "api" {
   api_id        = aws_apigatewayv2_api.http.id
   name          = "api"
   deployment_id = aws_apigatewayv2_deployment.api.id
-  auto_deploy = true
+  auto_deploy   = true
 }
 
 resource "aws_apigatewayv2_stage" "code" {
   api_id        = aws_apigatewayv2_api.http.id
   name          = "code"
   deployment_id = aws_apigatewayv2_deployment.code.id
-  auto_deploy = true
+  auto_deploy   = true
 }
 
 resource "aws_apigatewayv2_stage" "ws" {
-  api_id = aws_apigatewayv2_api.ws.id
-  name   = "ws"
+  api_id      = aws_apigatewayv2_api.ws.id
+  name        = "ws"
   auto_deploy = true
 }
 

@@ -1,4 +1,4 @@
 variable "docker_tag" {
-  type = string
+  type    = string
   default = "latest"
 }
