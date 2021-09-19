@@ -6,7 +6,7 @@ terraform {
     }
   }
   backend "remote" {
-    hostname = "app.terraform.io"
+    hostname     = "app.terraform.io"
     organization = "notifi"
     workspaces {
       name = "github-actions"
