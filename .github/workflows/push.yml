@@ -26,18 +26,16 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
-
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
-
       - name: Build, tag, and push image to Amazon ECR
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          tag="$ECR_REGISTRY/notifi:${{ github.sha }}"
-          docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t $tag -t "$ECR_REGISTRY/notifi:latest" .
+          docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$ECR_REGISTRY/notifi:latest" .
           docker push $tag
+          aws lambda update-function-code --function-name "notifi-code" --image-uri 134489070775.dkr.ecr.us-east-1.amazonaws.com/notifi:latest
 
   terraform:
     name: Run Terraform
