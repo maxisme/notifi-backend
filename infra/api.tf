@@ -50,8 +50,8 @@ resource "aws_apigatewayv2_stage" "code" {
 }
 
 resource "aws_apigatewayv2_stage" "ws" {
-  api_id      = aws_apigatewayv2_api.ws.id
-  name        = "ws"
+  api_id = aws_apigatewayv2_api.ws.id
+  name   = "ws"
 }
 
 //////////////////
