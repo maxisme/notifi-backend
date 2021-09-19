@@ -24,5 +24,5 @@ func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketPro
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	return WriteSuccess()
+	return WriteEmptySuccess()
 }
