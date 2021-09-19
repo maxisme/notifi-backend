@@ -9,7 +9,7 @@ import (
 func HandleCode(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       "hi2",
+		Body:       "hi3",
 	}, nil
 	//if r.HTTPMethod != "POST" {
 	//	return WriteError(fmt.Errorf("Method not allowed"), http.StatusBadRequest)
