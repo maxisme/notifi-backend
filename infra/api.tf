@@ -42,7 +42,7 @@ resource "aws_apigatewayv2_integration" "http" {
   api_id             = aws_apigatewayv2_api.http.id
   integration_type   = "AWS_PROXY"
   integration_method = "POST"
-  integration_uri    = aws_lambda_function.code.invoke_arn
+  integration_uri    = aws_lambda_function.http.invoke_arn
 }
 resource "aws_apigatewayv2_route" "http" {
   api_id    = aws_apigatewayv2_api.http.id
