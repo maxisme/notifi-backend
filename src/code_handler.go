@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	f "github.com/awslabs/aws-lambda-go-api-proxy/handlerfunc"
 	"net/http"
 )
 
 func HandleCode(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	ad := f.New(nil)
+	ra, _ := ad.ProxyEventToHTTPRequest(r)
 	return events.APIGatewayProxyResponse{
 		StatusCode: http.StatusOK,
-		Body:       fmt.Sprintf("%#v", r),
+		Body:       ra.FormValue("foo"),
 	}, nil
 	//// create PostUser struct
 	//PostUser := User{
