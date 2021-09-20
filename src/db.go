@@ -7,10 +7,9 @@ import (
 )
 
 func GetDB() (*dynamo.DB, error) {
-	sesh, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
+	sesh := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 	return dynamo.New(sesh, &aws.Config{Region: aws.String("us-east-1")}), nil
 }
 
