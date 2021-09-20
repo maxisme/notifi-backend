@@ -7,9 +7,12 @@ require (
 	github.com/aws/aws-lambda-go v1.24.0
 	github.com/aws/aws-sdk-go v1.38.55
 	github.com/awslabs/aws-lambda-go-api-proxy v0.11.0
+	github.com/gin-gonic/gin v1.6.3
+	github.com/go-chi/chi v1.5.4
 	github.com/go-errors/errors v1.4.0
 	github.com/google/uuid v1.2.0
 	github.com/guregu/dynamo v1.10.4
+	github.com/iris-contrib/schema v0.0.1
 	github.com/satori/go.uuid v1.2.0
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420 // indirect
