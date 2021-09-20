@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"os"
 )
 
@@ -15,6 +16,7 @@ func init() {
 	r := chi.NewRouter()
 	r.HandleFunc("/prod/code", HandleCode)
 	r.HandleFunc("/prod/api", HandleApi)
+	r.Use(middleware.Recoverer)
 	chiLambda = chiadapter.New(r)
 }
 
