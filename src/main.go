@@ -13,8 +13,8 @@ var chiLambda *chiadapter.ChiLambda
 
 func init() {
 	r := chi.NewRouter()
-	r.HandleFunc("*/code", HandleCode)
-	r.HandleFunc("*/api", HandleApi)
+	r.HandleFunc("/prod/code", HandleCode)
+	r.HandleFunc("/prod/api", HandleApi)
 	chiLambda = chiadapter.New(r)
 }
 
