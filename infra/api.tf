@@ -12,9 +12,14 @@ resource "aws_apigatewayv2_api" "http" {
 ////////////////
 // deployment //
 ////////////////
-resource "aws_apigatewayv2_deployment" "http" {
-  api_id = aws_apigatewayv2_route.http.api_id
-
+resource "aws_apigatewayv2_deployment" "api" {
+  api_id = aws_apigatewayv2_route.api.api_id
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+resource "aws_apigatewayv2_deployment" "code" {
+  api_id = aws_apigatewayv2_route.code.api_id
   lifecycle {
     create_before_destroy = true
   }
@@ -44,9 +49,14 @@ resource "aws_apigatewayv2_integration" "http" {
   integration_method = "POST"
   integration_uri    = aws_lambda_function.http.invoke_arn
 }
-resource "aws_apigatewayv2_route" "http" {
+resource "aws_apigatewayv2_route" "code" {
   api_id    = aws_apigatewayv2_api.http.id
-  route_key = "$default"
+  route_key = "POST /code"
+  target    = "integrations/${aws_apigatewayv2_integration.http.id}"
+}
+resource "aws_apigatewayv2_route" "api" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "ANY /api"
   target    = "integrations/${aws_apigatewayv2_integration.http.id}"
 }
 

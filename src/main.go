@@ -11,13 +11,16 @@ import (
 
 var chiLambda *chiadapter.ChiLambda
 
+func init() {
+	r := chi.NewRouter()
+	r.HandleFunc("/code", HandleCode)
+	r.HandleFunc("/api", HandleApi)
+	chiLambda = chiadapter.New(r)
+}
+
 func main() {
 	switch arg := os.Args[1]; arg {
 	case "http":
-		r := chi.NewRouter()
-		r.HandleFunc("/code", HandleCode)
-		r.HandleFunc("/api", HandleApi)
-		chiLambda = chiadapter.New(r)
 		lambda.Start(HttpHandler)
 	case "connect":
 		lambda.Start(HandleConnect)

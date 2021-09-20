@@ -67,7 +67,7 @@ resource "aws_lambda_permission" "message" {
 }
 
 resource "aws_lambda_function" "http" {
-  function_name = "notifi-code"
+  function_name = "http"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
   image_config {
