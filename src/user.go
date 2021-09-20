@@ -43,8 +43,8 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	result, _ := GetItem(db, UserTable, "uuid", u.UUID)
-	DBUser := result.(User)
-	if len(DBUser.UUID) > 0 {
+	DBUser, ok := result.(User)
+	if ok && len(DBUser.UUID) > 0 {
 		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
 			DBUser.Credentials.Key = PassHash(creds.Key)
 			if err := UpdateItem(db, UserTable, DBUser.Credentials.Value, DBUser); err != nil {
@@ -64,7 +64,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	isNewUser := true
-	if len(DBUser.Credentials.Value) > 0 {
+	if ok && len(DBUser.Credentials.Value) > 0 {
 		// UUID already exists
 		if len(u.Credentials.Key) > 0 && IsValidCredentials(u.Credentials.Value) {
 			// If client passes current details they are asking for new Credentials.
