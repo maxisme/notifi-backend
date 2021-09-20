@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/guregu/dynamo"
 	"net/http"
 	"strconv"
@@ -155,4 +156,13 @@ func IncreaseNotificationCnt(db *dynamo.DB, n Notification) error {
 
 	updateUserQuery := t.Update(n.Credentials, u)
 	return wrtx.Update(updateUserQuery).Run()
+}
+
+// Init set UUID and time
+func (n *Notification) Init() {
+	const notificationTimeLayout = "2006-01-02 15:04:05"
+
+	loc, _ := time.LoadLocation("UTC")
+	n.Time = time.Now().In(loc).Format(notificationTimeLayout)
+	n.UUID = uuid.New().String()
 }

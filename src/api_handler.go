@@ -1,60 +1,60 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/appleboy/go-fcm"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/google/uuid"
+	"github.com/iris-contrib/schema"
 	"net/http"
 	"os"
-	"time"
 )
 
-const NotificationTimeLayout = "2006-01-02 15:04:05"
-
-func HandleApi(ctx context.Context, r events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if r.HTTPMethod != "POST" && r.HTTPMethod != "GET" {
-		return WriteError(errors.New("Method not allowed"), http.StatusBadRequest)
+func HandleApi(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" && r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	var notification Notification
-	if err := json.Unmarshal([]byte(r.Body), &notification); err != nil {
-		return WriteError(err, http.StatusBadRequest)
+	if err := schema.NewDecoder().Decode(&notification, r.Form); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	if err := notification.Validate(); err != nil {
-		return WriteError(err, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	// connect to db
 	db, err := GetDB()
 	if err != nil {
-		return WriteError(err, http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	// increase notification count
 	err = IncreaseNotificationCnt(db, notification)
 	if err != nil {
-		return WriteEmptySuccess()
+		return
 	}
 
-	// set time
-	loc, _ := time.LoadLocation("UTC")
-	notification.Time = time.Now().In(loc).Format(NotificationTimeLayout)
-
-	notification.UUID = uuid.New().String()
+	notification.Init()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})
 	if err != nil {
-		return WriteError(err, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	user, err := GetItem(db, UserTable, "credentials", Hash(notification.Credentials))
 	u := user.(User)
 	if err != nil {
-		return WriteError(err, http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	if len(u.FirebaseToken) > 0 {
@@ -79,9 +79,8 @@ func HandleApi(ctx context.Context, r events.APIGatewayProxyRequest) (events.API
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
-			return WriteError(err, http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 	}
-
-	return WriteEmptySuccess()
 }
