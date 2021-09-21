@@ -43,12 +43,12 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, err := GetItem(db, UserTable, "device_uuid", u.UUID)
+	var DBUser User
+	err := db.Table(UserTable).Get("device_uuid", u.UUID).One(&DBUser)
 	if err != nil {
 		return Credentials{}, fmt.Errorf("device_UUID = %s, %s", u.UUID, err.Error())
 	}
-	DBUser, uuidExists := result.(*User)
-	if uuidExists {
+	if len(DBUser.UUID) > 0 {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
 			DBUser.CredentialsKey = PassHash(creds.Key)
 			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
@@ -68,7 +68,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	isNewUser := true
-	if uuidExists && len(DBUser.Credentials) > 0 {
+	if len(DBUser.Credentials) > 0 {
 		// UUID already exists
 		if len(u.CredentialsKey) > 0 && IsValidCredentials(u.Credentials) {
 			// If client passes current details they are asking for new Credentials.
@@ -81,7 +81,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		}
 	}
 
-	if isNewUser && uuidExists {
+	if isNewUser && len(DBUser.UUID) > 0 {
 		return Credentials{}, errors.New("UUID already used")
 	}
 
@@ -104,12 +104,9 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 
 // Verify verifies a u User s credentials
 func (u User) Verify(db *dynamo.DB) bool {
-	result, err := GetItem(db, UserTable, "credentials", u.Credentials)
+	var user User
+	err := db.Table(UserTable).Get("device_uuid", u.UUID).One(&user)
 	if err != nil {
-		return false
-	}
-	user, ok := result.(User)
-	if !ok {
 		return false
 	}
 	isValidKey := VerifyPassHash(user.CredentialsKey, u.CredentialsKey)
