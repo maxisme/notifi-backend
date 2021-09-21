@@ -8,16 +8,16 @@ import (
 
 // User structure
 type User struct {
-	Credentials     string    `dynamo:"credentials,hash"`
-	CredentialsKey  string    `dynamo:"credential_key"`
+	AppVersion      string    `dynamo:"app_version"`
 	ConnectionID    string    `dynamo:"connection_id,allowempty"`
 	Created         time.Time `dynamo:"created_dttm"`
-	LastLogin       time.Time `dynamo:"last_login_dttm"`
-	AppVersion      string    `dynamo:"app_version"`
-	NotificationCnt int       `dynamo:"notification_cnt"`
-	UUID            string    `dynamo:"device_uuid"`
+	Credentials     string    `dynamo:"credentials,hash"`
+	CredentialsKey  string    `dynamo:"credential_key"`
 	Device          string    `dynamo:"device_info"`
 	FirebaseToken   string    `dynamo:"firebase_token,allowempty"`
+	LastLogin       time.Time `dynamo:"last_login_dttm"`
+	NotificationCnt int       `dynamo:"notification_cnt"`
+	UUID            string    `dynamo:"device_uuid,hash"`
 }
 
 // Credentials structure
