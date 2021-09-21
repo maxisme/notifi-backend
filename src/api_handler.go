@@ -37,8 +37,14 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var user User
+	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).Index("credentials").One(&user)
+	if err != nil {
+		return
+	}
+
 	// increase notification count
-	err = IncreaseNotificationCnt(db, notification)
+	err = IncreaseNotificationCnt(db, user.UUID)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
@@ -46,13 +52,6 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 
 	notification.Init()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	var user User
-	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).One(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
