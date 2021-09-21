@@ -27,6 +27,8 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	PostUser.UUID = Hash(PostUser.UUID)
+
 	db, err := GetDB()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
