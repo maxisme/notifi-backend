@@ -42,7 +42,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, _ := GetItem(db, UserTable, "device_uuid", u.UUID)
+	result, _ := GetItem(db, UserTable, u.UUID, "device_uuid")
 	DBUser, uuidExists := result.(User)
 	if uuidExists {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
