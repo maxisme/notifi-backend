@@ -145,7 +145,7 @@ func IncreaseNotificationCnt(db *dynamo.DB, n Notification) error {
 	rtx := db.GetTx()
 
 	var u User
-	getUserQuery := t.Get("credentials", n.Credentials)
+	getUserQuery := t.Get("credentials", Hash(n.Credentials))
 	err := rtx.GetOne(getUserQuery, u).Run()
 	if err != nil {
 		// likely means there is no such user

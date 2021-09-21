@@ -23,10 +23,10 @@ resource "aws_dynamodb_table" "user-table" {
 resource "aws_dynamodb_table" "notification-table" {
   name         = "notification"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "uuid"
+  hash_key     = "credentials"
 
   attribute {
-    name = "uuid"
+    name = "credentials"
     type = "S"
   }
 }
