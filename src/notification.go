@@ -154,7 +154,7 @@ func IncreaseNotificationCnt(db *dynamo.DB, n Notification) error {
 
 	u.NotificationCnt = u.NotificationCnt + 1
 
-	updateUserQuery := t.Update(n.Credentials, u)
+	updateUserQuery := t.Update(n.UUID, u)
 	return wrtx.Update(updateUserQuery).Run()
 }
 
