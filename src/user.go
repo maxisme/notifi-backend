@@ -43,7 +43,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, err := GetItem(db, UserTable, u.UUID, "device_uuid")
+	result, err := GetItem(db, UserTable, "device_uuid", u.UUID)
 	if err != nil {
 		return Credentials{}, fmt.Errorf("device_UUID = %s, %s", u.UUID, err.Error())
 	}
