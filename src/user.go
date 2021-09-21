@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/guregu/dynamo"
 	"time"
@@ -42,7 +43,10 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, _ := GetItem(db, UserTable, "device_UUID", u.UUID)
+	result, err := GetItem(db, UserTable, "device_UUID", u.UUID)
+	if err != nil {
+		return Credentials{}, fmt.Errorf("device_UUID = %s", u.UUID)
+	}
 	DBUser, uuidExists := result.(User)
 	if uuidExists {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
