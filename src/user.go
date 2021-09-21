@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/guregu/dynamo"
 	"time"
@@ -44,17 +43,13 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	var DBUser User
-	err := db.Table(UserTable).Get("device_uuid", u.UUID).One(&DBUser)
-	if err != nil {
-		return Credentials{}, fmt.Errorf("device_UUID = %s, %s", u.UUID, err.Error())
-	}
+	_ = db.Table(UserTable).Get("device_uuid", u.UUID).One(&DBUser)
 	if len(DBUser.UUID) > 0 {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
 			DBUser.CredentialsKey = PassHash(creds.Key)
 			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
 				return Credentials{}, err
 			}
-
 			creds.Value = ""
 			return creds, nil
 		} else if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) == 0 {
