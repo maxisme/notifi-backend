@@ -51,16 +51,16 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := GetItem(db, UserTable, "credentials", Hash(notification.Credentials))
-	u := user.(User)
+	var user User
+	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).One(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	if len(u.FirebaseToken) > 0 {
+	if len(user.FirebaseToken) > 0 {
 		msg := &fcm.Message{
-			To: u.FirebaseToken,
+			To: user.FirebaseToken,
 			Notification: &fcm.Notification{
 				Title: notification.Title,
 				Body:  notification.Message,
@@ -76,7 +76,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = SendWsMessage(NewAPIGatewaySession(), u.ConnectionID, notificationMsgBytes)
+	err = SendWsMessage(NewAPIGatewaySession(), user.ConnectionID, notificationMsgBytes)
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
