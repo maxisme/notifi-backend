@@ -47,7 +47,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	// increase notification count
 	err = IncreaseNotificationCnt(db, user.UUID)
 	if err != nil {
-		fmt.Println(err.Error())
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
