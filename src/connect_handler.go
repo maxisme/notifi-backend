@@ -18,14 +18,12 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	user := User{
-		Credentials: Credentials{
-			Value: r.Headers["Credentials"],
-			Key:   r.Headers["Key"],
-		},
-		UUID:         r.Headers["Uuid"],
-		AppVersion:   r.Headers["Version"],
-		ConnectionID: r.RequestContext.ConnectionID,
-		LastLogin:    time.Now(),
+		Credentials:    r.Headers["Credentials"],
+		CredentialsKey: r.Headers["Key"],
+		UUID:           r.Headers["Uuid"],
+		AppVersion:     r.Headers["Version"],
+		ConnectionID:   r.RequestContext.ConnectionID,
+		LastLogin:      time.Now(),
 	}
 
 	firebaseToken, ok := r.Headers["Firebase-Token"]
@@ -38,7 +36,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(errors.New("Invalid UUID"), http.StatusBadRequest)
 	} else if !IsValidVersion(user.AppVersion) {
 		return WriteError(fmt.Errorf("Invalid Version %v", user.AppVersion), http.StatusBadRequest)
-	} else if !IsValidCredentials(user.Credentials.Value) {
+	} else if !IsValidCredentials(user.Credentials) {
 		return WriteError(fmt.Errorf("Invalid Credentials"), http.StatusForbidden)
 	}
 
@@ -51,9 +49,9 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	DBUser := result.(User)
 	var errorCode = 0
 	var errorMsg = ""
-	if len(DBUser.Credentials.Key) == 0 {
+	if len(DBUser.CredentialsKey) == 0 {
 		errorCode = RequestNewUserCode
-		if len(DBUser.Credentials.Value) == 0 {
+		if len(DBUser.Credentials) == 0 {
 			errorMsg = "No credentials or key for: " + user.UUID
 		} else {
 			errorMsg = "No credential key for: " + user.UUID
@@ -67,7 +65,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	// store user info in db
-	if err := UpdateItem(db, UserTable, user.Credentials.Value, user); err != nil {
+	if err := UpdateItem(db, UserTable, user.Credentials, user); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
@@ -77,7 +75,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	// send all stored notifications from db
-	if err := SendStoredMessages(db, Hash(user.Credentials.Value), r.RequestContext.ConnectionID); err != nil {
+	if err := SendStoredMessages(db, Hash(user.Credentials), r.RequestContext.ConnectionID); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 

@@ -13,7 +13,7 @@ import (
 
 // Notification structure
 type Notification struct {
-	Credentials credentials
+	Credentials string
 	UUID        string `json:"UUID"`
 	Time        string `json:"time"`
 	Title       string `json:"title" `
