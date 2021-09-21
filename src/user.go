@@ -45,7 +45,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 
 	result, err := GetItem(db, UserTable, u.UUID, "device_uuid")
 	if err != nil {
-		return Credentials{}, fmt.Errorf("device_UUID = %s", u.UUID)
+		return Credentials{}, fmt.Errorf("device_UUID = %s, %s", u.UUID, err.Error())
 	}
 	DBUser, uuidExists := result.(User)
 	if uuidExists {
