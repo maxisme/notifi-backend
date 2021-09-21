@@ -19,7 +19,7 @@ func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketPro
 	user := res.(User)
 	user.ConnectionID = ""
 
-	err = UpdateItem(db, UserTable, user.Credentials.Value, user)
+	err = UpdateItem(db, UserTable, user.Credentials, user)
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}

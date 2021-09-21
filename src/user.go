@@ -8,7 +8,8 @@ import (
 
 // User structure
 type User struct {
-	Credentials     Credentials
+	Credentials     string    `dynamo:"credentials,hash"`
+	CredentialsKey  string    `dynamo:"credential_key"`
 	ConnectionID    string    `dynamo:"connection_id,allowempty"`
 	Created         time.Time `dynamo:"created_dttm"`
 	LastLogin       time.Time `dynamo:"last_login_dttm"`
@@ -20,10 +21,9 @@ type User struct {
 }
 
 // Credentials structure
-type credentials = string
 type Credentials struct {
-	Value credentials `json:"credentials" dynamo:"credentials,hash"`
-	Key   string      `json:"credential_key" dynamo:"credential_key"`
+	Value string `json:"credentials"`
+	Key   string `json:"credential_key"`
 }
 
 const (
@@ -45,18 +45,18 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	result, _ := GetItem(db, UserTable, "uuid", u.UUID)
 	DBUser, ok := result.(User)
 	if ok && len(DBUser.UUID) > 0 {
-		if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) > 0 {
-			DBUser.Credentials.Key = PassHash(creds.Key)
-			if err := UpdateItem(db, UserTable, DBUser.Credentials.Value, DBUser); err != nil {
+		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
+			DBUser.CredentialsKey = PassHash(creds.Key)
+			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
 				return Credentials{}, err
 			}
 
 			creds.Value = ""
 			return creds, nil
-		} else if len(DBUser.Credentials.Key) == 0 && len(DBUser.Credentials.Value) == 0 {
-			DBUser.Credentials.Key = PassHash(creds.Key)
-			DBUser.Credentials.Value = Hash(creds.Value)
-			if err := UpdateItem(db, UserTable, DBUser.Credentials.Value, DBUser); err != nil {
+		} else if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) == 0 {
+			DBUser.CredentialsKey = PassHash(creds.Key)
+			DBUser.Credentials = Hash(creds.Value)
+			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
 				return Credentials{}, err
 			}
 			return creds, nil
@@ -64,9 +64,9 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	isNewUser := true
-	if ok && len(DBUser.Credentials.Value) > 0 {
+	if ok && len(DBUser.Credentials) > 0 {
 		// UUID already exists
-		if len(u.Credentials.Key) > 0 && IsValidCredentials(u.Credentials.Value) {
+		if len(u.CredentialsKey) > 0 && IsValidCredentials(u.Credentials) {
 			// If client passes current details they are asking for new Credentials.
 			// Verify the Credentials passed are valid
 			if u.Verify(db) {
@@ -77,8 +77,8 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		}
 	}
 
-	u.Credentials.Value = Hash(creds.Value)
-	u.Credentials.Key = PassHash(creds.Key)
+	u.Credentials = Hash(creds.Value)
+	u.CredentialsKey = PassHash(creds.Key)
 
 	if isNewUser {
 		// create new user
@@ -87,7 +87,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		}
 	} else {
 		// update user
-		if err := UpdateItem(db, UserTable, DBUser.Credentials.Value, u); err != nil {
+		if err := UpdateItem(db, UserTable, DBUser.Credentials, u); err != nil {
 			return Credentials{}, err
 		}
 	}
@@ -96,7 +96,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 
 // Verify verifies a u User s credentials
 func (u User) Verify(db *dynamo.DB) bool {
-	result, err := GetItem(db, UserTable, "credentials", u.Credentials.Value)
+	result, err := GetItem(db, UserTable, "credentials", u.Credentials)
 	if err != nil {
 		return false
 	}
@@ -104,7 +104,7 @@ func (u User) Verify(db *dynamo.DB) bool {
 	if !ok {
 		return false
 	}
-	isValidKey := VerifyPassHash(user.Credentials.Key, u.Credentials.Key)
+	isValidKey := VerifyPassHash(user.CredentialsKey, u.CredentialsKey)
 	isValidUUID := user.UUID == Hash(u.UUID)
 	return isValidKey && isValidUUID
 }

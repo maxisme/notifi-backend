@@ -17,11 +17,9 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 		UUID:          r.Form.Get("UUID"),
 		FirebaseToken: r.Form.Get("firebase_token"),
 
-		// if asking for new Credentials
-		Credentials: Credentials{
-			Value: r.Form.Get("current_credentials"),
-			Key:   r.Form.Get("current_credential_key"),
-		},
+		// when asking for new Credentials
+		CredentialsKey: r.Form.Get("current_credential_key"),
+		Credentials:    r.Form.Get("current_credentials"),
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
