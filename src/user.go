@@ -47,7 +47,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	if err != nil {
 		return Credentials{}, fmt.Errorf("device_UUID = %s, %s", u.UUID, err.Error())
 	}
-	DBUser, uuidExists := result.(User)
+	DBUser, uuidExists := result.(*User)
 	if uuidExists {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
 			DBUser.CredentialsKey = PassHash(creds.Key)

@@ -21,17 +21,17 @@ func AddItem(db *dynamo.DB, table string, item interface{}) error {
 func GetItem(db *dynamo.DB, table, keyName, key string) (interface{}, error) {
 	t := db.Table(table)
 
-	var i interface{}
+	var i *interface{}
 	err := t.Get(keyName, key).One(i)
-	return i, err
+	return &i, err
 }
 
 func GetItems(db *dynamo.DB, table, keyName, key string) (interface{}, error) {
 	t := db.Table(table)
 
-	var i interface{}
+	var i *interface{}
 	err := t.Get(keyName, key).All(i)
-	return i, err
+	return &i, err
 }
 
 func UpdateItem(db *dynamo.DB, table, key string, item interface{}) error {
