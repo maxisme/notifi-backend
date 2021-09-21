@@ -77,6 +77,10 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		}
 	}
 
+	if isNewUser && uuidExists {
+		return Credentials{}, errors.New("UUID already used")
+	}
+
 	u.Credentials = Hash(creds.Value)
 	u.CredentialsKey = PassHash(creds.Key)
 
