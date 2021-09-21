@@ -100,7 +100,10 @@ func (u User) Verify(db *dynamo.DB) bool {
 	if err != nil {
 		return false
 	}
-	user := result.(User)
+	user, ok := result.(User)
+	if !ok {
+		return false
+	}
 	isValidKey := VerifyPassHash(user.Credentials.Key, u.Credentials.Key)
 	isValidUUID := user.UUID == Hash(u.UUID)
 	return isValidKey && isValidUUID
