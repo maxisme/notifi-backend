@@ -38,7 +38,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).Index("credentials").One(&user)
+	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).Index("credentials-index").One(&user)
 	if err != nil {
 		fmt.Println(err.Error())
 		return
