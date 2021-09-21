@@ -45,8 +45,11 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	result, _ := GetItem(db, UserTable, "UUID", user.UUID)
-	DBUser := result.(User)
+	var DBUser User
+	err = db.Table(UserTable).Get("device_uuid", user.UUID).One(&DBUser)
+	if err != nil {
+		return WriteError(err, http.StatusInternalServerError)
+	}
 	var errorCode = 0
 	var errorMsg = ""
 	if len(DBUser.CredentialsKey) == 0 {

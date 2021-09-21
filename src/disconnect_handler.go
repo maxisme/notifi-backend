@@ -12,11 +12,11 @@ func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketPro
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	res, err := GetItem(db, UserTable, "ConnectionID", request.RequestContext.ConnectionID)
+	var user User
+	err = db.Table(UserTable).Get("ConnectionID", request.RequestContext.ConnectionID).One(&user)
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
-	user := res.(User)
 	user.ConnectionID = ""
 
 	err = UpdateItem(db, UserTable, user.Credentials, user)

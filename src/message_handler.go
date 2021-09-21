@@ -14,12 +14,12 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
-		result, err := GetItem(db, UserTable, "ConnectionID", r.RequestContext.ConnectionID)
+		var user User
+		err = db.Table(UserTable).Get("ConnectionID", r.RequestContext.ConnectionID).One(&user)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		user := result.(User)
 		if err := SendStoredMessages(db, user.Credentials, r.RequestContext.ConnectionID); err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
