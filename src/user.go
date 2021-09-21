@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/guregu/dynamo"
 	"time"
@@ -16,7 +15,7 @@ type User struct {
 	LastLogin       time.Time `dynamo:"last_login_dttm"`
 	AppVersion      string    `dynamo:"app_version"`
 	NotificationCnt int       `dynamo:"notification_cnt"`
-	UUID            string    `dynamo:"device_UUID"`
+	UUID            string    `dynamo:"device_uuid"`
 	Device          string    `dynamo:"device_info"`
 	FirebaseToken   string    `dynamo:"firebase_token,allowempty"`
 }
@@ -43,10 +42,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	result, err := GetItem(db, UserTable, "device_UUID", u.UUID)
-	if err != nil {
-		return Credentials{}, fmt.Errorf("device_UUID = %s", u.UUID)
-	}
+	result, _ := GetItem(db, UserTable, "device_uuid", u.UUID)
 	DBUser, uuidExists := result.(User)
 	if uuidExists {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {

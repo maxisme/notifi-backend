@@ -1,10 +1,10 @@
 resource "aws_dynamodb_table" "user-table" {
   name         = "user"
   billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "device_UUID"
+  hash_key     = "device_uuid"
 
   attribute {
-    name = "device_UUID"
+    name = "device_uuid"
     type = "S"
   }
 
