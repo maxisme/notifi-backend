@@ -139,23 +139,10 @@ func (n *Notification) Decrypt(encryptionKey []byte) error {
 }
 
 // IncreaseNotificationCnt increases user notification count
-func IncreaseNotificationCnt(db *dynamo.DB, uuid string) error {
+func IncreaseNotificationCnt(db *dynamo.DB, user User) error {
 	table := db.Table(UserTable)
-	wrtx := db.WriteTx()
-	rtx := db.GetTx()
-
-	var user User
-	getUserQuery := table.Get("device_uuid", uuid)
-	err := rtx.GetOne(getUserQuery, &user).Run()
-	if err != nil {
-		// likely means there is no such user
-		return err
-	}
-
 	user.NotificationCnt = user.NotificationCnt + 1
-
-	updateUserQuery := table.Update(uuid, user)
-	return wrtx.Update(updateUserQuery).Run()
+	return table.Update(user.UUID, &user).Run()
 }
 
 // Init set UUID and time

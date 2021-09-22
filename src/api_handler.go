@@ -40,12 +40,12 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	var user User
 	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).Index("credentials-index").One(&user)
 	if err != nil {
-		fmt.Println(err.Error())
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	// increase notification count
-	err = IncreaseNotificationCnt(db, user.UUID)
+	err = IncreaseNotificationCnt(db, user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
