@@ -24,13 +24,19 @@ resource "aws_lambda_function" "connect" {
   image_config {
     entry_point = ["/main", "connect"]
   }
+  environment {
+    variables = {
+      ENCRYPTION_KEY = var.ENCRYPTION_KEY
+    }
+  }
   package_type = "Image"
 }
 resource "aws_lambda_permission" "connect" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.connect.function_name
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
 }
 
 resource "aws_lambda_function" "disconnect" {
@@ -43,10 +49,11 @@ resource "aws_lambda_function" "disconnect" {
   package_type = "Image"
 }
 resource "aws_lambda_permission" "disconnect" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.disconnect.function_name
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
 }
 
 resource "aws_lambda_function" "message" {
@@ -64,10 +71,11 @@ resource "aws_lambda_function" "message" {
   package_type = "Image"
 }
 resource "aws_lambda_permission" "message" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.message.function_name
   principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
 }
 
 resource "aws_lambda_function" "http" {
@@ -84,12 +92,13 @@ resource "aws_lambda_function" "http" {
   }
   package_type = "Image"
 }
-resource "aws_lambda_permission" "code" {
+resource "aws_lambda_permission" "http" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.http.function_name
   principal     = "apigateway.amazonaws.com"
 }
+
 
 resource "aws_iam_role_policy_attachment" "lambda_policy" {
   role       = aws_iam_role.iam_for_lambda.name

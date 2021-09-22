@@ -13,10 +13,6 @@ import (
 const RequestNewUserCode = 551
 
 func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-	if r.HTTPMethod != "GET" {
-		return WriteError(errors.New("Method not allowed"), http.StatusBadRequest)
-	}
-
 	user := User{
 		Credentials:    r.Headers["Credentials"],
 		CredentialsKey: r.Headers["Key"],
