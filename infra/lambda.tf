@@ -56,12 +56,12 @@ resource "aws_lambda_function" "message" {
   image_config {
     entry_point = ["/main", "message"]
   }
-  package_type = "Image"
   environment {
     variables = {
       ENCRYPTION_KEY = var.ENCRYPTION_KEY
     }
   }
+  package_type = "Image"
 }
 resource "aws_lambda_permission" "message" {
   statement_id  = "AllowAPIGatewayInvoke"
