@@ -12,7 +12,7 @@
         "dynamodb:PutItem",
         "dynamodb:UpdateItem"
       ],
-      "Resource": "${table_arn}/*"
+      "Resource": "${table_arn}*"
     }
   ]
 }
