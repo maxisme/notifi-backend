@@ -53,8 +53,7 @@ func (n Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
 		return
 	}
 
-	err = AddItem(db, NotificationTable, n)
-	return
+	return db.Table(NotificationTable).Put(n).Run()
 }
 
 // Validate runs validation on n Notification
