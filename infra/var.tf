@@ -5,5 +5,5 @@ variable "docker_tag" {
 
 # set in https://app.terraform.io/
 variable "ENCRYPTION_KEY" {
-  type    = string
+  type = string
 }
