@@ -76,7 +76,9 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = SendWsMessage(NewAPIGatewaySession(), user.ConnectionID, notificationMsgBytes)
+	var ws Ws
+	_ = db.Table(WsTable).Get("device_uuid", Hash(notification.Credentials)).Index("device_uuid-index").One(&ws)
+	err = SendWsMessage(NewAPIGatewaySession(), ws.ConnectionID, notificationMsgBytes)
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
