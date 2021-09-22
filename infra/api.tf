@@ -28,7 +28,6 @@ resource "aws_apigatewayv2_deployment" "code" {
 ////////////
 // stages //
 ////////////
-
 resource "aws_apigatewayv2_stage" "prod" {
   name        = "prod"
   api_id      = aws_apigatewayv2_api.http.id
