@@ -12,16 +12,12 @@ type User struct {
 	Created         time.Time `dynamo:"created_dttm"`
 	Credentials     string    `dynamo:"credentials,hash"`
 	CredentialsKey  string    `dynamo:"credential_key"`
+	ConnectionID    string    `dynamo:"connection_id,hash"`
 	Device          string    `dynamo:"device_info"`
 	FirebaseToken   string    `dynamo:"firebase_token,allowempty"`
 	LastLogin       time.Time `dynamo:"last_login_dttm"`
 	NotificationCnt int       `dynamo:"notification_cnt"`
 	UUID            string    `dynamo:"device_uuid,hash"`
-}
-
-type Connection struct {
-	ConnectionID string `dynamo:"connection_id,hash"`
-	UUID         string `dynamo:"device_uuid,hash"`
 }
 
 // Credentials structure
@@ -35,7 +31,6 @@ const (
 	credentialKeyLen = 100
 )
 const UserTable = "user"
-const ConnectionTable = "ws"
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store

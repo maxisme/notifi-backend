@@ -30,6 +30,7 @@ const (
 )
 
 const NotificationTable = "notification"
+const notificationTimeLayout = "2006-01-02 15:04:05"
 
 // Store will store n Notification in the database after encrypting the content
 func (n *Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
@@ -147,8 +148,6 @@ func (n *Notification) Decrypt(encryptionKey []byte) error {
 
 // Init set UUID and time
 func (n *Notification) Init() {
-	const notificationTimeLayout = "2006-01-02 15:04:05"
-
 	loc, _ := time.LoadLocation("UTC")
 	n.Time = time.Now().In(loc).Format(notificationTimeLayout)
 	n.UUID = uuid.New().String()

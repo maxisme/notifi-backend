@@ -70,13 +70,6 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	if err := UpdateItem(db, UserTable, user.Credentials, user); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
-	// store ws connection ID
-	if err := AddItem(db, ConnectionTable, Connection{
-		ConnectionID: r.RequestContext.ConnectionID,
-		UUID:         user.UUID,
-	}); err != nil {
-		return WriteError(err, http.StatusInternalServerError)
-	}
 
 	sesh := NewAPIGatewaySession()
 	if err := SendWsMessage(sesh, r.RequestContext.ConnectionID, []byte(".")); err != nil {
