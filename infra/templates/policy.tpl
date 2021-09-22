@@ -3,16 +3,8 @@
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "dynamodb:BatchGetItem",
-        "dynamodb:GetItem",
-        "dynamodb:Query",
-        "dynamodb:Scan",
-        "dynamodb:BatchWriteItem",
-        "dynamodb:PutItem",
-        "dynamodb:UpdateItem"
-      ],
-      "Resource": "${table_arn}*"
+      "Action": "dynamodb:*",
+      "Resource": "${table_arn}/*"
     }
   ]
 }
