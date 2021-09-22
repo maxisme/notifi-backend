@@ -57,6 +57,11 @@ resource "aws_lambda_function" "message" {
     entry_point = ["/main", "message"]
   }
   package_type = "Image"
+  environment {
+    variables = {
+      ENCRYPTION_KEY = var.ENCRYPTION_KEY
+    }
+  }
 }
 resource "aws_lambda_permission" "message" {
   statement_id  = "AllowAPIGatewayInvoke"
@@ -71,6 +76,11 @@ resource "aws_lambda_function" "http" {
   image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
   image_config {
     entry_point = ["/main", "http"]
+  }
+  environment {
+    variables = {
+      ENCRYPTION_KEY = var.ENCRYPTION_KEY
+    }
   }
   package_type = "Image"
 }
