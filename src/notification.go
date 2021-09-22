@@ -32,7 +32,7 @@ const (
 const NotificationTable = "notification"
 
 // Store will store n Notification in the database after encrypting the content
-func (n Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
+func (n *Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
 	n.Title, err = EncryptAES(n.Title, encryptionKey)
 	if err != nil {
 		return
