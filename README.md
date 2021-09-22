@@ -17,7 +17,14 @@
 ## Run linter
 Install https://golangci-lint.run/usage/install/#local-installation
 ```bash
-$ (cd src && golangci-lint run)
+bash pre-commit.sh
+```
+
+## Add pre-commit hook
+
+```bash
+ln -s $(pwd)/pre-commit.sh $(pwd)/.git/hooks/pre-commit
+chmod +x $(pwd)/.git/hooks/pre-commit
 ```
 
 # tokens
