@@ -34,8 +34,9 @@ resource "aws_apigatewayv2_stage" "prod" {
   auto_deploy = true
 }
 resource "aws_apigatewayv2_stage" "ws" {
-  api_id = aws_apigatewayv2_api.ws.id
-  name   = "ws"
+  api_id      = aws_apigatewayv2_api.ws.id
+  name        = "ws"
+  auto_deploy = true
 }
 
 //////////////////
@@ -61,37 +62,33 @@ resource "aws_apigatewayv2_route" "api" {
 
 // Web Socket
 resource "aws_apigatewayv2_integration" "message" {
-  api_id                    = aws_apigatewayv2_api.ws.id
-  integration_type          = "AWS"
-  content_handling_strategy = "CONVERT_TO_TEXT"
-  integration_method        = "POST"
-  integration_uri           = aws_lambda_function.message.invoke_arn
+  api_id           = aws_apigatewayv2_api.ws.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.message.invoke_arn
 }
 resource "aws_apigatewayv2_route" "message" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$default"
+  target    = "integrations/${aws_apigatewayv2_integration.message.id}"
 }
 resource "aws_apigatewayv2_integration" "disconnect" {
-  api_id                    = aws_apigatewayv2_api.ws.id
-  integration_type          = "AWS"
-  content_handling_strategy = "CONVERT_TO_TEXT"
-  integration_method        = "POST"
-  integration_uri           = aws_lambda_function.disconnect.invoke_arn
+  api_id           = aws_apigatewayv2_api.ws.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.disconnect.invoke_arn
 }
 resource "aws_apigatewayv2_route" "disconnect" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$disconnect"
+  target    = "integrations/${aws_apigatewayv2_integration.disconnect.id}"
 }
 
-
 resource "aws_apigatewayv2_integration" "connect" {
-  api_id                    = aws_apigatewayv2_api.ws.id
-  integration_type          = "AWS"
-  content_handling_strategy = "CONVERT_TO_TEXT"
-  integration_method        = "POST"
-  integration_uri           = aws_lambda_function.connect.invoke_arn
+  api_id           = aws_apigatewayv2_api.ws.id
+  integration_type = "AWS_PROXY"
+  integration_uri  = aws_lambda_function.connect.invoke_arn
 }
 resource "aws_apigatewayv2_route" "connect" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$connect"
+  target    = "integrations/${aws_apigatewayv2_integration.connect.id}"
 }
