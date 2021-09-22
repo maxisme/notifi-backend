@@ -14,11 +14,11 @@ import (
 // Notification structure
 type Notification struct {
 	Credentials string `dynamo:"credentials,hash"`
-	Image       string `json:"image" dynamo:"created_dttm,allowempty"`
-	Link        string `json:"link" dynamo:"created_dttm,allowempty"`
-	Message     string `json:"message" dynamo:"created_dttm,allowempty"`
-	Time        string `json:"time" dynamo:"created_dttm"`
-	Title       string `json:"title" dynamo:"created_dttm"`
+	Image       string `json:"image" dynamo:"image,allowempty"`
+	Link        string `json:"link" dynamo:"link,allowempty"`
+	Message     string `json:"message" dynamo:"message,allowempty"`
+	Time        string `json:"time" dynamo:"time"`
+	Title       string `json:"title" dynamo:"title"`
 	UUID        string `json:"UUID" dynamo:"uuid,hash"`
 }
 
