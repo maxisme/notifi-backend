@@ -4,7 +4,7 @@
     {
       "Effect": "Allow",
       "Action": "dynamodb:*",
-      "Resource": "${table_arn}/*"
+      "Resource": "${table_arn}*"
     }
   ]
 }
