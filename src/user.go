@@ -42,7 +42,7 @@ const ConnectionTable = "ws"
 
 func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	// create new credentials
-	creds := Credentials{
+	credentials := Credentials{
 		RandomString(credentialLen),
 		RandomString(credentialKeyLen),
 	}
@@ -51,19 +51,19 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	_ = db.Table(UserTable).Get("device_uuid", u.UUID).One(&DBUser)
 	if len(DBUser.UUID) > 0 {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
-			DBUser.CredentialsKey = PassHash(creds.Key)
+			DBUser.CredentialsKey = PassHash(credentials.Key)
 			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
 				return Credentials{}, err
 			}
-			creds.Value = ""
-			return creds, nil
+			credentials.Value = ""
+			return credentials, nil
 		} else if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) == 0 {
-			DBUser.CredentialsKey = PassHash(creds.Key)
-			DBUser.Credentials = Hash(creds.Value)
+			DBUser.CredentialsKey = PassHash(credentials.Key)
+			DBUser.Credentials = Hash(credentials.Value)
 			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
 				return Credentials{}, err
 			}
-			return creds, nil
+			return credentials, nil
 		}
 	}
 
@@ -85,8 +85,8 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		return Credentials{}, errors.New("UUID already used")
 	}
 
-	u.Credentials = Hash(creds.Value)
-	u.CredentialsKey = PassHash(creds.Key)
+	u.Credentials = Hash(credentials.Value)
+	u.CredentialsKey = PassHash(credentials.Key)
 
 	if isNewUser {
 		// create new user
@@ -99,7 +99,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 			return Credentials{}, err
 		}
 	}
-	return creds, nil
+	return credentials, nil
 }
 
 // Verify verifies a u User s credentials

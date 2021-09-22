@@ -82,7 +82,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("%s %v", err.Error(), notification), http.StatusInternalServerError)
 			return
 		}
 	}
