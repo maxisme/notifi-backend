@@ -59,7 +59,7 @@ data "template_file" "policy_ws" {
     table_arn = "${aws_dynamodb_table.ws-table.arn}"
   }
 }
-resource "aws_iam_role_policy" "lambda_db_notification_policy" {
+resource "aws_iam_role_policy" "lambda_db_ws_policy" {
   role   = aws_iam_role.iam_for_lambda.id
   policy = data.template_file.policy_ws.rendered
 }
