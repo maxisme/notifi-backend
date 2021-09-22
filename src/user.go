@@ -9,7 +9,6 @@ import (
 // User structure
 type User struct {
 	AppVersion      string    `dynamo:"app_version"`
-	ConnectionID    string    `dynamo:"connection_id,allowempty"`
 	Created         time.Time `dynamo:"created_dttm"`
 	Credentials     string    `dynamo:"credentials,hash"`
 	CredentialsKey  string    `dynamo:"credential_key"`
@@ -18,6 +17,11 @@ type User struct {
 	LastLogin       time.Time `dynamo:"last_login_dttm"`
 	NotificationCnt int       `dynamo:"notification_cnt"`
 	UUID            string    `dynamo:"device_uuid,hash"`
+}
+
+type Ws struct {
+	ConnectionID string `dynamo:"connection_id,hash"`
+	UUID         string `dynamo:"device_uuid,hash"`
 }
 
 // Credentials structure
@@ -31,6 +35,7 @@ const (
 	credentialKeyLen = 100
 )
 const UserTable = "user"
+const WsTable = "ws"
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store

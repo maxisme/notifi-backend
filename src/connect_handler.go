@@ -22,7 +22,6 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		CredentialsKey: r.Headers["Key"],
 		UUID:           r.Headers["Uuid"],
 		AppVersion:     r.Headers["Version"],
-		ConnectionID:   r.RequestContext.ConnectionID,
 		LastLogin:      time.Now(),
 	}
 
@@ -69,6 +68,13 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 
 	// store user info in db
 	if err := UpdateItem(db, UserTable, user.Credentials, user); err != nil {
+		return WriteError(err, http.StatusInternalServerError)
+	}
+	// store ws connection ID
+	if err := AddItem(db, WsTable, Ws{
+		ConnectionID: r.RequestContext.ConnectionID,
+		UUID:         user.UUID,
+	}); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 

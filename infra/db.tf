@@ -31,6 +31,39 @@ resource "aws_dynamodb_table" "notification-table" {
   }
 }
 
+resource "aws_dynamodb_table" "ws-table" {
+  name         = "ws"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "connection_id"
+
+  attribute {
+    name = "connection_id"
+    type = "S"
+  }
+
+  attribute {
+    name = "device_uuid"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "device_uuid-index"
+    projection_type = "ALL"
+    hash_key        = "device_uuid"
+  }
+}
+
+data "template_file" "policy_ws" {
+  template = file("${path.module}/templates/policy.tpl")
+  vars = {
+    table_arn = "${aws_dynamodb_table.ws-table.arn}"
+  }
+}
+resource "aws_iam_role_policy" "lambda_db_notification_policy" {
+  role   = aws_iam_role.iam_for_lambda.id
+  policy = data.template_file.policy_ws.rendered
+}
+
 data "template_file" "policy_notification" {
   template = file("${path.module}/templates/policy.tpl")
   vars = {
