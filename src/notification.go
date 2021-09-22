@@ -14,12 +14,12 @@ import (
 // Notification structure
 type Notification struct {
 	Credentials string `dynamo:"credentials,hash"`
-	Image       string `json:"image"`
-	Link        string `json:"link"`
-	Message     string `json:"message"`
-	Time        string `json:"time"`
-	Title       string `json:"title" `
-	UUID        string `json:"UUID" dynamo:"device_uuid,hash"`
+	Image       string `json:"image" dynamo:"created_dttm,allowempty"`
+	Link        string `json:"link" dynamo:"created_dttm,allowempty"`
+	Message     string `json:"message" dynamo:"created_dttm,allowempty"`
+	Time        string `json:"time" dynamo:"created_dttm"`
+	Title       string `json:"title" dynamo:"created_dttm"`
+	UUID        string `json:"UUID" dynamo:"uuid,hash"`
 }
 
 // size restrictions of notifications
