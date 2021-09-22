@@ -140,9 +140,10 @@ func (n *Notification) Decrypt(encryptionKey []byte) error {
 
 // IncreaseNotificationCnt increases user notification count
 func IncreaseNotificationCnt(db *dynamo.DB, user User) error {
+	// TODO fix race condition
 	table := db.Table(UserTable)
 	user.NotificationCnt = user.NotificationCnt + 1
-	return table.Update(user.UUID, &user).Run()
+	return table.Update(user.UUID, user).Run()
 }
 
 // Init set UUID and time
