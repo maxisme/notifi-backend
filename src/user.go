@@ -19,7 +19,7 @@ type User struct {
 	UUID            string    `dynamo:"device_uuid,hash"`
 }
 
-type Ws struct {
+type Connection struct {
 	ConnectionID string `dynamo:"connection_id,hash"`
 	UUID         string `dynamo:"device_uuid,hash"`
 }
@@ -35,7 +35,7 @@ const (
 	credentialKeyLen = 100
 )
 const UserTable = "user"
-const WsTable = "ws"
+const ConnectionTable = "ws"
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
 // in the u User struct. TODO badly structured separate update and store

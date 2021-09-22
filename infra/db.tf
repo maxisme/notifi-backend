@@ -31,8 +31,8 @@ resource "aws_dynamodb_table" "notification-table" {
   }
 }
 
-resource "aws_dynamodb_table" "ws-table" {
-  name         = "ws"
+resource "aws_dynamodb_table" "connection-table" {
+  name         = "connection"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "connection_id"
 
@@ -53,15 +53,15 @@ resource "aws_dynamodb_table" "ws-table" {
   }
 }
 
-data "template_file" "policy_ws" {
+data "template_file" "policy_connection" {
   template = file("${path.module}/templates/policy.tpl")
   vars = {
-    table_arn = "${aws_dynamodb_table.ws-table.arn}"
+    table_arn = "${aws_dynamodb_table.connection-table.arn}"
   }
 }
 resource "aws_iam_role_policy" "lambda_db_ws_policy" {
   role   = aws_iam_role.iam_for_lambda.id
-  policy = data.template_file.policy_ws.rendered
+  policy = data.template_file.policy_connection.rendered
 }
 
 data "template_file" "policy_notification" {

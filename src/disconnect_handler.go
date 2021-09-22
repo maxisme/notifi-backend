@@ -12,7 +12,7 @@ func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketPro
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	err = db.Table(WsTable).Delete("ConnectionID", request.RequestContext.ConnectionID).Run()
+	err = db.Table(ConnectionTable).Delete("ConnectionID", request.RequestContext.ConnectionID).Run()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}

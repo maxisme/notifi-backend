@@ -71,7 +71,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(err, http.StatusInternalServerError)
 	}
 	// store ws connection ID
-	if err := AddItem(db, WsTable, Ws{
+	if err := AddItem(db, ConnectionTable, Connection{
 		ConnectionID: r.RequestContext.ConnectionID,
 		UUID:         user.UUID,
 	}); err != nil {
