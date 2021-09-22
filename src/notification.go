@@ -13,13 +13,13 @@ import (
 
 // Notification structure
 type Notification struct {
-	Credentials string
-	UUID        string `json:"UUID"`
-	Time        string `json:"time"`
-	Title       string `json:"title" `
-	Message     string `json:"message"`
+	Credentials string `dynamo:"credentials,hash"`
 	Image       string `json:"image"`
 	Link        string `json:"link"`
+	Message     string `json:"message"`
+	Time        string `json:"time"`
+	Title       string `json:"title" `
+	UUID        string `json:"UUID" dynamo:"device_uuid,hash"`
 }
 
 // size restrictions of notifications
@@ -53,7 +53,7 @@ func (n *Notification) Store(db *dynamo.DB, encryptionKey []byte) (err error) {
 		return
 	}
 
-	return db.Table(NotificationTable).Put(n).Run()
+	return db.Table(NotificationTable).Put(&n).Run()
 }
 
 // Validate runs validation on n Notification
