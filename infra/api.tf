@@ -37,6 +37,11 @@ resource "aws_apigatewayv2_stage" "ws" {
   api_id      = aws_apigatewayv2_api.ws.id
   name        = "ws"
   auto_deploy = true
+
+  default_route_settings {
+    throttling_rate_limit  = 100
+    throttling_burst_limit = 50
+  }
 }
 
 //////////////////
@@ -70,6 +75,7 @@ resource "aws_apigatewayv2_route" "message" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.message.id}"
+
 }
 resource "aws_apigatewayv2_integration" "disconnect" {
   api_id           = aws_apigatewayv2_api.ws.id
