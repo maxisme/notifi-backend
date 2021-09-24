@@ -34,9 +34,9 @@ resource "aws_lambda_function" "connect" {
 resource "aws_lambda_permission" "connect" {
   statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.connect.function_name
+  function_name = aws_lambda_function.connect.arn
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/**"
 }
 
 resource "aws_lambda_function" "disconnect" {
@@ -51,9 +51,9 @@ resource "aws_lambda_function" "disconnect" {
 resource "aws_lambda_permission" "disconnect" {
   statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.disconnect.function_name
+  function_name = aws_lambda_function.disconnect.arn
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/**"
 }
 
 resource "aws_lambda_function" "message" {
@@ -73,9 +73,9 @@ resource "aws_lambda_function" "message" {
 resource "aws_lambda_permission" "message" {
   statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.message.function_name
+  function_name = aws_lambda_function.message.arn
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/*/*/*"
+  source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/**"
 }
 
 resource "aws_lambda_function" "http" {
