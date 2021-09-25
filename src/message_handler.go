@@ -15,7 +15,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 		var user User
-		err = db.Table(UserTable).Get("ConnectionID", r.RequestContext.ConnectionID).One(&user)
+		err = db.Table(UserTable).Get("connection_id", r.RequestContext.ConnectionID).One(&user)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
