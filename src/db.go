@@ -18,14 +18,6 @@ func AddItem(db *dynamo.DB, table string, item interface{}) error {
 	return t.Put(item).Run()
 }
 
-func GetItems(db *dynamo.DB, table, keyName, key string) (interface{}, error) {
-	t := db.Table(table)
-
-	var i *interface{}
-	err := t.Get(keyName, key).All(i)
-	return &i, err
-}
-
 func UpdateItem(db *dynamo.DB, table, key string, item interface{}) error {
 	t := db.Table(table)
 	return t.Update(key, item).Run()

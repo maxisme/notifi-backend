@@ -23,11 +23,21 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		if err := SendStoredMessages(db, user.Credentials, r.RequestContext); err != nil {
+		var notifications []Notification
+		err = db.Table(NotificationTable).Get("credentials", user.Credentials).All(&notifications)
+		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		return WriteEmptySuccess()
+		notificationsBytes, err := json.Marshal(notifications)
+		if err != nil {
+			return WriteError(err, http.StatusInternalServerError)
+		}
+
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusOK,
+			Body:       string(notificationsBytes),
+		}, nil
 	}
 
 	var uuids []string
