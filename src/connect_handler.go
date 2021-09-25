@@ -66,8 +66,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	sesh := NewAPIGatewaySession()
-	if err := SendWsMessage(sesh, r.RequestContext.ConnectionID, []byte(".")); err != nil {
+	if err := SendWsMessage(r.RequestContext.ConnectionID, []byte(".")); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 

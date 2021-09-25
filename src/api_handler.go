@@ -72,7 +72,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = SendWsMessage(NewAPIGatewaySession(), user.ConnectionID, notificationMsgBytes)
+	err = SendWsMessage(user.ConnectionID, notificationMsgBytes)
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
