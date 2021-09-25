@@ -59,6 +59,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		DBUser.FirebaseToken = firebaseToken
 	}
 	DBUser.LastLogin = time.Now()
+	DBUser.ConnectionID = r.RequestContext.ConnectionID
 
 	// update user info in db
 	err = db.Table(UserTable).Put(DBUser).Run()
