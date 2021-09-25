@@ -10,7 +10,7 @@ func GetDB() (*dynamo.DB, error) {
 	sesh := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 	}))
-	return dynamo.New(sesh, &aws.Config{Region: aws.String("us-east-1")}), nil
+	return dynamo.New(sesh, &aws.Config{Region: aws.String(Region)}), nil
 }
 
 func AddItem(db *dynamo.DB, table string, item interface{}) error {
