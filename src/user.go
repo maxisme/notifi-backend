@@ -68,7 +68,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		if len(u.CredentialsKey) > 0 && IsValidCredentials(u.Credentials) {
 			// If client passes current details they are asking for new Credentials.
 			// Verify the Credentials passed are valid
-			if u.Verify(db) {
+			if u.Verify(DBUser) {
 				isNewUser = false
 			} else {
 				return Credentials{}, errors.New("Unable to create new credentials.")
@@ -98,12 +98,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 }
 
 // Verify verifies a u User s credentials
-func (u User) Verify(db *dynamo.DB) bool {
-	var user User
-	err := db.Table(UserTable).Get("device_uuid", u.UUID).One(&user)
-	if err != nil {
-		return false
-	}
+func (u User) Verify(user User) bool {
 	isValidKey := VerifyPassHash(user.CredentialsKey, u.CredentialsKey)
 	isValidUUID := user.UUID == Hash(u.UUID)
 	return isValidKey && isValidUUID
