@@ -2,13 +2,11 @@ package main
 
 import (
 	_ "database/sql"
-	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
-	"github.com/guregu/dynamo"
 	"net/http"
 	"os"
 	"runtime"
@@ -126,23 +124,4 @@ func SendWsMessage(connectionID string, msgData []byte) error {
 	//endpoint := "https://" + requestContext.DomainName + "/" + requestContext.Stage
 	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	return err
-}
-
-func SendStoredMessages(db *dynamo.DB, credentials string, requestContext events.APIGatewayWebsocketProxyRequestContext) error {
-	result, err := GetItems(db, NotificationTable, "credentials", credentials)
-	if err != nil {
-		return err
-	}
-
-	notifications, ok := result.([]Notification)
-	if ok && len(notifications) > 0 {
-		bytes, err := json.Marshal(notifications)
-		if err != nil {
-			return err
-		}
-		if err := SendWsMessage(requestContext.ConnectionID, bytes); err != nil {
-			return err
-		}
-	}
-	return nil
 }
