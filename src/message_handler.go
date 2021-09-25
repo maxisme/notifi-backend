@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -16,6 +17,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		}
 
 		var user User
+		fmt.Println(r.RequestContext.ConnectionID)
 		err = db.Table(UserTable).Get("connection_id", r.RequestContext.ConnectionID).Index("connection_id-index").One(&user)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
