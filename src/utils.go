@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/guregu/dynamo"
 	"net/http"
+	"os"
 )
 
 const (
@@ -125,6 +126,7 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 		requestContext.Stage,
 	)
 	fmt.Println(endpoint)
+	fmt.Println(os.Getenv("WS_ENDPOINT"))
 	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	fmt.Println(out.String())
 	return err
