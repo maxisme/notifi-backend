@@ -33,9 +33,9 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		fmt.Println(notificationsBytes)
+		fmt.Println(string(notificationsBytes))
 		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusOK,
+			StatusCode: http.StatusAccepted,
 			Body:       string(notificationsBytes),
 		}, nil
 	}
