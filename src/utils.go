@@ -125,7 +125,9 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 		requestContext.Stage,
 		requestContext.ConnectionID,
 	)
-	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
+	fmt.Println(endpoint)
+	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
+	fmt.Println(out.String())
 	return err
 }
 
