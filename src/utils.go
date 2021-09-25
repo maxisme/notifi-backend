@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/guregu/dynamo"
 	"net/http"
+	"os"
 )
 
 const (
@@ -115,9 +116,17 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 		ConnectionId: aws.String(requestContext.ConnectionID),
 		Data:         msgData,
 	}
-	endpoint := requestContext.DomainName + "/" + requestContext.Stage
-	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
-	fmt.Println(out.String())
+	endpoint := fmt.Sprintf(
+		"https://%s.execute-api.%s.amazonaws.com/%s",
+		requestContext.APIID,
+		Region,
+		requestContext.Stage,
+	)
+
+	fmt.Println(endpoint)
+	fmt.Println(os.Getenv("WS_ENDPOINT"))
+	//endpoint := "https://" + requestContext.DomainName + "/" + requestContext.Stage
+	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	return err
 }
 
