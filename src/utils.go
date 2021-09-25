@@ -25,9 +25,15 @@ const (
 //}
 
 func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
+	//https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}
+	// https://execute-api.us-east-1.amazonaws.com/@connections/GN5OCf-coAMCElw%3D
 	sesh := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
+		Config: aws.Config{
+			Region: aws.String(Region),
+		},
 	}))
+	fmt.Printf("%+v\n", sesh)
 	return apigatewaymanagementapi.New(sesh)
 }
 
@@ -106,12 +112,12 @@ func WriteEmptySuccess() (events.APIGatewayProxyResponse, error) {
 //	return crypt.Hash(channel)
 //}
 
-func SendWsMessage(sesh *apigatewaymanagementapi.ApiGatewayManagementApi, connectionID string, msgData []byte) error {
+func SendWsMessage(connectionID string, msgData []byte) error {
 	connectionInput := &apigatewaymanagementapi.PostToConnectionInput{
 		ConnectionId: aws.String(connectionID),
 		Data:         msgData,
 	}
-	_, err := sesh.PostToConnection(connectionInput)
+	_, err := NewAPIGatewaySession().PostToConnection(connectionInput)
 	return err
 }
 
@@ -127,7 +133,7 @@ func SendStoredMessages(db *dynamo.DB, credentials, connectionID string) error {
 		if err != nil {
 			return err
 		}
-		if err := SendWsMessage(NewAPIGatewaySession(), connectionID, bytes); err != nil {
+		if err := SendWsMessage(connectionID, bytes); err != nil {
 			return err
 		}
 	}
