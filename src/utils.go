@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/guregu/dynamo"
 	"net/http"
-	"os"
+	"runtime"
 )
 
 const (
@@ -26,22 +26,19 @@ const (
 //}
 
 func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayManagementApi {
-	//sesh := session.Must(session.NewSessionWithOptions(session.Options{
-	//	SharedConfigState: session.SharedConfigEnable,
-	//	Config: aws.Config{
-	//		Region:   aws.String(Region),
-	//		Endpoint: aws.String(endpoint),
-	//	},
-	//}))
-	sesh := session.Must(session.NewSession(&aws.Config{
-		Region:   aws.String(Region),
-		Endpoint: aws.String(endpoint),
+	sesh := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+		Config: aws.Config{
+			Region:   aws.String(Region),
+			Endpoint: aws.String(endpoint),
+		},
 	}))
 	return apigatewaymanagementapi.New(sesh)
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
-	fmt.Printf("request error: %s %d\n", err.Error(), code)
+	_, file, no, _ := runtime.Caller(2)
+	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),
@@ -120,18 +117,7 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 		ConnectionId: aws.String(requestContext.ConnectionID),
 		Data:         msgData,
 	}
-
-	//https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}
-	// https://execute-api.us-east-1.amazonaws.com/@connections/GN5OCf-coAMCElw%3D
-	//endpoint := fmt.Sprintf(
-	//	"https://%s.execute-api.%s.amazonaws.com/%s/@connections",
-	//	requestContext.APIID,
-	//	Region,
-	//	requestContext.Stage,
-	//)
 	endpoint := requestContext.DomainName + "/" + requestContext.Stage
-	fmt.Println(endpoint)
-	fmt.Println(os.Getenv("WS_ENDPOINT"))
 	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	fmt.Println(out.String())
 	return err
