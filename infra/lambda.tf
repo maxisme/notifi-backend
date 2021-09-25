@@ -35,6 +35,7 @@ resource "aws_lambda_function" "connect" {
 resource "aws_lambda_permission" "connect" {
   statement_id  = "AllowExecutionFromApiGateway"
   action        = "lambda:InvokeFunction"
+  role          = aws_iam_role.iam_for_lambda.arn
   function_name = aws_lambda_function.connect.arn
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/**"
