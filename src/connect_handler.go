@@ -60,8 +60,8 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 	DBUser.LastLogin = time.Now()
 
-	// store user info in db
-	err = db.Table(UserTable).Update("device_uuid", DBUser).If("device_uuid = ?", DBUser.UUID).Run()
+	// update user info in db
+	err = db.Table(UserTable).Put(DBUser).Run()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
