@@ -24,7 +24,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		}
 
 		var notifications []Notification
-		err = db.Table(NotificationTable).Get("credentials", user.Credentials).All(&notifications)
+		err = db.Table(NotificationTable).Get("credentials", user.Credentials).Index("credentials-index").All(&notifications)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
