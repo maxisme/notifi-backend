@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
-	awscreds "github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/guregu/dynamo"
@@ -14,10 +13,7 @@ import (
 )
 
 const (
-	AccessKeyID        = "YOUR_ACCESS_KEY"
-	SecretAccessKey    = "YOUR_SECRET_KEY"
-	APIGatewayEndpoint = "YOUR_API_GATEWAY_ENDPOINT"
-	Region             = "YOUR_REGION"
+	Region = "us-east-1"
 )
 
 //func NewDynamoDBSession() *dynamodb.DynamoDB {
@@ -29,12 +25,10 @@ const (
 //}
 
 func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
-	sess, _ := session.NewSession(&aws.Config{
-		Region:      aws.String(Region),
-		Credentials: awscreds.NewStaticCredentials(AccessKeyID, SecretAccessKey, ""),
-		Endpoint:    aws.String(APIGatewayEndpoint),
-	})
-	return apigatewaymanagementapi.New(sess)
+	sesh := session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
+	return apigatewaymanagementapi.New(sesh)
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
