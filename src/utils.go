@@ -10,7 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
 	"github.com/guregu/dynamo"
 	"net/http"
-	"runtime"
 )
 
 const (
@@ -37,8 +36,7 @@ func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayMa
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
-	_, file, no, _ := runtime.Caller(2)
-	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
+	fmt.Printf("request error: %s %d\n", err.Error(), code)
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),
