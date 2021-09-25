@@ -119,11 +119,10 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 	//https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}
 	// https://execute-api.us-east-1.amazonaws.com/@connections/GN5OCf-coAMCElw%3D
 	endpoint := fmt.Sprintf(
-		"https://%s.execute-api.%s.amazonaws.com/%s/@connections/%s",
+		"https://%s.execute-api.%s.amazonaws.com/%s",
 		requestContext.APIID,
 		Region,
 		requestContext.Stage,
-		requestContext.ConnectionID,
 	)
 	fmt.Println(endpoint)
 	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
