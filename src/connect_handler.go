@@ -13,8 +13,6 @@ import (
 const RequestNewUserCode = 551
 
 func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
-	fmt.Println(r.Headers)
-	fmt.Printf("%+v\n", r)
 	user := User{
 		Credentials:    r.Headers["Credentials"],
 		CredentialsKey: r.Headers["Key"],
@@ -65,7 +63,8 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	// store user info in db
-	if err := UpdateItem(db, UserTable, user.Credentials, user); err != nil {
+	err = db.Table(UserTable).Update("device_uuid", Hash(user.UUID)).Run()
+	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
