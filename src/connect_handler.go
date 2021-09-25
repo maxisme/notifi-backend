@@ -53,7 +53,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		} else {
 			errorMsg = "No credential key for: " + user.UUID
 		}
-	} else if !user.Verify(db) {
+	} else if !user.Verify(DBUser) {
 		errorMsg = "Forbidden"
 		errorCode = http.StatusForbidden
 	}
