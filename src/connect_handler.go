@@ -4,10 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/aws/aws-lambda-go/events"
 	"net/http"
 	"time"
-
-	"github.com/aws/aws-lambda-go/events"
 )
 
 const RequestNewUserCode = 551
@@ -17,19 +16,12 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		Credentials:    r.Headers["Credentials"],
 		CredentialsKey: r.Headers["Key"],
 		UUID:           r.Headers["Uuid"],
-		AppVersion:     r.Headers["Version"],
-		LastLogin:      time.Now(),
-	}
-
-	firebaseToken, ok := r.Headers["Firebase-Token"]
-	if ok {
-		user.FirebaseToken = firebaseToken
 	}
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
 		return WriteError(errors.New("Invalid UUID"), http.StatusBadRequest)
-	} else if !IsValidVersion(user.AppVersion) {
+	} else if !IsValidVersion(r.Headers["Version"]) {
 		return WriteError(fmt.Errorf("Invalid Version %v", user.AppVersion), http.StatusBadRequest)
 	} else if !IsValidCredentials(user.Credentials) {
 		return WriteError(fmt.Errorf("Invalid Credentials"), http.StatusForbidden)
@@ -62,8 +54,14 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		return WriteError(fmt.Errorf(errorMsg), errorCode)
 	}
 
+	DBUser.AppVersion = r.Headers["Version"]
+	if firebaseToken, ok := r.Headers["Firebase-Token"]; ok {
+		DBUser.FirebaseToken = firebaseToken
+	}
+	DBUser.LastLogin = time.Now()
+
 	// store user info in db
-	err = db.Table(UserTable).Update(Hash(user.UUID), user).Run()
+	err = db.Table(UserTable).Update("device_uuid", DBUser).If("device_uuid = ?", DBUser.UUID).Run()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
