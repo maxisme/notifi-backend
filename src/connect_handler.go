@@ -71,9 +71,9 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	// send all stored notifications from db
-	//if err := SendStoredMessages(db, Hash(user.Credentials), r.RequestContext); err != nil {
-	//	return WriteError(err, http.StatusInternalServerError)
-	//}
+	if err := SendStoredMessages(db, Hash(user.Credentials), r.RequestContext); err != nil {
+		return WriteError(err, http.StatusInternalServerError)
+	}
 
 	return WriteEmptySuccess()
 }
