@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/iris-contrib/schema"
@@ -47,11 +48,11 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	notification.Init()
-	//notificationMsgBytes, err := json.Marshal([]Notification{notification})
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
+	notificationMsgBytes, err := json.Marshal([]Notification{notification})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	if len(user.FirebaseToken) > 0 {
 		msg := &fcm.Message{
@@ -71,13 +72,13 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	//err = SendWsMessage(requestContext, notificationMsgBytes)
-	//if err != nil {
-	//	var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-	//	if err := notification.Store(db, encryptionKey); err != nil {
-	//		http.Error(w, fmt.Sprintf("%s %v", err.Error(), notification), http.StatusInternalServerError)
-	//		return
-	//	}
-	//}
+	err = SendWsMessage(user.ConnectionID, notificationMsgBytes)
+	if err != nil {
+		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
+		if err := notification.Store(db, encryptionKey); err != nil {
+			http.Error(w, fmt.Sprintf("%s %v", err.Error(), notification), http.StatusInternalServerError)
+			return
+		}
+	}
 	w.WriteHeader(http.StatusOK)
 }

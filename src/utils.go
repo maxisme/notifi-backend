@@ -12,10 +12,12 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 )
 
 const (
-	Region = "us-east-1"
+	Region      = "us-east-1"
+	WSStageName = "ws"
 )
 
 //func NewDynamoDBSession() *dynamodb.DynamoDB {
@@ -113,20 +115,14 @@ func WriteEmptySuccess() (events.APIGatewayProxyResponse, error) {
 //	return crypt.Hash(channel)
 //}
 
-func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext, msgData []byte) error {
+func SendWsMessage(connectionID string, msgData []byte) error {
 	connectionInput := &apigatewaymanagementapi.PostToConnectionInput{
-		ConnectionId: aws.String(requestContext.ConnectionID),
+		ConnectionId: aws.String(connectionID),
 		Data:         msgData,
 	}
-	endpoint := fmt.Sprintf(
-		"https://%s.execute-api.%s.amazonaws.com/%s",
-		requestContext.APIID,
-		Region,
-		requestContext.Stage,
-	)
 
+	endpoint := strings.Replace(os.Getenv("WS_ENDPOINT"), "wss://", "https://", 1) + "/" + WSStageName
 	fmt.Println(endpoint)
-	fmt.Println(os.Getenv("WS_ENDPOINT"))
 	//endpoint := "https://" + requestContext.DomainName + "/" + requestContext.Stage
 	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	return err
@@ -144,7 +140,7 @@ func SendStoredMessages(db *dynamo.DB, credentials string, requestContext events
 		if err != nil {
 			return err
 		}
-		if err := SendWsMessage(requestContext, bytes); err != nil {
+		if err := SendWsMessage(requestContext.ConnectionID, bytes); err != nil {
 			return err
 		}
 	}
