@@ -67,9 +67,10 @@ resource "aws_apigatewayv2_route" "api" {
 
 // Web Socket
 resource "aws_apigatewayv2_integration" "message" {
-  api_id           = aws_apigatewayv2_api.ws.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.message.invoke_arn
+  api_id             = aws_apigatewayv2_api.ws.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.message.invoke_arn
 }
 resource "aws_apigatewayv2_route" "message" {
   api_id    = aws_apigatewayv2_api.ws.id
@@ -89,9 +90,10 @@ resource "aws_apigatewayv2_route" "disconnect" {
 }
 
 resource "aws_apigatewayv2_integration" "connect" {
-  api_id           = aws_apigatewayv2_api.ws.id
-  integration_type = "AWS_PROXY"
-  integration_uri  = aws_lambda_function.connect.invoke_arn
+  api_id             = aws_apigatewayv2_api.ws.id
+  integration_type   = "AWS_PROXY"
+  integration_method = "POST"
+  integration_uri    = aws_lambda_function.connect.invoke_arn
 }
 resource "aws_apigatewayv2_route" "connect" {
   api_id    = aws_apigatewayv2_api.ws.id
