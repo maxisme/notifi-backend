@@ -17,7 +17,6 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 		}
 
 		var user User
-		fmt.Println(r.RequestContext.ConnectionID)
 		err = db.Table(UserTable).Get("connection_id", r.RequestContext.ConnectionID).Index("connection_id-index").One(&user)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
@@ -34,6 +33,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
+		fmt.Println(notificationsBytes)
 		return events.APIGatewayProxyResponse{
 			StatusCode: http.StatusOK,
 			Body:       string(notificationsBytes),
@@ -53,7 +53,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	wtx := db.WriteTx()
 	t := db.Table(NotificationTable)
 	for _, UUID := range uuids {
-		wtx.Delete(t.Delete("uuid", UUID))
+		wtx.Delete(t.Delete("uuid", UUID).If("uuid = ?", UUID))
 	}
 	if err := wtx.Run(); err != nil {
 		return WriteError(err, http.StatusInternalServerError)
