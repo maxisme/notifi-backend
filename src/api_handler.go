@@ -25,6 +25,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	notification.Credentials = Hash(notification.Credentials)
 
 	// connect to db
 	db, err := GetDB()
@@ -34,7 +35,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	err = db.Table(UserTable).Get("credentials", Hash(notification.Credentials)).Index("credentials-index").One(&user)
+	err = db.Table(UserTable).Get("credentials", notification.Credentials).Index("credentials-index").One(&user)
 	if err != nil {
 		w.WriteHeader(http.StatusOK)
 		return
