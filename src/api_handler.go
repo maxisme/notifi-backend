@@ -40,12 +40,12 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//// increase notification count
-	//err = IncreaseNotificationCnt(db, user)
-	//if err != nil {
-	//	http.Error(w, err.Error(), http.StatusInternalServerError)
-	//	return
-	//}
+	// increase notification count
+	err = IncreaseNotificationCnt(db, user)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	notification.Init()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})

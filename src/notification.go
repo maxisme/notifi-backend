@@ -138,13 +138,13 @@ func (n *Notification) Decrypt(encryptionKey []byte) error {
 	return err
 }
 
-//// IncreaseNotificationCnt increases user notification count
-//func IncreaseNotificationCnt(db *dynamo.DB, user User) error {
-//	// TODO fix race condition
-//	table := db.Table(UserTable)
-//	user.NotificationCnt = user.NotificationCnt + 1
-//	return table.Update(user.UUID, user).Run()
-//}
+// IncreaseNotificationCnt increases user notification count
+func IncreaseNotificationCnt(db *dynamo.DB, user User) error {
+	// TODO fix race condition
+	table := db.Table(UserTable)
+	user.NotificationCnt = user.NotificationCnt + 1
+	return table.Update("device_uuid", user).If("device_uuid = ?", user.UUID).Run()
+}
 
 // Init set UUID and time
 func (n *Notification) Init() {
