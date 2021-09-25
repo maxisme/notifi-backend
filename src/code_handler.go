@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 func HandleCode(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +21,7 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 		// when asking for new Credentials
 		CredentialsKey: r.Form.Get("current_credential_key"),
 		Credentials:    r.Form.Get("current_credentials"),
+		Created:        time.Now(),
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
