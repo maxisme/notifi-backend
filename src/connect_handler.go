@@ -43,7 +43,7 @@ func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 	}
 
 	var DBUser User
-	err = db.Table(UserTable).Get("device_uuid", user.UUID).One(&DBUser)
+	err = db.Table(UserTable).Get("device_uuid", Hash(user.UUID)).One(&DBUser)
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}

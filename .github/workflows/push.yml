@@ -37,6 +37,9 @@ jobs:
           docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$tag" .
           docker push "$tag"
           aws lambda update-function-code --function-name "http" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-connect" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-disconnect" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-message" --image-uri "$tag"
 
   terraform:
     name: Run Terraform
