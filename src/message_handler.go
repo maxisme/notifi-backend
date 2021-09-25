@@ -34,11 +34,10 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		fmt.Println(string(notificationsBytes))
-		return events.APIGatewayProxyResponse{
-			StatusCode: http.StatusAccepted,
-			Body:       string(notificationsBytes),
-		}, nil
+		err = SendWsMessage(user.ConnectionID, notificationsBytes)
+		if err != nil {
+			return WriteError(err, http.StatusInternalServerError)
+		}
 	}
 
 	var uuids []string
