@@ -26,12 +26,16 @@ const (
 //}
 
 func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayManagementApi {
-	sesh := session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-		Config: aws.Config{
-			Region:   aws.String(Region),
-			Endpoint: aws.String(endpoint),
-		},
+	//sesh := session.Must(session.NewSessionWithOptions(session.Options{
+	//	SharedConfigState: session.SharedConfigEnable,
+	//	Config: aws.Config{
+	//		Region:   aws.String(Region),
+	//		Endpoint: aws.String(endpoint),
+	//	},
+	//}))
+	sesh := session.Must(session.NewSession(&aws.Config{
+		Region:   aws.String(Region),
+		Endpoint: aws.String(endpoint),
 	}))
 	return apigatewaymanagementapi.New(sesh)
 }
@@ -128,7 +132,7 @@ func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext,
 	endpoint := requestContext.DomainName + "/" + requestContext.Stage
 	fmt.Println(endpoint)
 	fmt.Println(os.Getenv("WS_ENDPOINT"))
-	out, err := NewAPIGatewaySession(requestContext.DomainName + "/" + requestContext.Stage).PostToConnection(connectionInput)
+	out, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	fmt.Println(out.String())
 	return err
 }
