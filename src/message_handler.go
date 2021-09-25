@@ -20,7 +20,7 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		if err := SendStoredMessages(db, user.Credentials, r.RequestContext.ConnectionID); err != nil {
+		if err := SendStoredMessages(db, user.Credentials, r.RequestContext); err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
 

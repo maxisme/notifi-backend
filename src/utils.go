@@ -24,16 +24,14 @@ const (
 //	return dynamodb.New(sess)
 //}
 
-func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
-	//https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}
-	// https://execute-api.us-east-1.amazonaws.com/@connections/GN5OCf-coAMCElw%3D
+func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayManagementApi {
 	sesh := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 		Config: aws.Config{
-			Region: aws.String(Region),
+			Region:   aws.String(Region),
+			Endpoint: aws.String(endpoint),
 		},
 	}))
-	fmt.Printf("%+v\n", sesh)
 	return apigatewaymanagementapi.New(sesh)
 }
 
@@ -112,16 +110,26 @@ func WriteEmptySuccess() (events.APIGatewayProxyResponse, error) {
 //	return crypt.Hash(channel)
 //}
 
-func SendWsMessage(connectionID string, msgData []byte) error {
+func SendWsMessage(requestContext events.APIGatewayWebsocketProxyRequestContext, msgData []byte) error {
 	connectionInput := &apigatewaymanagementapi.PostToConnectionInput{
-		ConnectionId: aws.String(connectionID),
+		ConnectionId: aws.String(requestContext.ConnectionID),
 		Data:         msgData,
 	}
-	_, err := NewAPIGatewaySession().PostToConnection(connectionInput)
+
+	//https://{api-id}.execute-api.us-east-1.amazonaws.com/{stage}/@connections/{connection_id}
+	// https://execute-api.us-east-1.amazonaws.com/@connections/GN5OCf-coAMCElw%3D
+	endpoint := fmt.Sprintf(
+		"https://%s.execute-api.%s.amazonaws.com/%s/@connections/%s",
+		requestContext.APIID,
+		Region,
+		requestContext.Stage,
+		requestContext.ConnectionID,
+	)
+	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	return err
 }
 
-func SendStoredMessages(db *dynamo.DB, credentials, connectionID string) error {
+func SendStoredMessages(db *dynamo.DB, credentials string, requestContext events.APIGatewayWebsocketProxyRequestContext) error {
 	result, err := GetItems(db, NotificationTable, "credentials", credentials)
 	if err != nil {
 		return err
@@ -133,7 +141,7 @@ func SendStoredMessages(db *dynamo.DB, credentials, connectionID string) error {
 		if err != nil {
 			return err
 		}
-		if err := SendWsMessage(connectionID, bytes); err != nil {
+		if err := SendWsMessage(requestContext, bytes); err != nil {
 			return err
 		}
 	}
