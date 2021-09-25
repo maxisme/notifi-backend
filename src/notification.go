@@ -143,7 +143,7 @@ func IncreaseNotificationCnt(db *dynamo.DB, user User) error {
 	// TODO fix race condition
 	table := db.Table(UserTable)
 	user.NotificationCnt = user.NotificationCnt + 1
-	return table.Update("device_uuid", user).If("device_uuid = ?", user.UUID).Run()
+	return table.Put(user).Run()
 }
 
 // Init set UUID and time
