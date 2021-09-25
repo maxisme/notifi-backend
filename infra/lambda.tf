@@ -27,6 +27,7 @@ resource "aws_lambda_function" "connect" {
   environment {
     variables = {
       ENCRYPTION_KEY = var.ENCRYPTION_KEY
+      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
   package_type = "Image"
@@ -66,6 +67,7 @@ resource "aws_lambda_function" "message" {
   environment {
     variables = {
       ENCRYPTION_KEY = var.ENCRYPTION_KEY
+      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
   package_type = "Image"
@@ -88,6 +90,7 @@ resource "aws_lambda_function" "http" {
   environment {
     variables = {
       ENCRYPTION_KEY = var.ENCRYPTION_KEY
+      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
   package_type = "Image"
