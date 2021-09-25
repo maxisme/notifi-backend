@@ -38,7 +38,7 @@ func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayMa
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
-	_, file, no, _ := runtime.Caller(2)
+	_, file, no, _ := runtime.Caller(1)
 	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
