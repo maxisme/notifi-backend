@@ -3,6 +3,7 @@ package main
 import (
 	_ "database/sql"
 	"encoding/json"
+	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-sdk-go/aws"
 	awscreds "github.com/aws/aws-sdk-go/aws/credentials"
@@ -37,6 +38,7 @@ func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
+	fmt.Printf("request error: %s %d\n", err.Error(), code)
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),
