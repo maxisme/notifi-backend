@@ -14,7 +14,7 @@ func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketPro
 
 	err = db.Table(UserTable).
 		Update("connection_id", request.RequestContext.ConnectionID).
-		SetExpr("connection_id = ''").
+		Remove("connection_id").
 		Run()
 
 	if err != nil {
