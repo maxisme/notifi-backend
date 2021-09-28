@@ -44,7 +44,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	// increase notification count
 	err = db.Table(UserTable).
 		Update("device_uuid", user.UUID).
-		SetExpr("notification_cnt = notification_cnt + 1").
+		SetExpr("notification_cnt = notification_cnt + ?", 1).
 		Run()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
