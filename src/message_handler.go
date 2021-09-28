@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -22,22 +21,25 @@ func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		fmt.Println(user.Credentials)
 		var notifications []Notification
 		err = db.Table(NotificationTable).Get("credentials", user.Credentials).Index("credentials-index").All(&notifications)
 		if err != nil {
 			return WriteError(err, http.StatusInternalServerError)
 		}
 
-		notificationsBytes, err := json.Marshal(notifications)
-		if err != nil {
-			return WriteError(err, http.StatusInternalServerError)
+		if len(notifications) > 0 {
+			notificationsBytes, err := json.Marshal(notifications)
+			if err != nil {
+				return WriteError(err, http.StatusInternalServerError)
+			}
+
+			err = SendWsMessage(user.ConnectionID, notificationsBytes)
+			if err != nil {
+				return WriteError(err, http.StatusInternalServerError)
+			}
 		}
 
-		err = SendWsMessage(user.ConnectionID, notificationsBytes)
-		if err != nil {
-			return WriteError(err, http.StatusInternalServerError)
-		}
+		return WriteEmptySuccess()
 	}
 
 	var uuids []string
