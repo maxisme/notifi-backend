@@ -4,14 +4,14 @@ import (
 	"testing"
 )
 
-func TestIsValidUUID(t *testing.T) {
+func TestIsNotValidUUID(t *testing.T) {
 	UUID := "62b5873e-71bf-4659-af9d796581f126f8"
 	if IsValidUUID(UUID) {
 		t.Errorf("'%s' should not be a valid UUID", UUID)
 	}
 }
 
-func TestIsNotValidUUID(t *testing.T) {
+func TestIsValidUUID(t *testing.T) {
 	UUID := "BB8C9950-286C-5462-885C-0CFED585423B"
 	if !IsValidUUID(UUID) {
 		t.Errorf("'%s' should be a valid UUID", UUID)

@@ -13,7 +13,7 @@ import (
 
 // Notification structure
 type Notification struct {
-	Credentials string `dynamo:"credentials,hash"`
+	Credentials string `json:"-" dynamo:"credentials,hash"`
 	Image       string `json:"image" dynamo:"image,allowempty"`
 	Link        string `json:"link" dynamo:"link,allowempty"`
 	Message     string `json:"message" dynamo:"message,allowempty"`
