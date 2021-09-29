@@ -42,20 +42,20 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		RandomString(credentialKeyLen),
 	}
 
-	var DBUser User
-	_ = db.Table(UserTable).Get("device_uuid", u.UUID).One(&DBUser)
-	if len(DBUser.UUID) > 0 {
-		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
-			DBUser.CredentialsKey = PassHash(credentials.Key)
-			if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
+	var StoredUser User
+	_ = db.Table(UserTable).Get("device_uuid", u.UUID).One(&StoredUser)
+	if len(StoredUser.UUID) > 0 {
+		if len(StoredUser.CredentialsKey) == 0 && len(StoredUser.Credentials) > 0 {
+			StoredUser.CredentialsKey = PassHash(credentials.Key)
+			if err := db.Table(UserTable).Put(StoredUser).Run(); err != nil {
 				return Credentials{}, err
 			}
 			credentials.Value = ""
 			return credentials, nil
-		} else if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) == 0 {
-			DBUser.CredentialsKey = PassHash(credentials.Key)
-			DBUser.Credentials = Hash(credentials.Value)
-			if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
+		} else if len(StoredUser.CredentialsKey) == 0 && len(StoredUser.Credentials) == 0 {
+			StoredUser.CredentialsKey = PassHash(credentials.Key)
+			StoredUser.Credentials = Hash(credentials.Value)
+			if err := db.Table(UserTable).Put(StoredUser).Run(); err != nil {
 				return Credentials{}, err
 			}
 			return credentials, nil
@@ -63,12 +63,12 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	isNewUser := true
-	if len(DBUser.Credentials) > 0 {
+	if len(StoredUser.Credentials) > 0 {
 		// UUID already exists
 		if len(u.CredentialsKey) > 0 && IsValidCredentials(u.Credentials) {
 			// If client passes current details they are asking for new Credentials.
 			// Verify the Credentials passed are valid
-			if u.Verify(DBUser) {
+			if u.Verify(StoredUser) {
 				isNewUser = false
 			} else {
 				return Credentials{}, errors.New("Unable to create new credentials.")
@@ -76,7 +76,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		}
 	}
 
-	if isNewUser && len(DBUser.UUID) > 0 {
+	if isNewUser && len(StoredUser.UUID) > 0 {
 		return Credentials{}, errors.New("UUID already used")
 	}
 
@@ -84,7 +84,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	u.CredentialsKey = PassHash(credentials.Key)
 
 	// create or update new user
-	if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
+	if err := db.Table(UserTable).Put(u).Run(); err != nil {
 		return Credentials{}, err
 	}
 	return credentials, nil

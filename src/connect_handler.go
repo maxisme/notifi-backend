@@ -32,20 +32,21 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
-	var DBUser User
-	err = db.Table(UserTable).Get("device_uuid", Hash(user.UUID)).One(&DBUser)
+	var StoredUser User
+	err = db.Table(UserTable).Get("device_uuid", Hash(user.UUID)).One(&StoredUser)
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
+
 	var errorCode, errorMsg = 0, ""
-	if len(DBUser.CredentialsKey) == 0 {
+	if len(StoredUser.CredentialsKey) == 0 {
 		errorCode = RequestNewUserCode
-		if len(DBUser.Credentials) == 0 {
+		if len(StoredUser.Credentials) == 0 {
 			errorMsg = "No credentials or key for: " + user.UUID
 		} else {
 			errorMsg = "No credential key for: " + user.UUID
 		}
-	} else if !user.Verify(DBUser) {
+	} else if !user.Verify(StoredUser) {
 		errorMsg = "Forbidden"
 		errorCode = http.StatusForbidden
 	}
@@ -54,15 +55,15 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		return WriteError(fmt.Errorf(errorMsg), errorCode)
 	}
 
-	DBUser.AppVersion = r.Headers["Version"]
+	StoredUser.AppVersion = r.Headers["Version"]
 	if firebaseToken, ok := r.Headers["Firebase-Token"]; ok {
-		DBUser.FirebaseToken = firebaseToken
+		StoredUser.FirebaseToken = firebaseToken
 	}
-	DBUser.LastLogin = time.Now()
-	DBUser.ConnectionID = r.RequestContext.ConnectionID
+	StoredUser.LastLogin = time.Now()
+	StoredUser.ConnectionID = r.RequestContext.ConnectionID
 
 	// update user info in db
-	err = db.Table(UserTable).Put(DBUser).Run()
+	err = db.Table(UserTable).Put(StoredUser).Run()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
