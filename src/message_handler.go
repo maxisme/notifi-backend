@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 )
 
-func HandleMessage(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	db, err := GetDB()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)

@@ -11,7 +11,7 @@ import (
 
 const RequestNewUserCode = 551
 
-func HandleConnect(ctx context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	user := User{
 		Credentials:    r.Headers["Credentials"],
 		CredentialsKey: r.Headers["Key"],
