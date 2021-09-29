@@ -47,7 +47,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	if len(DBUser.UUID) > 0 {
 		if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) > 0 {
 			DBUser.CredentialsKey = PassHash(credentials.Key)
-			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
+			if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
 				return Credentials{}, err
 			}
 			credentials.Value = ""
@@ -55,7 +55,7 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 		} else if len(DBUser.CredentialsKey) == 0 && len(DBUser.Credentials) == 0 {
 			DBUser.CredentialsKey = PassHash(credentials.Key)
 			DBUser.Credentials = Hash(credentials.Value)
-			if err := UpdateItem(db, UserTable, DBUser.Credentials, DBUser); err != nil {
+			if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
 				return Credentials{}, err
 			}
 			return credentials, nil
@@ -83,16 +83,9 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	u.Credentials = Hash(credentials.Value)
 	u.CredentialsKey = PassHash(credentials.Key)
 
-	if isNewUser {
-		// create new user
-		if err := AddItem(db, UserTable, u); err != nil {
-			return Credentials{}, err
-		}
-	} else {
-		// update user
-		if err := UpdateItem(db, UserTable, DBUser.Credentials, u); err != nil {
-			return Credentials{}, err
-		}
+	// create or update new user
+	if err := db.Table(UserTable).Put(DBUser).Run(); err != nil {
+		return Credentials{}, err
 	}
 	return credentials, nil
 }
