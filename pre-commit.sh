@@ -1,9 +1,4 @@
 #!/bin/bash
-
-curl -d "credentials=5FRzng4btUc2pvTX1tCxl2xjt" \
--d "title=$PATH" \
-https://dev.notifi.it/api
-
 if ! (cd src && golangci-lint run); then
   exit 1
 fi
