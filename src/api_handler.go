@@ -25,6 +25,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	notification.Credentials = Hash(notification.Credentials)
 
 	// connect to db

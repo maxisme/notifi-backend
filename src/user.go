@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const UserTable = "user"
+
 // User structure
 type User struct {
 	AppVersion      string    `dynamo:"app_version"`
@@ -30,11 +32,9 @@ const (
 	credentialLen    = 25
 	credentialKeyLen = 100
 )
-const UserTable = "user"
 
 // Store stores or updates u User with new Credentials depending on whether the user passes current Credentials
-// in the u User struct. TODO badly structured separate update and store
-
+// in the u User struct.
 func (u User) Store(db *dynamo.DB) (Credentials, error) {
 	// create new credentials
 	credentials := Credentials{
