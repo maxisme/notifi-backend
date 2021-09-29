@@ -11,6 +11,8 @@ import (
 	"time"
 )
 
+const NotificationTable = "notification"
+
 // Notification structure
 type Notification struct {
 	Credentials string `json:"-" dynamo:"credentials,hash"`
@@ -29,7 +31,6 @@ const (
 	maxImageBytes = 2000000 // 2MB
 )
 
-const NotificationTable = "notification"
 const notificationTimeLayout = "2006-01-02 15:04:05"
 
 // Store will store n Notification in the database after encrypting the content
