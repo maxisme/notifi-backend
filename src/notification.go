@@ -67,7 +67,7 @@ func (n *Notification) Validate() error {
 	if n.Credentials == "<credentials>" {
 		return errors.New(`You have not set your personal 
 		credentials given to you by the notifi app! 
-		You instead used the placeholder '<Credentials>'`)
+		You instead used the placeholder '<credentials>'`)
 	}
 
 	if len(n.Title) == 0 {
