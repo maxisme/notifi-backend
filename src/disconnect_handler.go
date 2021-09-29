@@ -6,17 +6,22 @@ import (
 	"net/http"
 )
 
-func HandleDisconnect(ctx context.Context, request events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+func HandleDisconnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	db, err := GetDB()
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
+	var user User
+	err = db.Table(UserTable).Get("connection_id", r.RequestContext.ConnectionID).Index("connection_id-index").One(&user)
+	if err != nil {
+		return WriteError(err, http.StatusInternalServerError)
+	}
+
 	err = db.Table(UserTable).
-		Update("connection_id", request.RequestContext.ConnectionID).
+		Update("device_uuid", user.UUID).
 		Remove("connection_id").
 		Run()
-
 	if err != nil {
 		return WriteError(err, http.StatusInternalServerError)
 	}
