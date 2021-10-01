@@ -3,7 +3,11 @@ variable "docker_tag" {
   default = "latest"
 }
 
-# set in https://app.terraform.io/
+# ALL set in https://app.terraform.io/
+variable "AWS_REGION" {
+  type = string
+}
+
 variable "ENCRYPTION_KEY" {
   type = string
 }

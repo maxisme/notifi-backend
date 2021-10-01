@@ -56,7 +56,7 @@ resource "aws_dynamodb_table" "notification-table" {
 data "template_file" "policy_notification" {
   template = file("${path.module}/templates/policy.tpl")
   vars = {
-    table_arn = "${aws_dynamodb_table.notification-table.arn}"
+    table_arn = aws_dynamodb_table.notification-table.arn
   }
 }
 resource "aws_iam_role_policy" "lambda_db_notification_policy" {
@@ -67,7 +67,7 @@ resource "aws_iam_role_policy" "lambda_db_notification_policy" {
 data "template_file" "policy_user" {
   template = file("${path.module}/templates/policy.tpl")
   vars = {
-    table_arn = "${aws_dynamodb_table.user-table.arn}"
+    table_arn = aws_dynamodb_table.user-table.arn
   }
 }
 
