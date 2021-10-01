@@ -52,7 +52,7 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
       - name: Terraform Format
         working-directory: ./infra
-        run: terraform fmt -check
+        run: terraform fmt -recursive -check
       - name: Terraform Init
         working-directory: ./infra
         run: terraform init

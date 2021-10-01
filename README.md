@@ -33,3 +33,15 @@ chmod +x $(pwd)/.git/hooks/pre-commit
  - Security Credentials (under username)
  - Access keys (access key ID and secret access key)
 
+
+
+# Worker
+test locally by installing:
+```bash
+npm install -g miniflare
+```
+
+Then running:
+```bash
+miniflare worker/github-release.js -w -d
+```

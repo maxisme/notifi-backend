@@ -1,0 +1,1 @@
+../../../worker/github-release.js
