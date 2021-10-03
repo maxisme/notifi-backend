@@ -3,10 +3,11 @@ package main
 import (
 	"github.com/go-errors/errors"
 	"github.com/guregu/dynamo"
+	"os"
 	"time"
 )
 
-const UserTable = "user"
+var UserTable = os.Getenv("USER_TABLE_NAME")
 
 // User structure
 type User struct {
