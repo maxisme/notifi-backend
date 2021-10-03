@@ -64,6 +64,11 @@ resource "aws_apigatewayv2_route" "api" {
   route_key = "ANY /api"
   target    = "integrations/${aws_apigatewayv2_integration.http.id}"
 }
+resource "aws_apigatewayv2_api_mapping" "http" {
+  api_id      = aws_apigatewayv2_api.http.id
+  domain_name = aws_apigatewayv2_domain_name.notifi.id
+  stage       = aws_apigatewayv2_stage.prod.id
+}
 
 // Web Socket
 resource "aws_apigatewayv2_integration" "message" {
@@ -76,8 +81,8 @@ resource "aws_apigatewayv2_route" "message" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$default"
   target    = "integrations/${aws_apigatewayv2_integration.message.id}"
-
 }
+
 resource "aws_apigatewayv2_integration" "disconnect" {
   api_id           = aws_apigatewayv2_api.ws.id
   integration_type = "AWS_PROXY"
@@ -99,4 +104,10 @@ resource "aws_apigatewayv2_route" "connect" {
   api_id    = aws_apigatewayv2_api.ws.id
   route_key = "$connect"
   target    = "integrations/${aws_apigatewayv2_integration.connect.id}"
+}
+
+resource "aws_apigatewayv2_api_mapping" "ws" {
+  api_id      = aws_apigatewayv2_api.ws.id
+  domain_name = aws_apigatewayv2_domain_name.ws-notifi.id
+  stage       = aws_apigatewayv2_stage.ws.id
 }

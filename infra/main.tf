@@ -17,6 +17,7 @@ module "aws" {
   source         = "./aws"
   AWS_REGION     = var.AWS_REGION
   ENCRYPTION_KEY = var.ENCRYPTION_KEY
+  CF_DOMAIN      = var.CF_DOMAIN
 }
 
 module "cloudflare" {
