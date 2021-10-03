@@ -27,6 +27,7 @@ resource "aws_lambda_function" "connect" {
   environment {
     variables = {
       ENCRYPTION_KEY          = var.ENCRYPTION_KEY
+      WS_ENDPOINT             = local.AWS_WS_ENDPOINT
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
       USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
     }
