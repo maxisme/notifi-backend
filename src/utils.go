@@ -51,6 +51,7 @@ func SendWsMessage(connectionID string, msgData []byte) error {
 	}
 
 	endpoint := strings.Replace(os.Getenv("WS_ENDPOINT"), "wss://", "https://", 1) + "/" + WSStageName
+	fmt.Println(endpoint)
 	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
 	return err
 }
