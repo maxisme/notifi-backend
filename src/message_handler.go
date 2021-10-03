@@ -62,9 +62,6 @@ func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	for _, UUID := range uuids {
 		wtx.Delete(t.Delete("uuid", UUID).If("'uuid' = ?", UUID).If("'credentials' = ?", user.Credentials))
 	}
-	if err := wtx.Run(); err != nil {
-		return WriteError(err, http.StatusInternalServerError)
-	}
-
+	_ = wtx.Run()
 	return WriteEmptySuccess()
 }
