@@ -1,5 +1,5 @@
 resource "aws_iam_role" "iam_for_lambda" {
-  name               = "iam_for_lambda"
+  name               = var.IS_DEV ? "iam_for_lambda_dev" : "iam_for_lambda"
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -18,7 +18,7 @@ EOF
 }
 
 resource "aws_lambda_function" "connect" {
-  function_name = "notifi-connect"
+  function_name = var.IS_DEV ? "notifi-connect-dev" : "notifi-connect"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
@@ -41,7 +41,7 @@ resource "aws_lambda_permission" "connect" {
 }
 
 resource "aws_lambda_function" "disconnect" {
-  function_name = "notifi-disconnect"
+  function_name = var.IS_DEV ? "notifi-disconnect-dev" : "notifi-disconnect"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
@@ -58,7 +58,7 @@ resource "aws_lambda_permission" "disconnect" {
 }
 
 resource "aws_lambda_function" "message" {
-  function_name = "notifi-message"
+  function_name = var.IS_DEV ? "notifi-message-dev" : "notifi-message"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
@@ -81,7 +81,7 @@ resource "aws_lambda_permission" "message" {
 }
 
 resource "aws_lambda_function" "http" {
-  function_name = "http"
+  function_name = var.IS_DEV ? "http-dev" : "dev"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {

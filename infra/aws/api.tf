@@ -28,14 +28,14 @@ resource "aws_apigatewayv2_deployment" "code" {
 ////////////
 // stages //
 ////////////
-resource "aws_apigatewayv2_stage" "prod" {
-  name        = "prod"
+resource "aws_apigatewayv2_stage" "http" {
+  name        = var.IS_DEV ? "dev" : "prod"
   api_id      = aws_apigatewayv2_api.http.id
   auto_deploy = true
 }
 resource "aws_apigatewayv2_stage" "ws" {
   api_id      = aws_apigatewayv2_api.ws.id
-  name        = "ws"
+  name        = var.IS_DEV ? "dev" : "prod"
   auto_deploy = true
 
   default_route_settings {
@@ -67,7 +67,7 @@ resource "aws_apigatewayv2_route" "api" {
 resource "aws_apigatewayv2_api_mapping" "http" {
   api_id      = aws_apigatewayv2_api.http.id
   domain_name = aws_apigatewayv2_domain_name.notifi.id
-  stage       = aws_apigatewayv2_stage.prod.id
+  stage       = aws_apigatewayv2_stage.http.id
 }
 resource "aws_apigatewayv2_domain_name" "notifi" {
   domain_name = local.DOMAIN
