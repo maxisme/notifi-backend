@@ -18,14 +18,6 @@ const (
 	WSStageName = "ws"
 )
 
-//func NewDynamoDBSession() *dynamodb.DynamoDB {
-//	sess, _ := session.NewSession(&aws.Config{
-//		Region:      aws.String(Region),
-//		Credentials: awscreds.NewStaticCredentials(AccessKeyID, SecretAccessKey, ""),
-//	})
-//	return dynamodb.New(sess)
-//}
-
 func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayManagementApi {
 	sesh := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,

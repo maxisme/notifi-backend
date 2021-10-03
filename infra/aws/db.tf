@@ -1,5 +1,5 @@
 resource "aws_dynamodb_table" "user-table" {
-  name         = "user"
+  name         = var.IS_DEV ? "dev-user" : "user"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "device_uuid"
 
@@ -32,7 +32,7 @@ resource "aws_dynamodb_table" "user-table" {
 }
 
 resource "aws_dynamodb_table" "notification-table" {
-  name         = "notification"
+  name         = var.IS_DEV ? "dev-notification" : "notification"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "uuid"
 
