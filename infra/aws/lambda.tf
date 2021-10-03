@@ -26,8 +26,10 @@ resource "aws_lambda_function" "connect" {
   }
   environment {
     variables = {
-      ENCRYPTION_KEY = var.ENCRYPTION_KEY
-      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
+      ENCRYPTION_KEY          = var.ENCRYPTION_KEY
+      WS_ENDPOINT             = aws_apigatewayv2_api.ws.api_endpoint
+      NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
+      USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
     }
   }
   package_type = "Image"
@@ -46,6 +48,11 @@ resource "aws_lambda_function" "disconnect" {
   image_uri     = local.IMAGE_URI
   image_config {
     entry_point = ["/main", "disconnect"]
+  }
+  environment {
+    variables = {
+      USER_TABLE_NAME = aws_dynamodb_table.user-table.name
+    }
   }
   package_type = "Image"
 }
@@ -66,8 +73,10 @@ resource "aws_lambda_function" "message" {
   }
   environment {
     variables = {
-      ENCRYPTION_KEY = var.ENCRYPTION_KEY
-      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
+      ENCRYPTION_KEY          = var.ENCRYPTION_KEY
+      WS_ENDPOINT             = aws_apigatewayv2_api.ws.api_endpoint
+      NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
+      USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
     }
   }
   package_type = "Image"
@@ -89,8 +98,10 @@ resource "aws_lambda_function" "http" {
   }
   environment {
     variables = {
-      ENCRYPTION_KEY = var.ENCRYPTION_KEY
-      WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
+      ENCRYPTION_KEY          = var.ENCRYPTION_KEY
+      WS_ENDPOINT             = aws_apigatewayv2_api.ws.api_endpoint
+      NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
+      USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
     }
   }
   package_type = "Image"

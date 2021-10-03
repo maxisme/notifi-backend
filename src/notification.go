@@ -6,12 +6,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/guregu/dynamo"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const NotificationTable = "notification"
+var NotificationTable = os.Getenv("NOTIFICATION_TABLE_NAME")
 
 // Notification structure
 type Notification struct {
