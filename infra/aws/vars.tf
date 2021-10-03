@@ -9,8 +9,6 @@ locals {
   WS_DOMAIN = var.IS_DEV ? format("dws.%s", var.CF_DOMAIN) : format("ws.%s", var.CF_DOMAIN)
 }
 
-
-# ALL set in https://app.terraform.io/
 variable "AWS_REGION" {
   type = string
 }

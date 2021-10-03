@@ -20,14 +20,6 @@ module "aws" {
   CF_DOMAIN      = var.CF_DOMAIN
 }
 
-module "aws-develop" {
-  source         = "./aws"
-  AWS_REGION     = var.AWS_REGION
-  ENCRYPTION_KEY = var.ENCRYPTION_KEY
-  CF_DOMAIN      = var.CF_DOMAIN
-  IS_DEV         = true
-}
-
 module "cloudflare" {
   source               = "./cloudflare"
   CF_API_KEY           = var.CF_API_KEY
@@ -35,6 +27,12 @@ module "cloudflare" {
   CF_DOMAIN            = var.CF_DOMAIN
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
+
+  # change aws-develop -> aws
+  HTTP_DOMAIN     = module.aws-develop.HTTP_DOMAIN
+  WS_DOMAIN       = module.aws-develop.WS_DOMAIN
+  AWS_WS_DOMAIN   = module.aws-develop.AWS_WS_DOMAIN
+  AWS_HTTP_DOMAIN = module.aws-develop.AWS_HTTP_DOMAIN
 }
 
 module "cloudflare-develop" {
@@ -44,6 +42,20 @@ module "cloudflare-develop" {
   CF_DOMAIN            = var.CF_DOMAIN
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
-  IS_DEV               = true
+
+  HTTP_DOMAIN     = module.aws-develop.HTTP_DOMAIN
+  WS_DOMAIN       = module.aws-develop.WS_DOMAIN
+  AWS_WS_DOMAIN   = module.aws-develop.AWS_WS_DOMAIN
+  AWS_HTTP_DOMAIN = module.aws-develop.AWS_HTTP_DOMAIN
+
+  IS_DEV = true
+}
+
+module "aws-develop" {
+  source         = "./aws"
+  AWS_REGION     = var.AWS_REGION
+  ENCRYPTION_KEY = var.ENCRYPTION_KEY
+  CF_DOMAIN      = var.CF_DOMAIN
+  IS_DEV         = true
 }
 
