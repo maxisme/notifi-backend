@@ -1,6 +1,10 @@
-variable "SUB_DOMAIN" {
-  type    = string
-  default = ""
+variable "IS_DEV" {
+  type    = bool
+  default = false
+}
+
+locals {
+  DOMAIN = var.IS_DEV ? format("d.%s", var.CF_DOMAIN) : var.CF_DOMAIN
 }
 
 # ALL set in https://app.terraform.io/

@@ -69,6 +69,15 @@ resource "aws_apigatewayv2_api_mapping" "http" {
   domain_name = aws_apigatewayv2_domain_name.notifi.id
   stage       = aws_apigatewayv2_stage.prod.id
 }
+resource "aws_apigatewayv2_domain_name" "notifi" {
+  domain_name = local.DOMAIN
+
+  domain_name_configuration {
+    certificate_arn = ! var.IS_DEV ? aws_acm_certificate_validation.notifi.certificate_arn : aws_acm_certificate_validation.sub-notifi.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
+}
 
 // Web Socket
 resource "aws_apigatewayv2_integration" "message" {
@@ -110,4 +119,13 @@ resource "aws_apigatewayv2_api_mapping" "ws" {
   api_id      = aws_apigatewayv2_api.ws.id
   domain_name = aws_apigatewayv2_domain_name.ws-notifi.id
   stage       = aws_apigatewayv2_stage.ws.id
+}
+resource "aws_apigatewayv2_domain_name" "ws-notifi" {
+  domain_name = local.WS_DOMAIN
+
+  domain_name_configuration {
+    certificate_arn = aws_acm_certificate_validation.sub-notifi.certificate_arn
+    endpoint_type   = "REGIONAL"
+    security_policy = "TLS_1_2"
+  }
 }

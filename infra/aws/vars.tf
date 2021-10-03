@@ -1,17 +1,14 @@
-variable "DOCKER_TAG" {
-  type    = string
-  default = "latest"
+variable "IS_DEV" {
+  type    = bool
+  default = false
 }
 
-variable "TAG" {
-  type    = string
-  default = "notifi"
+locals {
+  IMAGE_URI = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.IS_DEV ? "develop" : "latest")
+  DOMAIN    = var.IS_DEV ? format("d.%s", var.CF_DOMAIN) : var.CF_DOMAIN
+  WS_DOMAIN = var.IS_DEV ? format("d.ws.%s", var.CF_DOMAIN) : format("ws.%s", var.CF_DOMAIN)
 }
 
-variable "SUB_DOMAIN" {
-  type    = string
-  default = ""
-}
 
 # ALL set in https://app.terraform.io/
 variable "AWS_REGION" {

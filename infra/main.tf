@@ -20,6 +20,16 @@ module "aws" {
   CF_DOMAIN      = var.CF_DOMAIN
 }
 
+#module "aws-develop" {
+#  source         = "./aws"
+#  AWS_REGION     = var.AWS_REGION
+#  ENCRYPTION_KEY = var.ENCRYPTION_KEY
+#  CF_DOMAIN      = var.CF_DOMAIN
+#  DOCKER_TAG = "develop"
+#  TAG = "notifi-develop"
+#  SUB_DOMAIN = "d."
+#}
+
 module "cloudflare" {
   source               = "./cloudflare"
   CF_API_KEY           = var.CF_API_KEY
@@ -28,4 +38,14 @@ module "cloudflare" {
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
 }
+
+#module "cloudflare-develop" {
+#  source               = "./cloudflare"
+#  CF_API_KEY           = var.CF_API_KEY
+#  CF_WORKER_ACCOUNT_ID = var.CF_WORKER_ACCOUNT_ID
+#  CF_DOMAIN            = var.CF_DOMAIN
+#  CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
+#  CF_EMAIL             = var.CF_EMAIL
+#  SUB_DOMAIN = "d."
+#}
 

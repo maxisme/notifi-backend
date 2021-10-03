@@ -13,7 +13,7 @@ provider "aws" {
 
   default_tags {
     tags = {
-      "project" : var.TAG
+      "project" : var.IS_DEV ? "notifi-dev" : "notifi"
     }
   }
 }

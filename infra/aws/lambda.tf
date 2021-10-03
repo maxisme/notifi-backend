@@ -20,7 +20,7 @@ EOF
 resource "aws_lambda_function" "connect" {
   function_name = "notifi-connect"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
+  image_uri     = local.IMAGE_URI
   image_config {
     entry_point = ["/main", "connect"]
   }
@@ -43,7 +43,7 @@ resource "aws_lambda_permission" "connect" {
 resource "aws_lambda_function" "disconnect" {
   function_name = "notifi-disconnect"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
+  image_uri     = local.IMAGE_URI
   image_config {
     entry_point = ["/main", "disconnect"]
   }
@@ -60,7 +60,7 @@ resource "aws_lambda_permission" "disconnect" {
 resource "aws_lambda_function" "message" {
   function_name = "notifi-message"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
+  image_uri     = local.IMAGE_URI
   image_config {
     entry_point = ["/main", "message"]
   }
@@ -83,7 +83,7 @@ resource "aws_lambda_permission" "message" {
 resource "aws_lambda_function" "http" {
   function_name = "http"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
+  image_uri     = local.IMAGE_URI
   image_config {
     entry_point = ["/main", "http"]
   }

@@ -1,10 +1,10 @@
 resource "cloudflare_worker_route" "github" {
   zone_id     = var.CF_DOMAIN_ZONE_ID
-  pattern     = format("%s%s/version*", var.SUB_DOMAIN, var.CF_DOMAIN)
+  pattern     = format("%s/version*", local.DOMAIN)
   script_name = cloudflare_worker_script.github_release.name
 }
 
 resource "cloudflare_worker_script" "github_release" {
-  name    = "notifi-github-release"
+  name    = var.IS_DEV ? "notifi-github-release-dev" : "notifi-github-release"
   content = file("${path.module}/scripts/github-release.js")
 }
