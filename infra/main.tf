@@ -29,10 +29,10 @@ module "cloudflare" {
   CF_EMAIL             = var.CF_EMAIL
 
   # change aws-develop -> aws
-  HTTP_DOMAIN     = module.aws-develop.HTTP_DOMAIN
-  WS_DOMAIN       = module.aws-develop.WS_DOMAIN
-  AWS_WS_DOMAIN   = module.aws-develop.AWS_WS_DOMAIN
-  AWS_HTTP_DOMAIN = module.aws-develop.AWS_HTTP_DOMAIN
+  HTTP_DOMAIN             = module.aws-develop.HTTP_DOMAIN
+  WS_DOMAIN               = module.aws-develop.WS_DOMAIN
+  AWS_WS_DOMAIN_GATEWAY   = module.aws-develop.AWS_WS_DOMAIN_GATEWAY
+  AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_HTTP_DOMAIN_GATEWAY
 }
 
 module "cloudflare-develop" {
@@ -43,10 +43,10 @@ module "cloudflare-develop" {
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
 
-  HTTP_DOMAIN     = module.aws-develop.HTTP_DOMAIN
-  WS_DOMAIN       = module.aws-develop.WS_DOMAIN
-  AWS_WS_DOMAIN   = module.aws-develop.AWS_WS_DOMAIN
-  AWS_HTTP_DOMAIN = module.aws-develop.AWS_HTTP_DOMAIN
+  HTTP_DOMAIN             = module.aws-develop.HTTP_DOMAIN
+  WS_DOMAIN               = module.aws-develop.WS_DOMAIN
+  AWS_WS_DOMAIN_GATEWAY   = module.aws-develop.AWS_WS_DOMAIN_GATEWAY
+  AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_HTTP_DOMAIN_GATEWAY
 
   IS_DEV = true
 }
