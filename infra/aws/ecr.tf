@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "notifi" {
-  name = "notifi"
+  name = var.IS_DEV ? "notifi-dev" : "notifi"
 }
 
 resource "aws_ecr_lifecycle_policy" "notifi" {
