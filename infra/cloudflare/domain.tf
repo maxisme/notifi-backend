@@ -3,7 +3,7 @@ resource "cloudflare_record" "notifi" {
   zone_id = var.CF_DOMAIN_ZONE_ID
   value   = var.AWS_HTTP_DOMAIN
   type    = "CNAME"
-  proxied = false
+  proxied = true
 }
 
 resource "cloudflare_record" "notifi-ws" {
