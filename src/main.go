@@ -15,8 +15,8 @@ var chiLambda *chiadapter.ChiLambda
 func init() {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
-	r.HandleFunc("/dev/code", HandleCode)
-	r.HandleFunc("/dev/api", HandleApi)
+	r.HandleFunc("/code", HandleCode)
+	r.HandleFunc("/api", HandleApi)
 	chiLambda = chiadapter.New(r)
 }
 
