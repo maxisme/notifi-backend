@@ -31,9 +31,9 @@ func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 
 		if len(notifications) > 0 {
 			// decrypt notifications
-			for _, notification := range notifications {
+			for i := range notifications {
 				var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-				if err := notification.Decrypt(encryptionKey); err != nil {
+				if err := notifications[i].Decrypt(encryptionKey); err != nil {
 					fmt.Println(err.Error())
 				}
 			}
