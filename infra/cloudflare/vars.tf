@@ -3,11 +3,22 @@ variable "IS_DEV" {
   default = false
 }
 
-locals {
-  DOMAIN = var.IS_DEV ? format("d.%s", var.CF_DOMAIN) : var.CF_DOMAIN
+variable "HTTP_DOMAIN" {
+  type = string
 }
 
-# ALL set in https://app.terraform.io/
+variable "WS_DOMAIN" {
+  type = string
+}
+
+variable "AWS_WS_DOMAIN" {
+  type = string
+}
+
+variable "AWS_HTTP_DOMAIN" {
+  type = string
+}
+
 variable "CF_EMAIL" {
   type = string
 }

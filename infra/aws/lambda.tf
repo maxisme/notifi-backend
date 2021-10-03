@@ -81,7 +81,7 @@ resource "aws_lambda_permission" "message" {
 }
 
 resource "aws_lambda_function" "http" {
-  function_name = var.IS_DEV ? "http-dev" : "dev"
+  function_name = var.IS_DEV ? "http-dev" : "http"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
