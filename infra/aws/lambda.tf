@@ -30,7 +30,7 @@ resource "aws_lambda_function" "connect" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 resource "aws_lambda_permission" "connect" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -47,7 +47,7 @@ resource "aws_lambda_function" "disconnect" {
   image_config {
     entry_point = ["/main", "disconnect"]
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 resource "aws_lambda_permission" "disconnect" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -70,7 +70,7 @@ resource "aws_lambda_function" "message" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 resource "aws_lambda_permission" "message" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -93,7 +93,7 @@ resource "aws_lambda_function" "http" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type  = "Image"
+  package_type = "Image"
 }
 resource "aws_lambda_permission" "http" {
   statement_id  = "AllowAPIGatewayInvoke"
