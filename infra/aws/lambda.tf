@@ -20,7 +20,7 @@ EOF
 resource "aws_lambda_function" "connect" {
   function_name = "notifi-connect"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
+  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
   image_config {
     entry_point = ["/main", "connect"]
   }
@@ -30,7 +30,7 @@ resource "aws_lambda_function" "connect" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type = "Image"
+  package_type  = "Image"
 }
 resource "aws_lambda_permission" "connect" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -43,11 +43,11 @@ resource "aws_lambda_permission" "connect" {
 resource "aws_lambda_function" "disconnect" {
   function_name = "notifi-disconnect"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
+  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
   image_config {
     entry_point = ["/main", "disconnect"]
   }
-  package_type = "Image"
+  package_type  = "Image"
 }
 resource "aws_lambda_permission" "disconnect" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -60,7 +60,7 @@ resource "aws_lambda_permission" "disconnect" {
 resource "aws_lambda_function" "message" {
   function_name = "notifi-message"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
+  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
   image_config {
     entry_point = ["/main", "message"]
   }
@@ -70,7 +70,7 @@ resource "aws_lambda_function" "message" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type = "Image"
+  package_type  = "Image"
 }
 resource "aws_lambda_permission" "message" {
   statement_id  = "AllowExecutionFromApiGateway"
@@ -83,7 +83,7 @@ resource "aws_lambda_permission" "message" {
 resource "aws_lambda_function" "http" {
   function_name = "http"
   role          = aws_iam_role.iam_for_lambda.arn
-  image_uri     = format("%s:%s", data.aws_ecr_repository.notifi.repository_url, var.docker_tag)
+  image_uri     = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.DOCKER_TAG)
   image_config {
     entry_point = ["/main", "http"]
   }
@@ -93,7 +93,7 @@ resource "aws_lambda_function" "http" {
       WS_ENDPOINT    = aws_apigatewayv2_api.ws.api_endpoint
     }
   }
-  package_type = "Image"
+  package_type  = "Image"
 }
 resource "aws_lambda_permission" "http" {
   statement_id  = "AllowAPIGatewayInvoke"

@@ -1,3 +1,8 @@
+variable "SUB_DOMAIN" {
+  type    = string
+  default = ""
+}
+
 # ALL set in https://app.terraform.io/
 variable "CF_EMAIL" {
   type = string
