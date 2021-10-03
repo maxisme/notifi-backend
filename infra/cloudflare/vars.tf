@@ -11,11 +11,11 @@ variable "WS_DOMAIN" {
   type = string
 }
 
-variable "AWS_WS_DOMAIN" {
+variable "AWS_WS_DOMAIN_GATEWAY" {
   type = string
 }
 
-variable "AWS_HTTP_DOMAIN" {
+variable "AWS_HTTP_DOMAIN_GATEWAY" {
   type = string
 }
 
