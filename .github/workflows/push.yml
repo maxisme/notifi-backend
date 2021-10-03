@@ -34,8 +34,13 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           tag="$ECR_REGISTRY/notifi:latest"
+          if [[ "${{ github.ref }}" != "refs/heads/master" ]]
+          then
+            tag="$ECR_REGISTRY/notifi:develop"
+          fi
           docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$tag" .
           docker push "$tag"
+
           aws lambda update-function-code --function-name "http" --image-uri "$tag"
           aws lambda update-function-code --function-name "notifi-connect" --image-uri "$tag"
           aws lambda update-function-code --function-name "notifi-disconnect" --image-uri "$tag"
