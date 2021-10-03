@@ -10,20 +10,14 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 )
 
-const (
-	Region      = "us-east-1"
-	WSStageName = "ws"
-)
-
-func NewAPIGatewaySession(endpoint string) *apigatewaymanagementapi.ApiGatewayManagementApi {
+func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
 	sesh := session.Must(session.NewSessionWithOptions(session.Options{
 		SharedConfigState: session.SharedConfigEnable,
 		Config: aws.Config{
-			Region:   aws.String(Region),
-			Endpoint: aws.String(endpoint),
+			Region:   aws.String(os.Getenv("AWS_REGION")),
+			Endpoint: aws.String(os.Getenv("WS_ENDPOINT")),
 		},
 	}))
 	return apigatewaymanagementapi.New(sesh)
@@ -50,8 +44,6 @@ func SendWsMessage(connectionID string, msgData []byte) error {
 		Data:         msgData,
 	}
 
-	endpoint := strings.Replace(os.Getenv("WS_ENDPOINT"), "wss://", "https://", 1) + "/" + WSStageName
-	fmt.Println(endpoint)
-	_, err := NewAPIGatewaySession(endpoint).PostToConnection(connectionInput)
+	_, err := NewAPIGatewaySession().PostToConnection(connectionInput)
 	return err
 }
