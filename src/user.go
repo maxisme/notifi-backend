@@ -43,7 +43,7 @@ func (user User) Store(db *dynamo.DB) (Credentials, error) {
 	}
 
 	var StoredUser User
-	_ = db.Table(UserTable).Get("device_uuid", user.UUID).One(&StoredUser)
+	_ = db.Table(UserTable).Get("device_uuid", Hash(user.UUID)).One(&StoredUser)
 	if len(StoredUser.UUID) > 0 {
 		if len(StoredUser.CredentialsKey) == 0 && len(StoredUser.Credentials) > 0 {
 			StoredUser.CredentialsKey = PassHash(newCredentials.Key)
