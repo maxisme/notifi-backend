@@ -47,3 +47,9 @@ func SendWsMessage(connectionID string, msgData []byte) error {
 	_, err := NewAPIGatewaySession().PostToConnection(connectionInput)
 	return err
 }
+
+func WriteHttpError(w http.ResponseWriter, err error, code int) {
+	_, file, no, _ := runtime.Caller(1)
+	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
+	http.Error(w, err.Error(), http.StatusBadRequest)
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -9,7 +10,7 @@ import (
 func HandleCode(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		WriteHttpError(w, err, http.StatusBadRequest)
 		return
 	}
 
@@ -25,7 +26,7 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		http.Error(w, "Invalid UUID", http.StatusBadRequest)
+		WriteHttpError(w, fmt.Errorf("Invalid UUID"), http.StatusBadRequest)
 		return
 	}
 
@@ -33,19 +34,19 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 
 	db, err := GetDB()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteHttpError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	creds, err := PostUser.Store(db)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteHttpError(w, err, http.StatusInternalServerError)
 		return
 	}
 
 	c, err := json.Marshal(creds)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		WriteHttpError(w, err, http.StatusInternalServerError)
 		return
 	}
 
