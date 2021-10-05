@@ -53,7 +53,7 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	} else if !user.Verify(StoredUser) {
 		errorMsg = "Forbidden"
 		errorCode = http.StatusForbidden
-	} else if len(user.ConnectionID) > 0 {
+	} else if len(StoredUser.ConnectionID) > 0 {
 		errorMsg = "Already connected"
 		errorCode = http.StatusConflict
 	}
