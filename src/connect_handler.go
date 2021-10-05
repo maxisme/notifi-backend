@@ -5,12 +5,17 @@ import (
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"net/http"
+	"os"
 	"time"
 )
 
 const RequestNewUserCode = 551
 
 func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
+	if r.Headers["sec-key"] != os.Getenv("SERVER_KEY") {
+		return WriteError(fmt.Errorf("Invalid server key"), http.StatusForbidden)
+	}
+
 	user := User{
 		Credentials:    r.Headers["credentials"],
 		CredentialsKey: r.Headers["key"],
@@ -60,6 +65,9 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	StoredUser.AppVersion = r.Headers["version"]
 	if firebaseToken, ok := r.Headers["firebase-token"]; ok {
 		StoredUser.FirebaseToken = firebaseToken
+	}
+	if operatingSystem, ok := r.Headers["os"]; ok {
+		StoredUser.OS = operatingSystem
 	}
 	StoredUser.LastLogin = time.Now()
 	StoredUser.ConnectionID = r.RequestContext.ConnectionID

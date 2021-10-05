@@ -16,7 +16,7 @@ type User struct {
 	Credentials     string    `dynamo:"credentials,hash"`
 	CredentialsKey  string    `dynamo:"credential_key"`
 	ConnectionID    string    `dynamo:"connection_id,hash"`
-	Device          string    `dynamo:"device_info"`
+	OS              string    `dynamo:"operating_system"`
 	FirebaseToken   string    `dynamo:"firebase_token,allowempty"`
 	LastLogin       time.Time `dynamo:"last_login_dttm"`
 	NotificationCnt int       `dynamo:"notification_cnt"`

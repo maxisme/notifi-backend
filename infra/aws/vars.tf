@@ -18,6 +18,10 @@ variable "ENCRYPTION_KEY" {
   type = string
 }
 
+variable "SERVER_KEY" {
+  type = string
+}
+
 variable "CF_DOMAIN" {
   type = string
 }
