@@ -7,6 +7,7 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"net/http"
 	"os"
 )
 
@@ -17,6 +18,9 @@ func init() {
 	r.Use(middleware.Recoverer)
 	r.HandleFunc("/code", HandleCode)
 	r.HandleFunc("/api", HandleApi)
+	r.HandleFunc("/ws", func(writer http.ResponseWriter, req *http.Request) {
+		http.Redirect(writer, req, "https://"+os.Getenv("WS_HOST"), http.StatusMovedPermanently)
+	})
 	chiLambda = chiadapter.New(r)
 }
 

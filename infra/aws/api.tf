@@ -64,6 +64,11 @@ resource "aws_apigatewayv2_route" "api" {
   route_key = "ANY /api"
   target    = "integrations/${aws_apigatewayv2_integration.http.id}"
 }
+resource "aws_apigatewayv2_route" "ws-redirect" {
+  api_id    = aws_apigatewayv2_api.http.id
+  route_key = "ANY /ws"
+  target    = "integrations/${aws_apigatewayv2_integration.http.id}"
+}
 
 resource "aws_apigatewayv2_api_mapping" "http" {
   api_id      = aws_apigatewayv2_api.http.id

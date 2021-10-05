@@ -8,6 +8,10 @@ variable "ENCRYPTION_KEY" {
   type = string
 }
 
+variable "SERVER_KEY" {
+  type = string
+}
+
 variable "CF_EMAIL" {
   type = string
 }
