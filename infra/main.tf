@@ -17,6 +17,7 @@ module "aws" {
   source         = "./aws"
   AWS_REGION     = var.AWS_REGION
   ENCRYPTION_KEY = var.ENCRYPTION_KEY
+  SERVER_KEY     = var.SERVER_KEY
   CF_DOMAIN      = var.CF_DOMAIN
 }
 
@@ -35,6 +36,7 @@ module "cloudflare" {
   AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_HTTP_DOMAIN_GATEWAY
 }
 
+# develop
 module "cloudflare-develop" {
   source               = "./cloudflare"
   CF_API_KEY           = var.CF_API_KEY
@@ -54,7 +56,8 @@ module "cloudflare-develop" {
 module "aws-develop" {
   source         = "./aws"
   AWS_REGION     = var.AWS_REGION
-  ENCRYPTION_KEY = var.ENCRYPTION_KEY
+  ENCRYPTION_KEY = var.DEV_ENCRYPTION_KEY
+  SERVER_KEY     = var.DEV_SERVER_KEY
   CF_DOMAIN      = var.CF_DOMAIN
   IS_DEV         = true
 }

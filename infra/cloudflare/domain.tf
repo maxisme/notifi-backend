@@ -11,5 +11,5 @@ resource "cloudflare_record" "notifi-ws" {
   zone_id = var.CF_DOMAIN_ZONE_ID
   value   = var.AWS_WS_DOMAIN_GATEWAY
   type    = "CNAME"
-  proxied = false
+  proxied = true
 }

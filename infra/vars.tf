@@ -8,7 +8,15 @@ variable "ENCRYPTION_KEY" {
   type = string
 }
 
+variable "DEV_ENCRYPTION_KEY" {
+  type = string
+}
+
 variable "SERVER_KEY" {
+  type = string
+}
+
+variable "DEV_SERVER_KEY" {
   type = string
 }
 

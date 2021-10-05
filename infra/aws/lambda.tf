@@ -55,6 +55,7 @@ resource "aws_lambda_function" "disconnect" {
   }
   environment {
     variables = {
+      SERVER_KEY      = var.SERVER_KEY
       USER_TABLE_NAME = aws_dynamodb_table.user-table.name
     }
   }
@@ -80,6 +81,7 @@ resource "aws_lambda_function" "message" {
   environment {
     variables = {
       ENCRYPTION_KEY          = var.ENCRYPTION_KEY
+      SERVER_KEY              = var.SERVER_KEY
       WS_ENDPOINT             = local.AWS_WS_ENDPOINT
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
       USER_TABLE_NAME         = aws_dynamodb_table.user-table.name

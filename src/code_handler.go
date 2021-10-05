@@ -4,10 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 )
 
 func HandleCode(w http.ResponseWriter, r *http.Request) {
+	if r.Header.Get("Sec-Key") != os.Getenv("SERVER_KEY") {
+		return
+	}
+
 	err := r.ParseForm()
 	if err != nil {
 		WriteHttpError(w, err, http.StatusBadRequest)
