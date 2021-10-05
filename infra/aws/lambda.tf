@@ -22,9 +22,7 @@ resource "aws_lambda_function" "connect" {
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
-    entry_point = [
-      "/main",
-    "connect"]
+    entry_point = ["/main", "connect"]
   }
   environment {
     variables = {
@@ -32,6 +30,7 @@ resource "aws_lambda_function" "connect" {
       WS_ENDPOINT             = local.AWS_WS_ENDPOINT
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
       USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
+      SERVER_KEY              = var.SERVER_KEY
     }
   }
   package_type = "Image"
@@ -49,9 +48,7 @@ resource "aws_lambda_function" "disconnect" {
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
-    entry_point = [
-      "/main",
-    "disconnect"]
+    entry_point = ["/main", "disconnect"]
   }
   environment {
     variables = {
@@ -74,9 +71,7 @@ resource "aws_lambda_function" "message" {
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
-    entry_point = [
-      "/main",
-    "message"]
+    entry_point = ["/main", "message"]
   }
   environment {
     variables = {
@@ -102,9 +97,7 @@ resource "aws_lambda_function" "http" {
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   image_config {
-    entry_point = [
-      "/main",
-    "http"]
+    entry_point = ["/main", "http"]
   }
   environment {
     variables = {
@@ -113,6 +106,7 @@ resource "aws_lambda_function" "http" {
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
       USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
       WS_HOST                 = local.WS_DOMAIN
+      SERVER_KEY              = var.SERVER_KEY
     }
   }
   package_type = "Image"
