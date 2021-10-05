@@ -21,7 +21,7 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	if !IsValidUUID(user.UUID) {
 		return WriteError(fmt.Errorf("Invalid UUID '%s'", user.UUID), http.StatusBadRequest)
 	} else if !IsValidVersion(r.Headers["version"]) {
-		return WriteError(fmt.Errorf("Invalid Version %v", user.AppVersion), http.StatusBadRequest)
+		return WriteError(fmt.Errorf("Invalid Version %v", r.Headers["version"]), http.StatusBadRequest)
 	} else if !IsValidCredentials(user.Credentials) {
 		return WriteError(fmt.Errorf("Invalid Credentials"), http.StatusForbidden)
 	}
