@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-errors/errors"
 	"github.com/guregu/dynamo"
 	"os"
@@ -72,6 +73,8 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 			if u.Verify(StoredUser) {
 				isNewUser = false
 			} else {
+				fmt.Printf("%v\n", u)
+				fmt.Printf("stored: %v\n", StoredUser)
 				return Credentials{}, errors.New("Unable to create new credentials.")
 			}
 		}
@@ -92,8 +95,8 @@ func (u User) Store(db *dynamo.DB) (Credentials, error) {
 }
 
 // Verify verifies a u User s credentials
-func (u User) Verify(user User) bool {
-	isValidKey := VerifyPassHash(user.CredentialsKey, u.CredentialsKey)
-	isValidUUID := user.UUID == Hash(u.UUID)
+func (u User) Verify(dbUser User) bool {
+	isValidKey := VerifyPassHash(dbUser.CredentialsKey, u.CredentialsKey)
+	isValidUUID := dbUser.UUID == Hash(u.UUID)
 	return isValidKey && isValidUUID
 }
