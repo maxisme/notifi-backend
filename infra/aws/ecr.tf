@@ -4,8 +4,7 @@ resource "aws_ecr_repository" "notifi" {
 
 resource "aws_ecr_lifecycle_policy" "notifi" {
   repository = aws_ecr_repository.notifi.name
-
-  policy = <<EOF
+  policy     = <<EOF
 {
     "rules": [
         {
