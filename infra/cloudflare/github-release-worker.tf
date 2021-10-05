@@ -6,5 +6,5 @@ resource "cloudflare_worker_route" "github" {
 
 resource "cloudflare_worker_script" "github_release" {
   name    = var.IS_DEV ? "notifi-github-release-dev" : "notifi-github-release"
-  content = file("${path.module}/scripts/github-release.js")
+  content = file("${path.module}/worker-scripts/github-release.js")
 }
