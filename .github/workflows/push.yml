@@ -65,7 +65,7 @@ jobs:
         working-directory: ./infra
         run: terraform init
       - name: Terraform Apply
-        if: github.ref == 'refs/heads/lambda'
+        if: github.ref == 'refs/heads/develop'
         working-directory: ./infra
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
