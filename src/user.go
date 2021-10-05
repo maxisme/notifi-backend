@@ -80,12 +80,11 @@ func (user User) Store(db *dynamo.DB) (Credentials, error) {
 		return Credentials{}, errors.New("UUID already used")
 	}
 
-	user.Credentials = Hash(newCredentials.Value)
-	user.CredentialsKey = PassHash(newCredentials.Key)
-	user.UUID = Hash(user.UUID)
+	StoredUser.Credentials = Hash(newCredentials.Value)
+	StoredUser.CredentialsKey = PassHash(newCredentials.Key)
 
 	// create or update new user
-	if err := db.Table(UserTable).Put(user).Run(); err != nil {
+	if err := db.Table(UserTable).Put(StoredUser).Run(); err != nil {
 		return Credentials{}, err
 	}
 	return newCredentials, nil
