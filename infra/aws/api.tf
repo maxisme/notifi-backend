@@ -1,11 +1,11 @@
 resource "aws_apigatewayv2_api" "ws" {
-  name                       = "notifi-websocket"
+  name                       = var.IS_DEV ? "notifi-ws-dev" : "notifi-ws"
   protocol_type              = "WEBSOCKET"
   route_selection_expression = "$request.body.action"
 }
 
 resource "aws_apigatewayv2_api" "http" {
-  name          = "notifi-http"
+  name          = var.IS_DEV ? "notifi-http-dev" : "notifi-http"
   protocol_type = "HTTP"
 }
 
