@@ -12,15 +12,15 @@ const RequestNewUserCode = 551
 
 func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	user := User{
-		Credentials:    r.Headers["Credentials"],
-		CredentialsKey: r.Headers["Key"],
-		UUID:           r.Headers["Uuid"],
+		Credentials:    r.Headers["credentials"],
+		CredentialsKey: r.Headers["key"],
+		UUID:           r.Headers["uuid"],
 	}
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		return WriteError(fmt.Errorf("Invalid UUID '%s' %v", user.UUID, r.Headers), http.StatusBadRequest)
-	} else if !IsValidVersion(r.Headers["Version"]) {
+		return WriteError(fmt.Errorf("Invalid UUID '%s'", user.UUID), http.StatusBadRequest)
+	} else if !IsValidVersion(r.Headers["version"]) {
 		return WriteError(fmt.Errorf("Invalid Version %v", user.AppVersion), http.StatusBadRequest)
 	} else if !IsValidCredentials(user.Credentials) {
 		return WriteError(fmt.Errorf("Invalid Credentials"), http.StatusForbidden)
@@ -57,8 +57,8 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		return WriteError(fmt.Errorf(errorMsg), errorCode)
 	}
 
-	StoredUser.AppVersion = r.Headers["Version"]
-	if firebaseToken, ok := r.Headers["Firebase-Token"]; ok {
+	StoredUser.AppVersion = r.Headers["version"]
+	if firebaseToken, ok := r.Headers["firebase-token"]; ok {
 		StoredUser.FirebaseToken = firebaseToken
 	}
 	StoredUser.LastLogin = time.Now()
