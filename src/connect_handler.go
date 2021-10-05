@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"net/http"
@@ -20,7 +19,7 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 
 	// validate inputs
 	if !IsValidUUID(user.UUID) {
-		return WriteError(errors.New("Invalid UUID"), http.StatusBadRequest)
+		return WriteError(fmt.Errorf("Invalid UUID '%s' %v", user.UUID, r.Headers), http.StatusBadRequest)
 	} else if !IsValidVersion(r.Headers["Version"]) {
 		return WriteError(fmt.Errorf("Invalid Version %v", user.AppVersion), http.StatusBadRequest)
 	} else if !IsValidCredentials(user.Credentials) {

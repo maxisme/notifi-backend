@@ -70,7 +70,6 @@ data "template_file" "policy_user" {
     table_arn = aws_dynamodb_table.user-table.arn
   }
 }
-
 resource "aws_iam_role_policy" "lambda_db_user_policy" {
   role   = aws_iam_role.iam_for_lambda.id
   policy = data.template_file.policy_user.rendered
