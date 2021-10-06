@@ -13,42 +13,6 @@ jobs:
           version: latest
           working-directory: src
 
-  build:
-    name: Build & Deploy Image
-    runs-on: ubuntu-latest
-    needs:
-      - lint
-    steps:
-      - uses: actions/checkout@v2
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        run: |
-          tag="$ECR_REGISTRY/notifi:latest"
-          func_app=""
-          if [[ "${{ github.ref }}" != "refs/heads/master" ]]
-          then
-            func_app="-dev"
-            tag="$ECR_REGISTRY/notifi$func_app:develop"
-          fi
-
-          docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$tag" .
-          docker push "$tag"
-
-          aws lambda update-function-code --function-name "http$func_app" --image-uri "$tag"
-          aws lambda update-function-code --function-name "notifi-connect$func_app" --image-uri "$tag"
-          aws lambda update-function-code --function-name "notifi-disconnect$func_app" --image-uri "$tag"
-          aws lambda update-function-code --function-name "notifi-message$func_app" --image-uri "$tag"
-
   terraform:
     name: Run Terraform
     runs-on: ubuntu-latest
@@ -86,3 +50,66 @@ jobs:
           if ! terraform apply -target="module.cloudflare$dev" -auto-approve; then
             exit 1
           fi
+
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs:
+      - lint
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          tag="$ECR_REGISTRY/notifi:latest"
+          if [[ "${{ github.ref }}" != "refs/heads/master" ]]
+          then
+            tag="$ECR_REGISTRY/notifi-dev:develop"
+          fi
+
+          docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$tag" .
+          docker push "$tag"
+
+  deploy:
+    name: Deploy Pushed Image
+    runs-on: ubuntu-latest
+    needs:
+      - build
+      - terraform
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          tag="$ECR_REGISTRY/notifi:latest"
+          func_app=""
+          if [[ "${{ github.ref }}" != "refs/heads/master" ]]
+          then
+            func_app="-dev"
+            tag="$ECR_REGISTRY/notifi$func_app:develop"
+          fi
+
+          aws lambda update-function-code --function-name "http$func_app" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-connect$func_app" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-disconnect$func_app" --image-uri "$tag"
+          aws lambda update-function-code --function-name "notifi-message$func_app" --image-uri "$tag"
