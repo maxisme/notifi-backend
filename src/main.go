@@ -7,15 +7,28 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/httprate"
 	"net/http"
 	"os"
+	"time"
 )
 
 var chiLambda *chiadapter.ChiLambda
 
 func init() {
+	db, err := GetDB()
+	if err != nil {
+		panic(err.Error())
+	}
+
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
+	r.Use(httprate.Limit(
+		30,
+		1*time.Minute,
+		httprate.WithKeyFuncs(httprate.KeyByIP, httprate.KeyByEndpoint),
+		httprate.WithLimitCounter(getLimitCounter(db)),
+	))
 	r.HandleFunc("/code", HandleCode)
 	r.HandleFunc("/api", HandleApi)
 	r.HandleFunc("/ws", func(writer http.ResponseWriter, req *http.Request) {
