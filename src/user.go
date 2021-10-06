@@ -82,6 +82,7 @@ func (user User) Store(db *dynamo.DB) (Credentials, error) {
 
 	StoredUser.Credentials = Hash(newCredentials.Value)
 	StoredUser.CredentialsKey = PassHash(newCredentials.Key)
+	StoredUser.UUID = Hash(user.UUID)
 
 	// create or update new user
 	if err := db.Table(UserTable).Put(StoredUser).Run(); err != nil {
