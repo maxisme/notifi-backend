@@ -86,6 +86,7 @@ resource "aws_lambda_function" "http" {
       WS_ENDPOINT             = local.AWS_WS_ENDPOINT
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
       USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
+      BRUTE_FORCE_TABLE_NAME  = aws_dynamodb_table.brute-force-table.name
       WS_HOST                 = local.WS_DOMAIN
       SERVER_KEY              = var.SERVER_KEY
     }
