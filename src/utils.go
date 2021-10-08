@@ -24,20 +24,12 @@ func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
 }
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
-	PrintErrorWithSkip(2, err.Error(), fmt.Sprintf("%d", code))
+	_, file, no, _ := runtime.Caller(1)
+	fmt.Printf("%s#%d: %s %d\n", file, no, err.Error(), code)
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),
 	}, err
-}
-
-func PrintErrorWithSkip(skip int, errors ...string) {
-	_, file, no, _ := runtime.Caller(skip)
-	fmt.Printf("%s#%d: %s\n", file, no, errors)
-}
-
-func PrintError(errors ...string) {
-	PrintErrorWithSkip(2, errors...)
 }
 
 func WriteEmptySuccess() (events.APIGatewayProxyResponse, error) {
