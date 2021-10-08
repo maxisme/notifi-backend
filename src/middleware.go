@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-chi/httprate"
 	"github.com/guregu/dynamo"
 	"os"
@@ -37,7 +36,7 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 	v.updatedAt = time.Now()
 
 	if err := c.db.Table(bruteForceTable).Put(v).Run(); err != nil {
-		fmt.Println(err.Error())
+		PrintError(err.Error())
 	}
 
 	return nil
@@ -78,14 +77,14 @@ func (c *localCounter) evict() {
 
 	var counters []count
 	if err := c.db.Table(bruteForceTable).Scan().Filter("'updated_dttm' >= ?", time.Now().Add(-d)).All(&counters); err != nil {
-		fmt.Println(err.Error())
+		PrintError(err.Error())
 	}
 
 	tx := c.db.WriteTx()
 	for _, v := range counters {
-		tx.Delete(c.db.Table(bruteForceTable).Delete("key", v.key))
+		tx.Delete(c.db.Table(bruteForceTable).Delete("key", v.key).If("'key' = ?", v.key))
 	}
 	if err := tx.Run(); err != nil {
-		fmt.Println(err.Error())
+		PrintError(err.Error())
 	}
 }
