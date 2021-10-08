@@ -32,7 +32,7 @@ var _ httprate.LimitCounter = &localCounter{}
 func (c *localCounter) getCounter(key string, window time.Time) *count {
 	k := httprate.LimitCounterKey(key, window)
 	var cnt count
-	if err := c.db.Table(bruteForceTable).Get("brute_key", k).One(&cnt); err != nil {
+	if err := c.db.Table(bruteForceTable).Get("brute_key", k).One(&cnt); err != nil || cnt.key == 0 {
 		return &count{key: k, value: 0, updatedAt: time.Now()}
 	}
 	return &cnt
@@ -46,10 +46,9 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 
 	v := c.getCounter(key, currentWindow)
 	v.value += 1
-	v.updatedAt = time.Now()
 
 	if err := c.db.Table(bruteForceTable).Put(v).Run(); err != nil {
-		PrintError(err.Error())
+		return err
 	}
 
 	return nil
