@@ -1,10 +1,12 @@
 package main
 
 import (
-	"fmt"
 	"github.com/go-chi/httprate"
 	"github.com/guregu/dynamo"
+	"net"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 )
@@ -50,7 +52,6 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 	v := c.getCounter(key, currentWindow)
 	v.Value += 1
 
-	fmt.Printf("%+v\n", v)
 	if err := c.db.Table(bruteForceTable).Put(&v).Run(); err != nil {
 		return err
 	}
@@ -89,4 +90,28 @@ func (c *localCounter) evict() error {
 	}
 	_, err := c.db.Table(bruteForceTable).Batch("brute_key", "updated_dttm").Write().Delete(keys...).Run()
 	return err
+}
+
+func KeyByIP(r *http.Request) (string, error) {
+	var ip string
+
+	if cfrip := r.Header.Get("CF-Connecting-IP"); cfrip != "" {
+		ip = cfrip
+	} else if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		ip = xrip
+	} else if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		i := strings.Index(xff, ", ")
+		if i == -1 {
+			i = len(xff)
+		}
+		ip = xff[:i]
+	} else {
+		var err error
+		ip, _, err = net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+	}
+
+	return ip, nil
 }
