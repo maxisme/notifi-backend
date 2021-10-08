@@ -50,8 +50,8 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 	v := c.getCounter(key, currentWindow)
 	v.value += 1
 
-	fmt.Printf("%v\n", v)
-	if err := c.db.Table(bruteForceTable).Put(v).Run(); err != nil {
+	fmt.Printf("%+v\n", v)
+	if err := c.db.Table(bruteForceTable).Put(&v).Run(); err != nil {
 		return err
 	}
 
