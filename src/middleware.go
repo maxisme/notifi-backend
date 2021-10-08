@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/go-chi/httprate"
 	"github.com/guregu/dynamo"
 	"os"
@@ -39,7 +40,9 @@ func (c *localCounter) getCounter(key string, window time.Time) *count {
 }
 
 func (c *localCounter) Increment(key string, currentWindow time.Time) error {
-	c.evict()
+	if err := c.evict(); err != nil {
+		return err
+	}
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -47,6 +50,7 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 	v := c.getCounter(key, currentWindow)
 	v.value += 1
 
+	fmt.Printf("%v\n", v)
 	if err := c.db.Table(bruteForceTable).Put(v).Run(); err != nil {
 		return err
 	}
@@ -64,19 +68,19 @@ func (c *localCounter) Get(key string, currentWindow, previousWindow time.Time) 
 	return curr.value, prev.value, nil
 }
 
-func (c *localCounter) evict() {
+func (c *localCounter) evict() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	d := c.windowLength * 3
 
 	if time.Since(c.lastEvict) < d {
-		return
+		return nil
 	}
 
 	var counters []count
 	if err := c.db.Table(bruteForceTable).Scan().Filter("'updated_dttm' >= ?", time.Now().Add(-d)).All(&counters); err != nil {
-		PrintError(err.Error())
+		return err
 	}
 
 	var keys []dynamo.Keyed
@@ -84,7 +88,5 @@ func (c *localCounter) evict() {
 		keys = append(keys, dynamo.Keys{v.key, v.updatedAt})
 	}
 	_, err := c.db.Table(bruteForceTable).Batch("brute_key", "updated_dttm").Write().Delete(keys...).Run()
-	if err != nil {
-		PrintError(err.Error())
-	}
+	return err
 }
