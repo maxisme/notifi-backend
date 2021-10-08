@@ -26,7 +26,7 @@ func init() {
 	r.Use(httprate.Limit(
 		30,
 		1*time.Minute,
-		httprate.WithKeyFuncs(httprate.KeyByIP, httprate.KeyByEndpoint),
+		httprate.WithKeyFuncs(KeyByIP, httprate.KeyByEndpoint),
 		httprate.WithLimitCounter(getLimitCounter(db)),
 	))
 	r.HandleFunc("/code", HandleCode)
