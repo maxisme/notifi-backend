@@ -8,7 +8,20 @@ import (
 	"time"
 )
 
+type localCounter struct {
+	windowLength time.Duration
+	lastEvict    time.Time
+	mu           sync.Mutex
+	db           *dynamo.DB
+}
+
 var bruteForceTable = os.Getenv("BRUTE_FORCE_TABLE_NAME")
+
+type count struct {
+	key       uint64    `dynamo:"brute_key,hash"`
+	value     int       `dynamo:"value"`
+	updatedAt time.Time `dynamo:"updated_dttm"`
+}
 
 func getLimitCounter(db *dynamo.DB) httprate.LimitCounter {
 	return &localCounter{db: db}
@@ -19,7 +32,7 @@ var _ httprate.LimitCounter = &localCounter{}
 func (c *localCounter) getCounter(key string, window time.Time) *count {
 	k := httprate.LimitCounterKey(key, window)
 	var cnt count
-	if err := c.db.Table(bruteForceTable).Get("key", k).One(&cnt); err != nil {
+	if err := c.db.Table(bruteForceTable).Get("brute_key", k).One(&cnt); err != nil {
 		return &count{key: k, value: 0, updatedAt: time.Now()}
 	}
 	return &cnt
@@ -52,19 +65,6 @@ func (c *localCounter) Get(key string, currentWindow, previousWindow time.Time) 
 	return curr.value, prev.value, nil
 }
 
-type localCounter struct {
-	windowLength time.Duration
-	lastEvict    time.Time
-	mu           sync.Mutex
-	db           *dynamo.DB
-}
-
-type count struct {
-	key       uint64    `dynamo:"key,hash"`
-	value     int       `dynamo:"value"`
-	updatedAt time.Time `dynamo:"updated_dttm"`
-}
-
 func (c *localCounter) evict() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -80,11 +80,12 @@ func (c *localCounter) evict() {
 		PrintError(err.Error())
 	}
 
-	tx := c.db.WriteTx()
+	var keys []dynamo.Keyed
 	for _, v := range counters {
-		tx.Delete(c.db.Table(bruteForceTable).Delete("key", v.key).If("'key' = ?", v.key))
+		keys = append(keys, dynamo.Keys{v.key, v.updatedAt})
 	}
-	if err := tx.Run(); err != nil {
+	_, err := c.db.Table(bruteForceTable).Batch("brute_key", "updated_dttm").Write().Delete(keys...).Run()
+	if err != nil {
 		PrintError(err.Error())
 	}
 }
