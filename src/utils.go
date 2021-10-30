@@ -48,6 +48,15 @@ func SendWsMessage(connectionID string, msgData []byte) error {
 	return err
 }
 
+func CloseConnection(connectionID string) error {
+	connectionInput := &apigatewaymanagementapi.DeleteConnectionInput{
+		ConnectionId: aws.String(connectionID),
+	}
+
+	_, err := NewAPIGatewaySession().DeleteConnection(connectionInput)
+	return err
+}
+
 func WriteHttpError(w http.ResponseWriter, err error, code int) {
 	_, file, no, _ := runtime.Caller(1)
 	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
