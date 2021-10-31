@@ -15,10 +15,11 @@ module "cloudflare-develop" {
 }
 
 module "aws-develop" {
-  source         = "./aws"
-  AWS_REGION     = var.AWS_REGION
-  ENCRYPTION_KEY = var.DEV_ENCRYPTION_KEY
-  SERVER_KEY     = var.DEV_SERVER_KEY
-  CF_DOMAIN      = var.CF_DOMAIN
-  IS_DEV         = true
+  AWS_REGION          = var.AWS_REGION
+  CF_DOMAIN           = var.CF_DOMAIN
+  ENCRYPTION_KEY      = var.DEV_ENCRYPTION_KEY
+  FIREBASE_SERVER_KEY = var.FIREBASE_SERVER_KEY
+  IS_DEV              = true
+  SERVER_KEY          = var.DEV_SERVER_KEY
+  source              = "./aws"
 }
