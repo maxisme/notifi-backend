@@ -40,3 +40,7 @@ variable "CF_DOMAIN_ZONE_ID" {
 variable "CF_DOMAIN" {
   type = string
 }
+
+variable "FIREBASE_SERVER_KEY" {
+  type = string
+}

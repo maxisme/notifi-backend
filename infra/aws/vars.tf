@@ -25,3 +25,7 @@ variable "SERVER_KEY" {
 variable "CF_DOMAIN" {
   type = string
 }
+
+variable "FIREBASE_SERVER_KEY" {
+  type = string
+}
