@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/iris-contrib/schema"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 )
@@ -69,17 +70,19 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 		firebaseClient, err := fcm.NewClient(os.Getenv("FIREBASE_SERVER_KEY"))
-		if err != nil && firebaseClient != nil {
+		if err == nil && firebaseClient != nil {
 			_, err := firebaseClient.Send(msg)
 			if err != nil {
-				fmt.Println(err)
+				logrus.Errorf("Problem sending firebase message: %s", err.Error())
 			}
+		} else {
+			logrus.Errorf("Problem setting up FB client: %s", err.Error())
 		}
 	}
 
 	err = SendWsMessage(user.ConnectionID, notificationMsgBytes)
 	if err != nil {
-		fmt.Println(err.Error())
+		logrus.Error(err.Error())
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
 			WriteHttpError(w, fmt.Errorf("%s %v", err.Error(), notification), http.StatusInternalServerError)

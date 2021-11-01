@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httprate"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"time"
@@ -38,6 +39,8 @@ func init() {
 }
 
 func main() {
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+
 	switch arg := os.Args[1]; arg {
 	case "http":
 		lambda.Start(HttpHandler)
