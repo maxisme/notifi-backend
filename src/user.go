@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/go-errors/errors"
+	"errors"
 	"github.com/guregu/dynamo"
 	"os"
 	"time"

@@ -88,8 +88,11 @@ func (c *localCounter) evict() error {
 	for _, v := range counters {
 		keys = append(keys, dynamo.Keys{v.Key, v.UpdatedAt})
 	}
-	_, err := c.db.Table(bruteForceTable).Batch("brute_key", "updated_dttm").Write().Delete(keys...).Run()
-	return err
+	if len(keys) > 0 {
+		_, err := c.db.Table(bruteForceTable).Batch("brute_key", "updated_dttm").Write().Delete(keys...).Run()
+		return err
+	}
+	return nil
 }
 
 func KeyByIP(r *http.Request) (string, error) {

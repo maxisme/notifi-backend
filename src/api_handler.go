@@ -75,7 +75,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logrus.Errorf("Problem sending firebase message: %s", err.Error())
 			}
-		} else {
+		} else if err != nil {
 			logrus.Errorf("Problem setting up FB client: %s", err.Error())
 		}
 	}
