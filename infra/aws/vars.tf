@@ -31,5 +31,6 @@ variable "FIREBASE_SERVER_KEY" {
 }
 
 variable "PAGES_PROXY_URL" {
-  type = string
+  type    = string
+  default = "https://notifi.pages.dev"
 }
