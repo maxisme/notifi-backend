@@ -1,63 +1,14 @@
-// utils
-function versionCompare(v1, v2, options) {
-    // https://stackoverflow.com/questions/6832596/how-to-compare-software-version-number-using-js-only-number/53387532
-    var lexicographical = options && options.lexicographical,
-        zeroExtend = options && options.zeroExtend,
-        v1parts = v1.split('.'),
-        v2parts = v2.split('.');
-
-    function isValidPart(x) {
-        return (lexicographical ? /^\d+[A-Za-z]*$/ : /^\d+$/).test(x);
-    }
-
-    if (!v1parts.every(isValidPart) || !v2parts.every(isValidPart)) {
-        return NaN;
-    }
-
-    if (zeroExtend) {
-        while (v1parts.length < v2parts.length) v1parts.push("0");
-        while (v2parts.length < v1parts.length) v2parts.push("0");
-    }
-
-    if (!lexicographical) {
-        v1parts = v1parts.map(Number);
-        v2parts = v2parts.map(Number);
-    }
-
-    for (var i = 0; i < v1parts.length; ++i) {
-        if (v2parts.length === i) {
-            return 1;
-        }
-
-        if (v1parts[i] === v2parts[i]) {
-
-        } else if (v1parts[i] > v2parts[i]) {
-            return 1;
-        } else {
-            return -1;
-        }
-    }
-
-    if (v1parts.length !== v2parts.length) {
-        return -1;
-    }
-
-    return 0;
-}
-
 async function getGithubReleasesJson(event) {
     const cacheUrl = new URL(event.request.url)
     const cacheKey = new Request(cacheUrl.toString(), event.request)
     const cache = caches.default
     let response = await cache.match(cacheKey)
     if (!response) {
-        console.log("start fetch");
         response = await fetch(`https://api.github.com/repos/maxisme/notifi/releases`, {
             headers: {
                 'User-Agent': event.request.headers.get('user-agent')
             }
         })
-        console.log("end fetch");
         if (response.status !== 200) {
             throw 'cannot fetch release: ' + response.statusText;
         }
@@ -128,7 +79,6 @@ async function getGithubRelease(event) {
 ////////////
 // worker //
 ////////////
-
 addEventListener("fetch", (event) => {
     event.respondWith(
         getGithubRelease(event).catch(
@@ -136,3 +86,52 @@ addEventListener("fetch", (event) => {
         )
     );
 });
+
+///////////
+// utils //
+///////////
+function versionCompare(v1, v2, options) {
+    // https://stackoverflow.com/questions/6832596/how-to-compare-software-version-number-using-js-only-number/53387532
+    var lexicographical = options && options.lexicographical,
+        zeroExtend = options && options.zeroExtend,
+        v1parts = v1.split('.'),
+        v2parts = v2.split('.');
+
+    function isValidPart(x) {
+        return (lexicographical ? /^\d+[A-Za-z]*$/ : /^\d+$/).test(x);
+    }
+
+    if (!v1parts.every(isValidPart) || !v2parts.every(isValidPart)) {
+        return NaN;
+    }
+
+    if (zeroExtend) {
+        while (v1parts.length < v2parts.length) v1parts.push("0");
+        while (v2parts.length < v1parts.length) v2parts.push("0");
+    }
+
+    if (!lexicographical) {
+        v1parts = v1parts.map(Number);
+        v2parts = v2parts.map(Number);
+    }
+
+    for (var i = 0; i < v1parts.length; ++i) {
+        if (v2parts.length === i) {
+            return 1;
+        }
+
+        if (v1parts[i] === v2parts[i]) {
+
+        } else if (v1parts[i] > v2parts[i]) {
+            return 1;
+        } else {
+            return -1;
+        }
+    }
+
+    if (v1parts.length !== v2parts.length) {
+        return -1;
+    }
+
+    return 0;
+}
