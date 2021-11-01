@@ -75,7 +75,7 @@ resource "aws_apigatewayv2_integration" "website" {
   api_id             = aws_apigatewayv2_api.http.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "${var.PAGES_PROXY_URL}{proxy}"
+  integration_uri    = "${var.PAGES_PROXY_URL}/{proxy}"
 }
 resource "aws_apigatewayv2_route" "website" {
   api_id    = aws_apigatewayv2_api.http.id
