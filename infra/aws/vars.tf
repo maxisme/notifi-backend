@@ -29,3 +29,7 @@ variable "CF_DOMAIN" {
 variable "FIREBASE_SERVER_KEY" {
   type = string
 }
+
+variable "PAGES_PROXY_URL" {
+  type = string
+}
