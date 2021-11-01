@@ -22,4 +22,5 @@ module "aws-develop" {
   IS_DEV              = true
   SERVER_KEY          = var.DEV_SERVER_KEY
   source              = "./aws"
+  PAGES_PROXY_URL     = "https://994bc96c.notifi.pages.dev"
 }
