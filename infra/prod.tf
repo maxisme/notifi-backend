@@ -3,7 +3,6 @@ module "aws" {
   CF_DOMAIN           = var.CF_DOMAIN
   ENCRYPTION_KEY      = var.ENCRYPTION_KEY
   FIREBASE_SERVER_KEY = var.FIREBASE_SERVER_KEY
-  PAGES_PROXY_URL     = "https://notifi.pages.dev"
   SERVER_KEY          = var.SERVER_KEY
   source              = "./aws"
 }

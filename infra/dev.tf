@@ -20,7 +20,6 @@ module "aws-develop" {
   ENCRYPTION_KEY      = var.DEV_ENCRYPTION_KEY
   FIREBASE_SERVER_KEY = var.FIREBASE_SERVER_KEY
   IS_DEV              = true
-  PAGES_PROXY_URL     = "https://01f6aae6.notifi.pages.dev"
   SERVER_KEY          = var.DEV_SERVER_KEY
   source              = "./aws"
 }
