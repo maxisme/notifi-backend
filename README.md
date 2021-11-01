@@ -27,13 +27,17 @@ ln -s $(pwd)/pre-commit.sh $(pwd)/.git/hooks/pre-commit
 chmod +x $(pwd)/.git/hooks/pre-commit
 ```
 
-# tokens
-## AWS AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
+## tokens
+### AWS AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
  - https://console.aws.amazon.com
  - Security Credentials (under username)
  - Access keys (access key ID and secret access key)
-
-
+ 
+## go libraries
+### upgrade
+```
+cd src && go get -u && go mod tidy
+```
 
 # Worker
 test locally by installing:

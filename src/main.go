@@ -17,6 +17,10 @@ import (
 var chiLambda *chiadapter.ChiLambda
 
 func init() {
+
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	logrus.SetOutput(os.Stdout)
+
 	db, err := GetDB()
 	if err != nil {
 		panic(err.Error())
@@ -39,8 +43,6 @@ func init() {
 }
 
 func main() {
-	logrus.SetFormatter(&logrus.JSONFormatter{})
-
 	switch arg := os.Args[1]; arg {
 	case "http":
 		lambda.Start(HttpHandler)
