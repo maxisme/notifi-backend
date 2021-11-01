@@ -7,6 +7,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/apigatewaymanagementapi"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"runtime"
@@ -25,7 +26,12 @@ func NewAPIGatewaySession() *apigatewaymanagementapi.ApiGatewayManagementApi {
 
 func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
 	_, file, no, _ := runtime.Caller(1)
-	fmt.Printf("%s#%d: %s %d\n", file, no, err.Error(), code)
+	logrus.WithFields(
+		logrus.Fields{
+			"path": fmt.Sprintf("%s#%d", file, no),
+			"code": code,
+		},
+	).Warnf(err.Error())
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),
@@ -59,6 +65,11 @@ func CloseConnection(connectionID string) error {
 
 func WriteHttpError(w http.ResponseWriter, err error, code int) {
 	_, file, no, _ := runtime.Caller(1)
-	fmt.Printf("%s#%d: request error: %s %d\n", file, no, err.Error(), code)
+	logrus.WithFields(
+		logrus.Fields{
+			"path": fmt.Sprintf("%s#%d", file, no),
+			"code": code,
+		},
+	).Warn(err.Error())
 	http.Error(w, err.Error(), http.StatusBadRequest)
 }

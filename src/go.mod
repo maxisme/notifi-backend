@@ -14,6 +14,7 @@ require (
 	github.com/guregu/dynamo v1.10.4
 	github.com/iris-contrib/schema v0.0.1
 	github.com/satori/go.uuid v1.2.0
+	github.com/sirupsen/logrus v1.8.1
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a
 	golang.org/x/net v0.0.0-20210503060351-7fd8e65b6420 // indirect
 )

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 
@@ -34,7 +34,7 @@ func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 			for i := range notifications {
 				var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 				if err := notifications[i].Decrypt(encryptionKey); err != nil {
-					fmt.Println(err.Error())
+					logrus.Error(err.Error())
 				}
 			}
 
