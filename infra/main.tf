@@ -3,7 +3,7 @@ terraform {
     hostname     = "app.terraform.io"
     organization = "notifi"
     workspaces {
-      name = "github-actions"
+      name = "notifi-github-actions"
     }
   }
 }
