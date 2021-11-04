@@ -5,6 +5,7 @@ module "aws" {
   FIREBASE_SERVER_KEY = var.FIREBASE_SERVER_KEY
   SERVER_KEY          = var.SERVER_KEY
   source              = "./aws"
+  IS_DEV              = false
 }
 
 module "cloudflare" {
@@ -14,9 +15,10 @@ module "cloudflare" {
   CF_DOMAIN            = var.CF_DOMAIN
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
+  IS_DEV               = false
 
-  HTTP_DOMAIN             = module.aws-develop.HTTP_DOMAIN
-  WS_DOMAIN               = module.aws-develop.WS_DOMAIN
-  AWS_WS_DOMAIN_GATEWAY   = module.aws-develop.AWS_WS_DOMAIN_GATEWAY
-  AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_HTTP_DOMAIN_GATEWAY
+  HTTP_DOMAIN             = module.aws.HTTP_DOMAIN
+  WS_DOMAIN               = module.aws.WS_DOMAIN
+  AWS_WS_DOMAIN_GATEWAY   = module.aws.AWS_WS_DOMAIN_GATEWAY
+  AWS_HTTP_DOMAIN_GATEWAY = module.aws.AWS_HTTP_DOMAIN_GATEWAY
 }
