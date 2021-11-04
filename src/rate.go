@@ -50,7 +50,7 @@ func (c *localCounter) Increment(key string, currentWindow time.Time) error {
 	defer c.mu.Unlock()
 
 	v := c.getCounter(key, currentWindow)
-	v.Value += 1
+	v.Value++
 
 	if err := c.db.Table(bruteForceTable).Put(&v).Run(); err != nil {
 		return err

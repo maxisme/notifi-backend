@@ -71,7 +71,7 @@ func (user User) Store(db *dynamo.DB) (Credentials, error) {
 			if user.Verify(StoredUser) {
 				isNewUser = false
 			} else {
-				return Credentials{}, errors.New("Unable to create new newCredentials.")
+				return Credentials{}, errors.New("Unable to create new credentials")
 			}
 		}
 	}
