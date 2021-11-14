@@ -51,14 +51,3 @@ resource "aws_iam_role_policy" "lambda_db_user_policy" {
   role   = aws_iam_role.iam_for_lambda.id
   policy = data.template_file.policy_user.rendered
 }
-
-data "template_file" "policy_brute_force" {
-  template = file("${path.module}/templates/policy.tpl")
-  vars = {
-    table_arn = aws_dynamodb_table.brute-force-table.arn
-  }
-}
-resource "aws_iam_role_policy" "lambda_db_brute_force_policy" {
-  role   = aws_iam_role.iam_for_lambda.id
-  policy = data.template_file.policy_brute_force.rendered
-}

@@ -7,33 +7,19 @@ import (
 	"github.com/awslabs/aws-lambda-go-api-proxy/chi"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/httprate"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
-	"time"
 )
 
 var chiLambda *chiadapter.ChiLambda
 
 func init() {
-
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetOutput(os.Stdout)
 
-	db, err := GetDB()
-	if err != nil {
-		panic(err.Error())
-	}
-
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
-	r.Use(httprate.Limit(
-		30,
-		1*time.Minute,
-		httprate.WithKeyFuncs(KeyByIP, httprate.KeyByEndpoint),
-		httprate.WithLimitCounter(getLimitCounter(db)),
-	))
 	r.HandleFunc("/code", HandleCode)
 	r.HandleFunc("/api", HandleApi)
 	r.HandleFunc("/ws", func(writer http.ResponseWriter, req *http.Request) {
@@ -53,7 +39,7 @@ func main() {
 	case "disconnect":
 		lambda.Start(HandleDisconnect)
 	default:
-		panic("missing args")
+		panic("invalid lambda")
 	}
 }
 
