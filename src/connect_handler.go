@@ -56,9 +56,17 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		errorCode = http.StatusForbidden
 	} else if len(StoredUser.ConnectionID) > 0 {
 		if err := CloseConnection(StoredUser.ConnectionID); err != nil {
-			logrus.Errorf("problem closing already open ws connection: %s: %s", StoredUser.ConnectionID, err.Error())
+			logrus.WithFields(logrus.Fields{
+				"connection_id": StoredUser.ConnectionID,
+				"uuid":          Hash(user.UUID),
+				"err":           err.Error(),
+			}).Error("problem closing already open ws connection", StoredUser.ConnectionID, err.Error())
 		} else {
-			logrus.Infof("Succesfully closed connection id: %s", StoredUser.ConnectionID)
+			logrus.WithFields(logrus.Fields{
+				"connection_id": StoredUser.ConnectionID,
+				"uuid":          Hash(user.UUID),
+				"err":           err.Error(),
+			}).Infof("Succesfully closed connection id")
 		}
 	}
 
