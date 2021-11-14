@@ -83,7 +83,6 @@ resource "aws_lambda_function" "http" {
   }
   environment {
     variables = {
-      BRUTE_FORCE_TABLE_NAME  = aws_dynamodb_table.brute-force-table.name
       ENCRYPTION_KEY          = var.ENCRYPTION_KEY
       FIREBASE_SERVER_KEY     = var.FIREBASE_SERVER_KEY
       NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name

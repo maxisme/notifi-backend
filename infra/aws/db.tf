@@ -52,20 +52,3 @@ resource "aws_dynamodb_table" "notification-table" {
     hash_key        = "credentials"
   }
 }
-
-resource "aws_dynamodb_table" "brute-force-table" {
-  name         = var.IS_DEV ? "dev-brute-force" : "brute-force"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "brute_key"
-  range_key    = "updated_dttm"
-
-  attribute {
-    name = "brute_key"
-    type = "N"
-  }
-
-  attribute {
-    name = "updated_dttm"
-    type = "S"
-  }
-}
