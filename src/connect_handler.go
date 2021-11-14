@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
 	"time"
@@ -55,7 +56,9 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		errorCode = http.StatusForbidden
 	} else if len(StoredUser.ConnectionID) > 0 {
 		if err := CloseConnection(StoredUser.ConnectionID); err != nil {
-			return WriteError(err, http.StatusConflict)
+			logrus.Errorf("problem closing already open ws connection: %s: %s", StoredUser.ConnectionID, err.Error())
+		} else {
+			logrus.Infof("Succesfully closed connection id: %s", StoredUser.ConnectionID)
 		}
 	}
 
