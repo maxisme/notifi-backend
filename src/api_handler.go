@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/appleboy/go-fcm"
 	"github.com/iris-contrib/schema"
@@ -80,9 +81,12 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	err = SendWsMessage(user.ConnectionID, notificationMsgBytes)
+	if len(user.ConnectionID) > 0 {
+		err = SendWsMessage(user.ConnectionID, notificationMsgBytes)
+	} else {
+		err = errors.New("user has no ConnectionID")
+	}
 	if err != nil {
-		logrus.Error(err.Error())
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
 			WriteHttpError(w, fmt.Errorf("%s %v", err.Error(), notification), http.StatusInternalServerError)
