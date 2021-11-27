@@ -1,6 +1,6 @@
 resource "cloudflare_worker_route" "github" {
   zone_id     = var.CF_DOMAIN_ZONE_ID
-  pattern     = format("%s/version*", local.HTTP_DOMAIN)
+  pattern     = format("%s/version*", var.HTTP_DOMAIN)
   script_name = cloudflare_worker_script.github_release.name
 }
 
