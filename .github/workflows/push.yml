@@ -109,7 +109,7 @@ jobs:
             tag="$ECR_REGISTRY/notifi$func_app:develop"
           fi
 
-          aws lambda update-function-code --function-name "http$func_app" --image-uri "$tag"
+          aws lambda update-function-code --function-name "api$func_app" --image-uri "$tag"
           aws lambda update-function-code --function-name "notifi-connect$func_app" --image-uri "$tag"
           aws lambda update-function-code --function-name "notifi-disconnect$func_app" --image-uri "$tag"
           aws lambda update-function-code --function-name "notifi-message$func_app" --image-uri "$tag"
