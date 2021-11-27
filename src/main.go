@@ -21,7 +21,8 @@ func init() {
 	r := chi.NewRouter()
 	r.Use(middleware.Recoverer)
 	r.HandleFunc("/code", HandleCode)
-	r.HandleFunc("/api", HandleApi)
+	r.HandleFunc("/", HandleApi)
+
 	r.HandleFunc("/ws", func(writer http.ResponseWriter, req *http.Request) {
 		http.Redirect(writer, req, "https://"+os.Getenv("WS_HOST"), http.StatusMovedPermanently)
 	})
@@ -30,8 +31,8 @@ func init() {
 
 func main() {
 	switch arg := os.Args[1]; arg {
-	case "http":
-		lambda.Start(HttpHandler)
+	case "api":
+		lambda.Start(APIHandler)
 	case "connect":
 		lambda.Start(HandleConnect)
 	case "message":
@@ -43,7 +44,7 @@ func main() {
 	}
 }
 
-func HttpHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+func APIHandler(ctx context.Context, req events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// If no name is provided in the HTTP request body, throw an error
 	return chiLambda.ProxyWithContext(ctx, req)
 }

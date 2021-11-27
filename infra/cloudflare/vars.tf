@@ -3,7 +3,7 @@ variable "IS_DEV" {
   default = false
 }
 
-variable "HTTP_DOMAIN" {
+variable "API_DOMAIN" {
   type = string
 }
 
@@ -37,4 +37,13 @@ variable "CF_DOMAIN_ZONE_ID" {
 
 variable "CF_DOMAIN" {
   type = string
+}
+
+variable "PAGES_PROXY_URL" {
+  type    = string
+  default = "https://notifi.pages.dev"
+}
+
+locals {
+  HTTP_DOMAIN = var.IS_DEV ? format("d.%s", var.CF_DOMAIN) : var.CF_DOMAIN
 }
