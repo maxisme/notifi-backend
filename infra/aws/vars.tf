@@ -5,7 +5,7 @@ variable "IS_DEV" {
 
 locals {
   IMAGE_URI       = format("%s:%s", aws_ecr_repository.notifi.repository_url, var.IS_DEV ? "develop" : "latest")
-  API_DOMAIN      = var.IS_DEV ? format("dapi.%s", var.CF_DOMAIN) : format("api.%s", var.CF_DOMAIN)
+  DOMAIN          = var.IS_DEV ? format("d.%s", var.CF_DOMAIN) : var.CF_DOMAIN
   WS_DOMAIN       = var.IS_DEV ? format("dws.%s", var.CF_DOMAIN) : format("ws.%s", var.CF_DOMAIN)
   AWS_WS_ENDPOINT = format("%s/%s", replace(aws_apigatewayv2_api.ws.api_endpoint, "wss://", "https://"), aws_apigatewayv2_stage.ws.name)
 }
@@ -28,4 +28,9 @@ variable "CF_DOMAIN" {
 
 variable "FIREBASE_SERVER_KEY" {
   type = string
+}
+
+variable "PAGES_PROXY_URL" {
+  type    = string
+  default = "https://notifi.pages.dev"
 }
