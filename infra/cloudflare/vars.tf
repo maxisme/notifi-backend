@@ -41,7 +41,7 @@ variable "CF_DOMAIN" {
 
 variable "PAGES_PROXY_URL" {
   type    = string
-  default = "https://notifi.pages.dev"
+  default = "notifi.pages.dev"
 }
 
 locals {

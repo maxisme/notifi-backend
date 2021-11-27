@@ -10,13 +10,13 @@ resource "cloudflare_page_rule" "https-redirects" {
 
 resource "cloudflare_page_rule" "api-redirect" {
   zone_id  = var.CF_DOMAIN_ZONE_ID
-  target   = "*${local.HTTP_DOMAIN}/*"
+  target   = "${local.HTTP_DOMAIN}/*"
   priority = 2
 
   actions {
     forwarding_url {
       status_code = 301
-      url         = "https://${var.API_DOMAIN}/$2"
+      url         = "https://${var.API_DOMAIN}/$1"
     }
   }
 }
