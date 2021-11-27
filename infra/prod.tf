@@ -17,8 +17,8 @@ module "cloudflare" {
   CF_EMAIL             = var.CF_EMAIL
   IS_DEV               = false
 
-  HTTP_DOMAIN             = module.aws.HTTP_DOMAIN
+  API_DOMAIN              = module.aws.API_DOMAIN
   WS_DOMAIN               = module.aws.WS_DOMAIN
   AWS_WS_DOMAIN_GATEWAY   = module.aws.AWS_WS_DOMAIN_GATEWAY
-  AWS_HTTP_DOMAIN_GATEWAY = module.aws.AWS_HTTP_DOMAIN_GATEWAY
+  AWS_HTTP_DOMAIN_GATEWAY = module.aws.AWS_API_DOMAIN_GATEWAY
 }

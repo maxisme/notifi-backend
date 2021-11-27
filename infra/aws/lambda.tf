@@ -73,13 +73,13 @@ resource "aws_lambda_permission" "message" {
   source_arn    = "${aws_apigatewayv2_api.ws.execution_arn}/**"
 }
 
-resource "aws_lambda_function" "http" {
-  function_name = var.IS_DEV ? "http-dev" : "http"
+resource "aws_lambda_function" "api" {
+  function_name = var.IS_DEV ? "api-dev" : "api"
   role          = aws_iam_role.iam_for_lambda.arn
   image_uri     = local.IMAGE_URI
   package_type  = "Image"
   image_config {
-    entry_point = ["/main", "http"]
+    entry_point = ["/main", "api"]
   }
   environment {
     variables = {
@@ -93,9 +93,9 @@ resource "aws_lambda_function" "http" {
     }
   }
 }
-resource "aws_lambda_permission" "http" {
+resource "aws_lambda_permission" "api" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.http.function_name
+  function_name = aws_lambda_function.api.function_name
   principal     = "apigateway.amazonaws.com"
 }

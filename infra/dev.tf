@@ -6,10 +6,10 @@ module "cloudflare-develop" {
   CF_DOMAIN_ZONE_ID    = var.CF_DOMAIN_ZONE_ID
   CF_EMAIL             = var.CF_EMAIL
 
-  HTTP_DOMAIN             = module.aws-develop.HTTP_DOMAIN
+  API_DOMAIN              = module.aws-develop.API_DOMAIN
   WS_DOMAIN               = module.aws-develop.WS_DOMAIN
   AWS_WS_DOMAIN_GATEWAY   = module.aws-develop.AWS_WS_DOMAIN_GATEWAY
-  AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_HTTP_DOMAIN_GATEWAY
+  AWS_HTTP_DOMAIN_GATEWAY = module.aws-develop.AWS_API_DOMAIN_GATEWAY
 
   IS_DEV = true
 }
