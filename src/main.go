@@ -8,7 +8,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sirupsen/logrus"
-	"net/http"
 	"os"
 )
 
@@ -23,9 +22,6 @@ func init() {
 	r.HandleFunc("/code", HandleCode)
 	r.HandleFunc("/", HandleApi)
 
-	r.HandleFunc("/ws", func(writer http.ResponseWriter, req *http.Request) {
-		http.Redirect(writer, req, "https://"+os.Getenv("WS_HOST"), http.StatusMovedPermanently)
-	})
 	chiLambda = chiadapter.New(r)
 }
 
