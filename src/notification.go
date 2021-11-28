@@ -1,20 +1,16 @@
 package main
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/guregu/dynamo"
 	"net/http"
 	"os"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
 )
-
-const MaxNotificationSizeKB = 15
 
 var NotificationTable = os.Getenv("NOTIFICATION_TABLE_NAME")
 
@@ -117,11 +113,6 @@ func (n *Notification) Validate() error {
 		}
 	}
 
-	sizeKB := n.SizeKB()
-	if sizeKB > MaxNotificationSizeKB {
-		return fmt.Errorf("Notification too large (%d) should be less than %d", sizeKB, MaxNotificationSizeKB)
-	}
-
 	return nil
 }
 
@@ -154,8 +145,4 @@ func (n *Notification) Init() {
 	loc, _ := time.LoadLocation("UTC")
 	n.Time = time.Now().In(loc).Format(notificationTimeLayout)
 	n.UUID = uuid.New().String()
-}
-
-func (n *Notification) SizeKB() int {
-	return binary.Size(reflect.ValueOf(n)) / 1024
 }
