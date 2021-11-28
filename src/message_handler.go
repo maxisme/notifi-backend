@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/sirupsen/logrus"
+	"github.com/aws/aws-lambda-go/events"
 	"net/http"
 	"os"
-
-	"github.com/aws/aws-lambda-go/events"
 )
+
+const MaxWSSizeKB = 32
 
 func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	db, err := GetDB()
@@ -30,22 +30,39 @@ func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 		}
 
 		if len(notifications) > 0 {
-			// decrypt notifications
+			var notificationChunks [][]Notification
+			var notificationChunk []Notification
+
+			// decrypt notifications and chunk them into MaxWSSizeKB
 			for i := range notifications {
+				var notification = notifications[i]
 				var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
-				if err := notifications[i].Decrypt(encryptionKey); err != nil {
-					logrus.Error(err.Error())
+				if err := notification.Decrypt(encryptionKey); err != nil {
+					return WriteError(err, http.StatusInternalServerError)
 				}
-			}
 
-			notificationsBytes, err := json.Marshal(notifications)
-			if err != nil {
-				return WriteError(err, http.StatusInternalServerError)
-			}
+				chunkSizeBytes, _ := json.Marshal(notificationChunk)
+				chunkSize := len(chunkSizeBytes)
 
-			err = SendWsMessage(user.ConnectionID, notificationsBytes)
-			if err != nil {
-				return WriteError(err, http.StatusInternalServerError)
+				if chunkSize >= MaxWSSizeKB*1000 {
+					notificationChunks = append(notificationChunks, notificationChunk)
+					notificationChunk = []Notification{}
+				}
+				notificationChunk = append(notificationChunk, notification)
+			}
+			notificationChunks = append(notificationChunks, notificationChunk)
+
+			// send notification chunks over websocket
+			for i := range notificationChunks {
+				notificationsBytes, err := json.Marshal(notificationChunks[i])
+				if err != nil {
+					return WriteError(err, http.StatusInternalServerError)
+				}
+
+				err = SendWsMessage(user.ConnectionID, notificationsBytes)
+				if err != nil {
+					return WriteError(err, http.StatusInternalServerError)
+				}
 			}
 		}
 
