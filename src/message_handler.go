@@ -2,13 +2,17 @@ package main
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+	"reflect"
 
 	"github.com/aws/aws-lambda-go/events"
 )
+
+const MaxWSSizeKB = 32
 
 func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) (events.APIGatewayProxyResponse, error) {
 	db, err := GetDB()
@@ -38,14 +42,29 @@ func HandleMessage(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 				}
 			}
 
-			notificationsBytes, err := json.Marshal(notifications)
-			if err != nil {
-				return WriteError(err, http.StatusInternalServerError)
+			// chunk up notifications for sending to client
+			var notificationChunks [][]Notification
+			var notificationChunk []Notification
+			for i := range notifications {
+				if binary.Size(reflect.ValueOf(notificationChunk)) >= MaxWSSizeKB*1000 {
+					notificationChunks = append(notificationChunks, notificationChunk)
+					notificationChunk = []Notification{}
+				}
+				notificationChunk = append(notificationChunk, notifications[i])
 			}
+			notificationChunks = append(notificationChunks, notificationChunk)
 
-			err = SendWsMessage(user.ConnectionID, notificationsBytes)
-			if err != nil {
-				return WriteError(err, http.StatusInternalServerError)
+			// send notification chunks over websocket
+			for i := range notificationChunks {
+				notificationsBytes, err := json.Marshal(notificationChunks[i])
+				if err != nil {
+					return WriteError(err, http.StatusInternalServerError)
+				}
+
+				err = SendWsMessage(user.ConnectionID, notificationsBytes)
+				if err != nil {
+					return WriteError(err, http.StatusInternalServerError)
+				}
 			}
 		}
 
