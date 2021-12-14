@@ -13,6 +13,14 @@
 
 ## Run App
 
+## Local development
+### Sam
+First install [AWS SAM](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
+Ubuntu
+```
+$ pip install --user --upgrade aws-sam-cli
+```
+
 
 ## Run linter
 Install https://golangci-lint.run/usage/install/#local-installation
@@ -24,7 +32,6 @@ bash pre-commit.sh
 
 ```bash
 ln -s $(pwd)/pre-commit.sh $(pwd)/.git/hooks/pre-commit
-chmod +x $(pwd)/.git/hooks/pre-commit
 ```
 
 ## tokens

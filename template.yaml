@@ -1,0 +1,295 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  Generator: "former2"
+Description: ""
+Resources:
+  DisconnectFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: ""
+      Environment:
+        Variables:
+          USER_TABLE_NAME: !Ref DynamoDBTable4
+          SERVER_KEY: ""
+      FunctionName: "notifi-disconnect"
+      Architectures:
+        - "x86_64"
+      MemorySize: 128
+      Timeout: 3
+      TracingConfig:
+        Mode: "PassThrough"
+      PackageType: Image
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./src
+      Dockerfile: Dockerfile
+
+  MessageFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: ""
+      Environment:
+        Variables:
+          WS_ENDPOINT: !Sub "${LambdaFunction3}s://${ApiGatewayV2Api2}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayV2Stage}"
+          USER_TABLE_NAME: !Ref DynamoDBTable4
+          SERVER_KEY: ""
+          ENCRYPTION_KEY: ""
+          NOTIFICATION_TABLE_NAME: !Ref NotificationTable
+      FunctionName: "notifi-message"
+      Architectures:
+        - "x86_64"
+      MemorySize: 128
+      Timeout: 3
+      TracingConfig:
+        Mode: "PassThrough"
+      PackageType: Image
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./src
+      Dockerfile: Dockerfile
+
+  LambdaFunction3:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: ""
+      Environment:
+        Variables:
+          WS_ENDPOINT: !Sub "https://${ApiGatewayV2Api2}.execute-api.${AWS::Region}.amazonaws.com/${ApiGatewayV2Stage}"
+          FIREBASE_SERVER_KEY: ""
+          USER_TABLE_NAME: !Ref DynamoDBTable4
+          WS_HOST: ""
+          SERVER_KEY: ""
+          ENCRYPTION_KEY: ""
+          NOTIFICATION_TABLE_NAME: !Ref NotificationTable
+      FunctionName: "http"
+      Architectures:
+        - "x86_64"
+      MemorySize: 128
+      Timeout: 3
+      TracingConfig:
+        Mode: "PassThrough"
+      PackageType: Image
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./src
+      Dockerfile: Dockerfile
+
+  ApiGatewayV2Api:
+    Type: "AWS::ApiGatewayV2::Api"
+    Properties:
+      ApiKeySelectionExpression: "$request.header.x-api-key"
+      ProtocolType: "HTTP"
+      RouteSelectionExpression: "$request.method $request.path"
+      DisableExecuteApiEndpoint: false
+
+  ConnectFunction:
+    Type: "AWS::Lambda::Function"
+    Properties:
+      Description: ""
+      Environment:
+        Variables:
+          WS_ENDPOINT: ""
+          USER_TABLE_NAME: !Ref DynamoDBTable4
+          NOTIFICATION_TABLE_NAME: !Ref NotificationTable
+      FunctionName: "notifi-connect"
+      Architectures:
+        - "x86_64"
+      MemorySize: 128
+      Timeout: 3
+      TracingConfig:
+        Mode: "PassThrough"
+      PackageType: Image
+      Events:
+        CatchAll:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /hello
+            Method: GET
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./src
+      Dockerfile: Dockerfile
+
+  ApiGatewayV2Api2:
+    Type: "AWS::ApiGatewayV2::Api"
+    Properties:
+      ApiKeySelectionExpression: "$request.header.x-api-key"
+      ProtocolType: "WEBSOCKET"
+      RouteSelectionExpression: "$request.body.action"
+
+  NotificationTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "credentials"
+          AttributeType: "S"
+        -
+          AttributeName: "uuid"
+          AttributeType: "S"
+      BillingMode: "PAY_PER_REQUEST"
+      TableName: "notification"
+      KeySchema:
+        -
+          AttributeName: "uuid"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "credentials-index"
+          KeySchema:
+            -
+              AttributeName: "credentials"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 0
+            WriteCapacityUnits: 0
+      TimeToLiveSpecification:
+        Enabled: false
+
+  DynamoDBTable4:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName: "connection_id"
+          AttributeType: "S"
+        -
+          AttributeName: "credentials"
+          AttributeType: "S"
+        -
+          AttributeName: "device_uuid"
+          AttributeType: "S"
+      BillingMode: "PAY_PER_REQUEST"
+      TableName: "user"
+      KeySchema:
+        -
+          AttributeName: "device_uuid"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        -
+          IndexName: "credentials-index"
+          KeySchema:
+            -
+              AttributeName: "credentials"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 0
+            WriteCapacityUnits: 0
+        -
+          IndexName: "connection_id-index"
+          KeySchema:
+            -
+              AttributeName: "connection_id"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: "ALL"
+          ProvisionedThroughput:
+            ReadCapacityUnits: 0
+            WriteCapacityUnits: 0
+      TimeToLiveSpecification:
+        Enabled: false
+
+#  ApiGatewayV2Stage:
+#    Type: "AWS::ApiGatewayV2::Stage"
+#    Properties:
+#      StageName: "prod"
+#      StageVariables: {}
+#      ApiId: !Ref ApiGatewayV2Api2
+#      DeploymentId: "ht64fr"
+#      RouteSettings: {}
+#      DefaultRouteSettings:
+#        DataTraceEnabled: false
+#        DetailedMetricsEnabled: false
+#        LoggingLevel: "OFF"
+#        ThrottlingBurstLimit: 50
+#        ThrottlingRateLimit: 100
+#      AutoDeploy: true
+#
+#  ApiGatewayV2Route:
+#    Type: "AWS::ApiGatewayV2::Route"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ApiKeyRequired: false
+#      AuthorizationType: "NONE"
+#      RouteKey: "$connect"
+#      Target: !Sub "integrations/${ApiGatewayV2Integration3}"
+#
+#  ApiGatewayV2Route2:
+#    Type: "AWS::ApiGatewayV2::Route"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ApiKeyRequired: false
+#      AuthorizationType: "NONE"
+#      RouteKey: "$disconnect"
+#      Target: !Sub "integrations/${ApiGatewayV2Integration2}"
+#
+#  ApiGatewayV2Route3:
+#    Type: "AWS::ApiGatewayV2::Route"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ApiKeyRequired: false
+#      AuthorizationType: "NONE"
+#      RouteKey: "$default"
+#      Target: !Sub "integrations/${ApiGatewayV2Integration}"
+#
+#  ApiGatewayV2Integration:
+#    Type: "AWS::ApiGatewayV2::Integration"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ConnectionType: "INTERNET"
+#      IntegrationMethod: "POST"
+#      IntegrationType: "AWS_PROXY"
+#      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${MessageFunction}/invocations"
+#      PassthroughBehavior: "WHEN_NO_MATCH"
+#      TimeoutInMillis: 29000
+#      PayloadFormatVersion: "1.0"
+#
+#  ApiGatewayV2Integration2:
+#    Type: "AWS::ApiGatewayV2::Integration"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ConnectionType: "INTERNET"
+#      IntegrationMethod: "POST"
+#      IntegrationType: "AWS_PROXY"
+#      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunction}/invocations"
+#      PassthroughBehavior: "WHEN_NO_MATCH"
+#      TimeoutInMillis: 29000
+#      PayloadFormatVersion: "1.0"
+#
+#  ApiGatewayV2Integration3:
+#    Type: "AWS::ApiGatewayV2::Integration"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api2
+#      ConnectionType: "INTERNET"
+#      IntegrationMethod: "POST"
+#      IntegrationType: "AWS_PROXY"
+#      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ConnectFunction}/invocations"
+#      PassthroughBehavior: "WHEN_NO_MATCH"
+#      TimeoutInMillis: 29000
+#      PayloadFormatVersion: "1.0"
+#
+#  ApiGatewayV2Integration4:
+#    Type: "AWS::ApiGatewayV2::Integration"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api
+#      ConnectionType: "INTERNET"
+#      IntegrationMethod: "POST"
+#      IntegrationType: "AWS_PROXY"
+#      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunction3}/invocations"
+#      TimeoutInMillis: 30000
+#      PayloadFormatVersion: "1.0"
+#
+#  ApiGatewayV2Integration5:
+#    Type: "AWS::ApiGatewayV2::Integration"
+#    Properties:
+#      ApiId: !Ref ApiGatewayV2Api
+#      ConnectionType: "INTERNET"
+#      IntegrationMethod: "ANY"
+#      IntegrationType: "HTTP_PROXY"
+#      IntegrationUri: !Sub "${LambdaFunction3}s://notifi.pages.dev/{proxy}"
+#      TimeoutInMillis: 30000
+#      PayloadFormatVersion: "1.0"
