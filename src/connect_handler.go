@@ -40,6 +40,10 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	var StoredUser User
 	err = db.Table(UserTable).Get("device_uuid", Hash(user.UUID)).One(&StoredUser)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"uuid": Hash(user.UUID),
+			"err":  err.Error(),
+		}).Error("Trying to connect without credentials...")
 		return WriteError(err, http.StatusInternalServerError)
 	}
 
