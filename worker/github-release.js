@@ -63,7 +63,7 @@ async function getGithubRelease(event) {
     <item>
         <title>${release['name']}</title>
         <description><![CDATA[
-            ${release['body']}
+            ${release['body'].replace(/(?:\r\n|\r|\n)/g, '<br>')}
         ]]>
         </description>
         <pubDate>${release['published_at']}</pubDate>
