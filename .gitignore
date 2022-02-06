@@ -38,3 +38,4 @@ override.tf.json
 terraform.rc
 wrangler.toml
 /worker/lint/
+/node_modules
