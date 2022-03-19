@@ -13,18 +13,18 @@ import (
 
 func HandleApi(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		WriteHttpError(w, err, http.StatusBadRequest)
+		WriteHttpError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
 	var notification Notification
 	if err := schema.NewDecoder().Decode(&notification, r.Form); err != nil {
-		WriteHttpError(w, err, http.StatusBadRequest)
+		WriteHttpError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
 	if err := notification.Validate(); err != nil {
-		WriteHttpError(w, err, http.StatusBadRequest)
+		WriteHttpError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
@@ -33,7 +33,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	// connect to db
 	db, err := GetDB()
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -50,14 +50,14 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 		SetExpr("notification_cnt = notification_cnt + ?", 1).
 		Run()
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
 	notification.Init()
 	notificationMsgBytes, err := json.Marshal([]Notification{notification})
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
@@ -89,7 +89,7 @@ func HandleApi(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		var encryptionKey = []byte(os.Getenv("ENCRYPTION_KEY"))
 		if err := notification.Store(db, encryptionKey); err != nil {
-			WriteHttpError(w, fmt.Errorf("%s %v", err.Error(), notification), http.StatusInternalServerError)
+			WriteHttpError(w, r, fmt.Errorf("%s %v", err.Error(), notification), http.StatusInternalServerError)
 			return
 		}
 	}

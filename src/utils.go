@@ -63,12 +63,13 @@ func CloseConnection(connectionID string) error {
 	return err
 }
 
-func WriteHttpError(w http.ResponseWriter, err error, code int) {
+func WriteHttpError(w http.ResponseWriter, r *http.Request, err error, code int) {
 	_, file, no, _ := runtime.Caller(1)
 	logrus.WithFields(
 		logrus.Fields{
-			"path": fmt.Sprintf("%s#%d", file, no),
-			"code": code,
+			"path":           fmt.Sprintf("%s#%d", file, no),
+			"code":           code,
+			"remote-address": r.RemoteAddr,
 		},
 	).Warn(err.Error())
 	http.Error(w, err.Error(), http.StatusBadRequest)

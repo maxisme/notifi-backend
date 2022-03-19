@@ -14,7 +14,7 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 
 	err := r.ParseForm()
 	if err != nil {
-		WriteHttpError(w, err, http.StatusBadRequest)
+		WriteHttpError(w, r, err, http.StatusBadRequest)
 		return
 	}
 
@@ -29,25 +29,25 @@ func HandleCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !IsValidUUID(PostUser.UUID) {
-		WriteHttpError(w, fmt.Errorf("Invalid UUID"), http.StatusBadRequest)
+		WriteHttpError(w, r, fmt.Errorf("Invalid UUID"), http.StatusBadRequest)
 		return
 	}
 
 	db, err := GetDB()
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
 	creds, err := PostUser.Store(db)
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 
 	c, err := json.Marshal(creds)
 	if err != nil {
-		WriteHttpError(w, err, http.StatusInternalServerError)
+		WriteHttpError(w, r, err, http.StatusInternalServerError)
 		return
 	}
 

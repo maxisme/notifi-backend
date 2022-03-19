@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/guregu/dynamo"
 	"os"
 	"time"
@@ -71,13 +72,13 @@ func (user User) Store(db *dynamo.DB) (Credentials, error) {
 			if user.Verify(StoredUser) {
 				isNewUser = false
 			} else {
-				return Credentials{}, errors.New("Unable to create new credentials")
+				return Credentials{}, errors.New("unable to create new credentials")
 			}
 		}
 	}
 
 	if isNewUser && len(StoredUser.UUID) > 0 {
-		return Credentials{}, errors.New("UUID already used")
+		return Credentials{}, fmt.Errorf("UUID (%s) already exists", Hash(user.UUID))
 	}
 
 	StoredUser.Credentials = Hash(newCredentials.Value)
