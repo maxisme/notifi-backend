@@ -41,6 +41,7 @@ variable "CF_DOMAIN" {
   type = string
 }
 
-variable "FIREBASE_SERVER_KEY" {
+variable "FIREBASE_CREDENTIALS_JSON_B64" {
+  // https://console.firebase.google.com/project/notifi-c9601/settings/serviceaccounts/adminsdk
   type = string
 }

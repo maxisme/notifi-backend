@@ -26,7 +26,7 @@ variable "CF_DOMAIN" {
   type = string
 }
 
-variable "FIREBASE_SERVER_KEY" {
+variable "FIREBASE_CREDENTIALS_JSON_B64" {
   type = string
 }
 

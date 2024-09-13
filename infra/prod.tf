@@ -1,11 +1,11 @@
 module "aws" {
-  AWS_REGION          = var.AWS_REGION
-  CF_DOMAIN           = var.CF_DOMAIN
-  ENCRYPTION_KEY      = var.ENCRYPTION_KEY
-  FIREBASE_SERVER_KEY = var.FIREBASE_SERVER_KEY
-  SERVER_KEY          = var.SERVER_KEY
-  source              = "./aws"
-  IS_DEV              = false
+  AWS_REGION                    = var.AWS_REGION
+  CF_DOMAIN                     = var.CF_DOMAIN
+  ENCRYPTION_KEY                = var.ENCRYPTION_KEY
+  FIREBASE_CREDENTIALS_JSON_B64 = var.FIREBASE_CREDENTIALS_JSON_B64
+  SERVER_KEY                    = var.SERVER_KEY
+  source                        = "./aws"
+  IS_DEV                        = false
 }
 
 module "cloudflare" {
