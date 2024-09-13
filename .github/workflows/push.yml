@@ -71,10 +71,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          tag="$ECR_REGISTRY/notifi:latest"
+          tag="$ECR_REGISTRY/notifi:${GITHUB_SHA::7}"
           if [[ "${{ github.ref }}" != "refs/heads/master" ]]
           then
-            tag="$ECR_REGISTRY/notifi-dev:develop"
+            tag="$ECR_REGISTRY/notifi-dev:${GITHUB_SHA::7}"
           fi
 
           docker build --build-arg=COMMIT_HASH=${GITHUB_SHA::7} -t "$tag" .
@@ -101,12 +101,12 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          tag="$ECR_REGISTRY/notifi:latest"
+          tag="$ECR_REGISTRY/notifi:${GITHUB_SHA::7}"
           func_app=""
           if [[ "${{ github.ref }}" != "refs/heads/master" ]]
           then
             func_app="-dev"
-            tag="$ECR_REGISTRY/notifi$func_app:develop"
+            tag="$ECR_REGISTRY/notifi$func_app:${GITHUB_SHA::7}"
           fi
 
           aws lambda update-function-code --function-name "http$func_app" --image-uri "$tag"
