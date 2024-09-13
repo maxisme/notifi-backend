@@ -1,7 +1,9 @@
 resource "aws_acm_certificate_validation" "notifi" {
-  certificate_arn = aws_acm_certificate.notifi.arn
+  count           = var.IS_DEV ? 0 : 1
+  certificate_arn = aws_acm_certificate.notifi[0].arn
 }
 resource "aws_acm_certificate" "notifi" {
+  count             = var.IS_DEV ? 0 : 1
   domain_name       = var.CF_DOMAIN
   validation_method = "EMAIL"
 }
