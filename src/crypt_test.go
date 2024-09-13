@@ -10,12 +10,12 @@ var testStr = RandomString(10)
 func TestEncrypt(t *testing.T) {
 	encryptedstr, err := EncryptAES(testStr, testKey)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 		return
 	}
 	decryptedstr, err := DecryptAES(encryptedstr, testKey)
 	if err != nil {
-		t.Errorf(err.Error())
+		t.Error(err.Error())
 		return
 	}
 	if decryptedstr != testStr {

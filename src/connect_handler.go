@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/sirupsen/logrus"
@@ -69,7 +70,7 @@ func HandleConnect(_ context.Context, r events.APIGatewayWebsocketProxyRequest) 
 	}
 
 	if errorCode != 0 {
-		return WriteError(fmt.Errorf(errorMsg), errorCode)
+		return WriteError(errors.New(errorMsg), errorCode)
 	}
 
 	StoredUser.AppVersion = r.Headers["version"]

@@ -31,7 +31,7 @@ func WriteError(err error, code int) (events.APIGatewayProxyResponse, error) {
 			"path": fmt.Sprintf("%s#%d", file, no),
 			"code": code,
 		},
-	).Warnf(err.Error())
+	).Warn(err.Error())
 	return events.APIGatewayProxyResponse{
 		StatusCode: code,
 		Body:       err.Error(),

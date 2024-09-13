@@ -39,3 +39,4 @@ terraform.rc
 wrangler.toml
 /worker/lint/
 /node_modules
+/src/lambda-src

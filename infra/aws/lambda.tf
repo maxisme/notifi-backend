@@ -83,13 +83,13 @@ resource "aws_lambda_function" "http" {
   }
   environment {
     variables = {
-      ENCRYPTION_KEY          = var.ENCRYPTION_KEY
-      FIREBASE_SERVER_KEY     = var.FIREBASE_SERVER_KEY
-      NOTIFICATION_TABLE_NAME = aws_dynamodb_table.notification-table.name
-      SERVER_KEY              = var.SERVER_KEY
-      USER_TABLE_NAME         = aws_dynamodb_table.user-table.name
-      WS_ENDPOINT             = local.AWS_WS_ENDPOINT
-      WS_HOST                 = local.WS_DOMAIN
+      ENCRYPTION_KEY                = var.ENCRYPTION_KEY
+      FIREBASE_CREDENTIALS_JSON_B64 = var.FIREBASE_CREDENTIALS_JSON_B64
+      NOTIFICATION_TABLE_NAME       = aws_dynamodb_table.notification-table.name
+      SERVER_KEY                    = var.SERVER_KEY
+      USER_TABLE_NAME               = aws_dynamodb_table.user-table.name
+      WS_ENDPOINT                   = local.AWS_WS_ENDPOINT
+      WS_HOST                       = local.WS_DOMAIN
     }
   }
 }
