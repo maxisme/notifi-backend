@@ -92,7 +92,7 @@ resource "aws_apigatewayv2_domain_name" "notifi" {
   domain_name = local.DOMAIN
 
   domain_name_configuration {
-    certificate_arn = !var.IS_DEV ? aws_acm_certificate_validation.notifi[0].certificate_arn : aws_acm_certificate_validation.sub-notifi.certificate_arn
+    certificate_arn = !var.IS_DEV ? aws_acm_certificate.notifi[0].arn : aws_acm_certificate.sub-notifi.arn
     endpoint_type   = "REGIONAL"
     security_policy = "TLS_1_2"
   }
